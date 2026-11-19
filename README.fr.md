@@ -7,7 +7,7 @@ Interface en français ou en anglais.
 
 Tout tourne sur le serveur : les comptes y sont connectés une fois, l'écran ne fait qu'afficher.
 
-Logiciel libre, développé par l'équipe Deltinfo Studio et publié sous licence Apache 2.0. État : version 0.4, jeune ; lire « Limites
+Logiciel libre, développé par l'équipe Deltinfo Studio et publié sous licence Apache 2.0. État : version 0.6, jeune ; lire « Limites
 connues » avant de s'en servir.
 
 > **In English.** Dev Workshop is a self-hosted web interface for coding with AI agents (Claude Code, OpenAI Codex,
@@ -207,7 +207,7 @@ déclarer dans `serveur/fournisseurs/index.mjs` sous un type de compte. Événem
 Codex et Gemini CLI sont installés avec le projet, en versions figées (`package.json`) : leurs adaptateurs lisent
 leurs protocoles, une montée de version se fait donc avec un essai.
 
-## Limites connues (v0.4)
+## Limites connues (v0.6)
 
 - les sessions passées et leur reprise ne concernent que le compte du serveur ;
 - jamais essayé avec un compte réel : une connexion menée à son terme, un tour de Codex ou de Gemini (adaptateurs
