@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Dev Workshop</title>
+  <link rel="icon" href="/icone.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/disposition.css">
+  <link rel="stylesheet" href="/css/messages.css">
+  <link rel="stylesheet" href="/css/panneaux.css">
+</head>
+<body>
+  <div id="bandeau" class="bandeau" hidden data-i18n="connexion_perdue"></div>
+
+  <div class="atelier">
+    <aside class="barre">
+      <div class="marque"><span class="logo">◆</span><span data-i18n="titre"></span></div>
+
+      <section>
+        <h2 data-i18n="projets"></h2>
+        <div id="liste-projets" class="liste"></div>
+        <form id="form-projet" class="ajout">
+          <input id="nom-projet" type="text" maxlength="60" autocomplete="off" data-i18n-attr="placeholder:nouveau_projet">
+          <button type="submit" data-i18n="creer"></button>
+        </form>
+      </section>
+
+      <section id="bloc-vivantes" hidden>
+        <h2 data-i18n="en_cours"></h2>
+        <div id="liste-vivantes" class="liste"></div>
+      </section>
+
+      <section id="bloc-historique" class="extensible" hidden>
+        <h2 data-i18n="historique"></h2>
+        <div id="liste-historique" class="liste"></div>
+      </section>
+
+      <footer>
+        <label><span data-i18n="langue"></span><select id="langue"></select></label>
+      </footer>
+    </aside>
+
+    <main class="scene">
+      <header class="entete">
+        <h1 id="titre-session"></h1>
+        <button id="nouvelle" type="button" data-i18n="nouvelle_session"></button>
+        <button id="fermer-session" type="button" hidden data-i18n="fermer_session"></button>
+        <span class="ressort"></span>
+        <button id="ouvrir-salon" type="button" data-i18n="salon_bouton"></button>
+        <button id="ouvrir-comptes" type="button" data-i18n="comptes"></button>
+        <label><span data-i18n="fournisseur"></span><select id="compte"></select></label>
+        <label><span data-i18n="modele"></span><select id="modele"></select></label>
+        <label><span data-i18n="mode"></span><select id="mode"></select></label>
+        <button id="jauge" class="jauge" type="button" data-i18n-attr="title:conso_titre"></button>
+      </header>
+
+      <section id="conso" class="panneau-conso" hidden></section>
+      <div id="fil" class="fil"></div>
+      <div id="permissions" class="permissions"></div>
+
+      <footer class="saisie">
+        <div id="palette" class="palette" hidden></div>
+        <textarea id="champ" rows="1" disabled data-i18n-attr="placeholder:saisie"></textarea>
+        <button id="arreter" class="danger" type="button" hidden data-i18n="arreter"></button>
+        <button id="envoyer" class="principal" type="button" disabled data-i18n="envoyer"></button>
+      </footer>
+    </main>
+  </div>
+
+  <div id="panneau-comptes" class="voile" hidden></div>
+  <div id="panneau-salon" class="voile" hidden></div>
+
+  <div id="porte" class="porte" hidden>
+    <form id="form-porte">
+      <h2 data-i18n="jeton_titre"></h2>
+      <p data-i18n="jeton_aide"></p>
+      <p id="porte-erreur" class="erreur" hidden data-i18n="jeton_refuse"></p>
+      <input id="porte-jeton" type="password" autocomplete="off" required data-i18n-attr="placeholder:jeton_champ">
+      <button class="principal" type="submit" data-i18n="entrer"></button>
+    </form>
+  </div>
+
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>
