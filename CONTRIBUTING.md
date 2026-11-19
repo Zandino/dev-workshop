@@ -20,8 +20,8 @@ A security vulnerability is not reported in a public issue: see `SECURITY.md`.
    - no build step on the browser side: ES modules served as they are;
    - every visible text goes through `public/js/i18n.js`, in French and in English;
    - no inline style or script (the page's content policy forbids them).
-3. Security is decided by the server: what the screen forbids, the server forbids too. No mode that bypasses
-   approval requests will be accepted.
+3. Security is decided by the server: what the screen forbids, the server forbids too. Manual approval stays the
+   default; a mode with fewer or no prompts is only ever an explicit, per-session choice of the user.
 4. The tests pass (`tests/`). They open real sessions: run them with `DEVWORKSHOP_CONFIG` on a scratch folder and on
    a small model. `tests/connexion.mjs` makes no model call.
 

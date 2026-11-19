@@ -1,0 +1,82 @@
+# Fabrique le logiciel de bureau pour Windows, macOS et Linux.
+# - Sur une demande de fusion (ou à la main) : fabrication seule, pour vérifier ; les fichiers restent dans l'onglet Actions.
+# - Sur une étiquette « vX.Y.Z » : fabrication puis publication d'une version GitHub, que les mises à jour automatiques lisent.
+#   L'étiquette doit être égale à la version de bureau/package.json.
+# Le logiciel n'est pas signé (voir README) : aucun secret n'est utilisé ici.
+name: Logiciel de bureau
+
+on:
+  push:
+    tags: ['v*']
+  pull_request:
+    paths: ['bureau/**', '.github/workflows/bureau.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fabriquer:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            cible: --win
+          - os: macos-latest
+            cible: --mac
+          - os: ubuntu-latest
+            cible: --linux
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: bureau
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: bureau/package-lock.json
+      - name: L'étiquette correspond à la version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: test "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
+      - run: npm ci
+      - run: npx electron-builder ${{ matrix.cible }} --publish never
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: bureau-${{ runner.os }}
+          if-no-files-found: error
+          path: |
+            bureau/dist/*.exe
+            bureau/dist/*.dmg
+            bureau/dist/*.AppImage
+            bureau/dist/*.blockmap
+            bureau/dist/latest*.yml
+
+  publier:
+    needs: fabriquer
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: fichiers
+          merge-multiple: true
+      - name: Publier la version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NOTES: |
+            Installers for the desktop app: Windows (`Dev-Workshop-Setup-*.exe`), macOS (`*.dmg`, arm64 and x64), Linux (`*.AppImage`).
+            The server (`serveur/`) is in the source code below: see the README to install it.
+
+            Not signed yet: Windows SmartScreen warns on first launch, and Windows 11 Smart App Control may block it.
+            [Code signing policy](https://github.com/${{ github.repository }}#code-signing-policy) · [Privacy](https://github.com/${{ github.repository }}/blob/main/PRIVACY.md)
+        run: >
+          gh release create "$GITHUB_REF_NAME" fichiers/*
+          --repo "$GITHUB_REPOSITORY" --title "Dev Workshop $GITHUB_REF_NAME" --notes "$NOTES" --generate-notes --verify-tag

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:">
+  <title>Dev Workshop</title>
+  <link rel="stylesheet" href="accueil.css">
+</head>
+<body>
+  <main class="page">
+    <header class="tete">
+      <div class="logo" aria-hidden="true"></div>
+      <div>
+        <h1 data-t="titre"></h1>
+        <p class="doux" data-t="sous_titre"></p>
+      </div>
+    </header>
+
+    <section>
+      <div class="section-tete">
+        <h2 data-t="serveurs"></h2>
+        <button id="ajouter" class="principal" type="button" data-t="ajouter"></button>
+      </div>
+      <p id="vide" class="vide" hidden data-t="aucun_serveur"></p>
+      <div id="liste" class="liste"></div>
+    </section>
+
+    <footer class="pied">
+      <label class="case"><input id="maj-auto" type="checkbox"><span data-t="maj_auto"></span></label>
+      <span data-t="pied"></span>
+      <a id="code-source" href="#" data-t="code_source"></a>
+      <a id="confidentialite" href="#" data-t="confidentialite"></a>
+    </footer>
+  </main>
+
+  <dialog id="formulaire">
+    <form id="form-serveur" method="dialog">
+      <h2 id="form-titre"></h2>
+      <p id="form-erreur" class="erreur" hidden></p>
+      <label><span data-t="nom"></span><input name="nom" maxlength="40" autocomplete="off" required><small data-t="nom_aide"></small></label>
+      <label><span data-t="hote"></span><input name="hote" maxlength="120" autocomplete="off" spellcheck="false" required placeholder="mon-serveur"><small data-t="hote_aide"></small></label>
+      <div class="deux">
+        <label><span data-t="port_ssh"></span><input name="portSsh" inputmode="numeric" autocomplete="off" placeholder="22"></label>
+        <label><span data-t="port"></span><input name="port" inputmode="numeric" autocomplete="off" placeholder="5330"></label>
+      </div>
+      <small class="doux" data-t="port_ssh_aide"></small>
+      <label><span data-t="dossier"></span><input name="dossier" autocomplete="off" spellcheck="false" placeholder="~/dev-workshop"><small data-t="dossier_aide"></small></label>
+      <label><span data-t="racine"></span><input name="racine" autocomplete="off" spellcheck="false" placeholder="~/dev"><small data-t="racine_aide"></small></label>
+      <div class="actions">
+        <button id="form-annuler" type="button" data-t="annuler"></button>
+        <button class="principal" type="submit" data-t="enregistrer"></button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="accueil.js"></script>
+</body>
+</html>

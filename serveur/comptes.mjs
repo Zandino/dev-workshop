@@ -43,7 +43,11 @@ function nomValide(nom) {
 const fichierCle = (id) => path.join(DOSSIER_CLES, id);
 
 /** Types de comptes qui se connectent par compte (lien à ouvrir), chacun dans son propre dossier. */
-const PAR_CONNEXION = ['claude', 'codex', 'gemini'];
+const PAR_CONNEXION = ['claude', 'codex', 'gemini', 'copilot'];
+/** Comptes à clé d'API (adresse + modèle) : « api » discute seulement ; « qwen » est un agent avec outils. */
+const PAR_ADRESSE = ['api', 'qwen'];
+/** Comptes dont la clé (ou le jeton) est rangée ici, dans le dossier des clés du serveur. */
+const AVEC_CLE = ['api', 'qwen', 'gemini', 'copilot'];
 
 /**
  * Une adresse est « locale » quand le texte ne quitte pas le serveur ou le réseau privé de l'entreprise
@@ -71,8 +75,11 @@ export function listerComptes() {
     const vue = { id: c.id, type: c.type, nom: c.nom, defaut: Boolean(c.defaut) };
     if (PAR_CONNEXION.includes(c.type) && !c.defaut) vue.connectable = true;
     // Dans une discussion à plusieurs, ces comptes reçoivent ce que disent les autres IA, hors du serveur.
-    if (c.type === 'codex' || c.type === 'gemini') vue.externe = true;
-    if (c.type === 'api') {
+    if (['codex', 'gemini', 'copilot'].includes(c.type)) vue.externe = true;
+    // Gemini : la connexion par compte Google personnel a été fermée par Google ; une clé d'API Gemini
+    // (AI Studio) fait tourner le même outil. Copilot : un jeton GitHub peut remplacer `copilot login`.
+    if (c.type === 'gemini' || c.type === 'copilot') vue.cle = cleDe(c.id)?.length || 0;
+    if (PAR_ADRESSE.includes(c.type)) {
       const cle = cleDe(c.id);
       Object.assign(vue, { url: c.url, modele: c.modele, externe: !estLocale(c.url), cle: cle ? cle.length : 0 });
     }
@@ -88,7 +95,12 @@ export function creerCompte({ type, nom, url, modele }) {
     // Un dossier par compte : l'outil officiel y range sa connexion, faite par la personne depuis l'écran.
     c.dossier = path.join(DOSSIER_CLAUDE, c.id);
     mkdirSync(c.dossier, { recursive: true, mode: 0o700 });
-  } else if (type === 'api') {
+  } else if (PAR_ADRESSE.includes(type)) {
+    // L'agent par clé (Qwen Code) range sa configuration dans son propre dossier.
+    if (type === 'qwen') {
+      c.dossier = path.join(DOSSIER_CLAUDE, c.id);
+      mkdirSync(c.dossier, { recursive: true, mode: 0o700 });
+    }
     let adresse;
     try {
       adresse = new URL(String(url));
@@ -111,7 +123,7 @@ export function creerCompte({ type, nom, url, modele }) {
 /** Range la clé saisie par la personne. Elle ne ressort plus : ni vers l'écran, ni dans un journal. */
 export function definirCle(id, cle) {
   const c = compte(id);
-  if (c.type !== 'api' || !ID.test(id)) throw new Error('compte_inconnu');
+  if (!AVEC_CLE.includes(c.type) || !ID.test(id)) throw new Error('compte_inconnu');
   const valeur = String(cle || '').trim();
   if (valeur.length < 1 || valeur.length > 500 || /\s/.test(valeur)) throw new Error('cle_invalide');
   mkdirSync(DOSSIER_CLES, { recursive: true, mode: 0o700 });
@@ -123,6 +135,11 @@ export function definirCle(id, cle) {
 export function cleDe(id) {
   if (!ID.test(id) || !existsSync(fichierCle(id))) return null;
   return readFileSync(fichierCle(id), 'utf8').trim() || null;
+}
+
+/** Efface la clé d'API enregistrée pour un compte (déconnexion d'un compte Gemini par clé). */
+export function oublierCle(id) {
+  if (ID.test(id)) rmSync(fichierCle(id), { force: true });
 }
 
 /**

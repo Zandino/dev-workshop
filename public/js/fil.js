@@ -2,6 +2,7 @@
 import { h, markdown, duree } from './dom.js';
 import { t } from './i18n.js';
 import { carteOutil, poserResultat, oublierCartes } from './outils.js';
+import { pastilleLogo } from './logos.js';
 
 const fil = () => document.getElementById('fil');
 let direct = null; // message en cours d'écriture : { boite, texte, reflexion }
@@ -27,6 +28,7 @@ function ajouter(el) {
 export function viderFil(messageAccueil) {
   direct = null;
   auBas = true;
+  signe = false;
   oublierCartes();
   fil().replaceChildren();
   if (messageAccueil) fil().append(h('div.accueil', {}, messageAccueil));
@@ -43,10 +45,34 @@ function boutonCopier(texte) {
   return b;
 }
 
-/** Étiquette de l'auteur dans une discussion à plusieurs (couleur pleine par participant). */
+/** Étiquette de l'auteur dans une discussion à plusieurs (couleur par participant, logo de son IA). */
 function etiquetteAuteur(a) {
   if (!a) return null;
-  return h('div.auteur.rang-' + (a.rang % 4), {}, a.nom, a.externe ? h('span.hors', {}, ' ↗ ' + t('externe')) : null);
+  return h('div.auteur.rang-' + (a.rang % 4), {}, pastilleLogo(a.compte, a.nom), a.nom, a.externe ? h('span.hors', {}, ' ↗ ' + t('externe')) : null);
+}
+
+/** Session à une seule IA : sa signature (logo + nom) ouvre chaque réponse. */
+let signature = null;
+let signe = false;
+export function definirSignature(s) {
+  // Une autre IA prend la main (relais) : son prochain message porte de nouveau une signature, la sienne.
+  if (s?.compte?.id !== signature?.compte?.id) signe = false;
+  signature = s;
+}
+function signer() {
+  if (!signature || signe) return null;
+  signe = true;
+  return h('div.signature', {}, pastilleLogo(signature.compte, signature.nom), h('span', {}, signature.nom));
+}
+
+/** Le serveur ajoute la liste des fichiers joints au message : à l'écran, on la montre en puces. */
+const MARQUE_FICHIERS = '\n\n---\nFichiers joints';
+function messageUtilisateur(texte) {
+  const coupe = texte.indexOf(MARQUE_FICHIERS);
+  if (coupe < 0) return h('article.message.utilisateur', { dataset: { auteur: t('toi') } }, texte);
+  const fichiers = [...texte.slice(coupe).matchAll(/(?:^- |^### )(\.devworkshop\/fichiers\/\S+)/gm)].map((x) => x[1]);
+  return h('article.message.utilisateur', { dataset: { auteur: t('toi') } }, texte.slice(0, coupe),
+    h('div.puces-fichiers', {}, fichiers.map((f) => h('span.puce-fichier', { title: f }, f.split('/').pop().replace(/^\d{8}-\d{6}-/, '')))));
 }
 
 function finirDirect() {
@@ -56,13 +82,17 @@ function finirDirect() {
 
 function surDelta(e) {
   if (!direct) {
-    const reflexion = h('pre.reflexion-directe');
+    // La réflexion se fait en arrière-plan : on montre seulement que l'IA réfléchit, pas son raisonnement.
+    const reflexion = h('div.reflechit', { hidden: true }, h('span.points', {}, h('i'), h('i'), h('i')), t('reflechit'));
     const texte = h('div.texte-direct');
-    direct = { boite: ajouter(h('article.message.assistant.en-direct', {}, etiquetteAuteur(e.auteur), reflexion, texte)), texte, reflexion, brut: '', dernier: 0 };
+    // La signature n'est posée que sur le message définitif : le message en direct est remplacé à la fin.
+    const sig = !e.auteur && signature && !signe ? h('div.signature', {}, pastilleLogo(signature.compte, signature.nom), h('span', {}, signature.nom)) : null;
+    direct = { boite: ajouter(h('article.message.assistant.en-direct', {}, etiquetteAuteur(e.auteur) || sig, reflexion, texte)), texte, reflexion, brut: '', dernier: 0 };
   }
   if (e.genre === 'reflexion') {
-    direct.reflexion.textContent += e.texte;
+    direct.reflexion.hidden = Boolean(direct.brut);
   } else {
+    direct.reflexion.hidden = true;
     direct.brut += e.texte;
     // Le Markdown se recalcule au plus dix fois par seconde pendant l'écriture.
     const maintenant = performance.now();
@@ -77,15 +107,16 @@ function surDelta(e) {
 function surAssistant(e) {
   if (!e.sousAgent) finirDirect();
   const message = h('article.message.assistant' + (e.sousAgent ? '.sous-agent' : ''));
-  const signature = etiquetteAuteur(e.auteur);
-  if (signature) message.append(signature);
+  const etiquette = etiquetteAuteur(e.auteur) || (e.sousAgent ? null : signer());
+  if (etiquette) message.append(etiquette);
   if (e.sousAgent) message.append(h('div.etiquette', {}, t('sous_agent')));
   for (const b of e.blocs) {
     if (b.type === 'texte') message.append(markdown(b.texte), boutonCopier(b.texte));
-    else if (b.type === 'reflexion') message.append(h('details.reflexion', {}, h('summary', {}, t('reflexion')), h('pre', {}, b.texte)));
+    // Les blocs de réflexion restent en arrière-plan : ils ne s'affichent pas dans le fil.
     else if (b.type === 'outil') message.append(carteOutil(b));
   }
-  if (message.childElementCount > (signature ? 1 : 0)) ajouter(message);
+  if (message.childElementCount > (etiquette ? 1 : 0)) ajouter(message);
+  else if (etiquette?.classList.contains('signature')) signe = false; // message vide : la signature attend le suivant
 }
 
 function surTour(e) {
@@ -100,7 +131,8 @@ const TRAITEMENTS = {
   utilisateur: (e) => {
     document.querySelector('#fil .accueil')?.remove();
     auBas = true;
-    ajouter(h('article.message.utilisateur', { dataset: { auteur: t('toi') } }, e.texte));
+    signe = false;
+    ajouter(messageUtilisateur(e.texte));
   },
   delta: surDelta,
   assistant: surAssistant,
@@ -109,9 +141,12 @@ const TRAITEMENTS = {
     suivre();
   },
   tour: surTour,
-  info: (e) => ajouter(h('div.fin-tour', {}, (e.auteur ? e.auteur.nom + ' · ' : '') + t('info_' + e.code))),
+  // Les champs de l'événement (de, vers…) complètent le texte : « {de} a atteint sa limite : {vers} prend le relais ».
+  info: (e) => ajouter(h('div.fin-tour', {}, (e.auteur ? e.auteur.nom + ' · ' : '') + t('info_' + e.code, e) + (e.detail ? ` (${e.detail})` : ''))),
   salon_pause: (e) => ajouter(h('div.fin-tour', {}, t(e.restant ? 'salon_pause_reste' : 'salon_pause', { n: e.prises }))),
   erreur: (e) => ajouter(h('div.fin-tour.echec', {}, `${t('erreur')} : ${e.message}`)),
+  // Mode orchestre : la cheffe confie une tâche à un sous-agent (IA et modèle choisis par elle).
+  delegation: (e) => ajouter(h('div.delegation', {}, h('div.rangee', {}, etiquetteAuteur(e.auteur), h('span.etiquette', {}, t('delegation', { modele: e.modele || t('modele_defaut') }))), h('p', {}, e.tache))),
 };
 
 /** Affiche un événement de session dans le fil (les autres types sont traités ailleurs). */

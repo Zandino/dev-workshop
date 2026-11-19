@@ -6,12 +6,16 @@ import { spawn } from 'node:child_process';
 import { lier, binaire } from './fournisseurs/jsonrpc.mjs';
 import { envGemini } from './fournisseurs/gemini.mjs';
 import { etatDuCompte } from './fournisseurs/index.mjs';
+import { oublierCle } from './comptes.mjs';
+import { rmSync } from 'node:fs';
+import path from 'node:path';
 
 const DELAI_MS = 10 * 60 * 1000;
 const HOTES = {
   claude: /(^|\.)(claude\.ai|claude\.com|anthropic\.com)$/,
   codex: /(^|\.)openai\.com$/,
   gemini: /^accounts\.google\.com$/,
+  copilot: /(^|\.)github\.com$/,
 };
 const enCours = new Map();
 
@@ -36,8 +40,10 @@ function dansTerminal(commande, env) {
 }
 
 function parTerminal(type, compte, suivre) {
-  const env = type === 'claude' ? { ...process.env, CLAUDE_CONFIG_DIR: compte.dossier } : { ...process.env, CODEX_HOME: compte.dossier };
-  const commande = type === 'claude' ? 'claude auth login' : `${binaire('codex')} login --device-auth`;
+  const env = type === 'claude' ? { ...process.env, CLAUDE_CONFIG_DIR: compte.dossier }
+    : type === 'copilot' ? { ...process.env, HOME: compte.dossier }
+      : { ...process.env, CODEX_HOME: compte.dossier };
+  const commande = type === 'claude' ? 'claude auth login' : type === 'copilot' ? `${binaire('copilot')} login` : `${binaire('codex')} login --device-auth`;
   const enfant = dansTerminal(commande, env);
   let texte = '';
   let annonce = false;
@@ -49,8 +55,9 @@ function parTerminal(type, compte, suivre) {
     const vues = (texte.match(/Paste code here/g) || []).length;
     if (annonce && url && vues > invites && invites > 0) suivre({ etape: 'lien', url, code: null, saisie: true, refuse: true });
     invites = vues;
-    const code = type === 'codex' ? texte.match(/\b[A-Z0-9]{4}-[A-Z0-9]{4,5}\b/)?.[0] : null;
-    if (url && !annonce && (type !== 'codex' || code)) {
+    // ChatGPT et Copilot donnent un code à saisir sur leur page (connexion « par appareil »).
+    const code = type === 'codex' || type === 'copilot' ? texte.match(/\b[A-Z0-9]{4}-[A-Z0-9]{4,5}\b/)?.[0] : null;
+    if (url && !annonce && (type === 'claude' || code)) {
       annonce = true;
       suivre({ etape: 'lien', url, code: code || null, saisie: type === 'claude' });
     }
@@ -112,9 +119,11 @@ export function demarrerConnexion(compte, envoyer) {
     clearTimeout(minuterie);
     enCours.delete(compte.id);
     if (e.etape !== 'reussie') return envoyer({ t: 'connexion', id: compte.id, ...e });
-    // « Réussie » n'est annoncé que si l'outil lui-même voit le compte connecté.
+    // « Réussie » n'est annoncé que si l'outil lui-même voit le compte connecté. La vérification peut prendre
+    // quelques secondes : l'écran le dit, au lieu de rester figé.
+    envoyer({ t: 'connexion', id: compte.id, etape: 'verification' });
     etatDuCompte(compte)
-      .then((etat) => envoyer({ t: 'connexion', id: compte.id, etape: etat.connecte ? 'reussie' : 'echec' }))
+      .then((etat) => envoyer({ t: 'connexion', id: compte.id, etape: etat.connecte ? 'reussie' : 'echec', motif: etat.motif || undefined }))
       .catch(() => envoyer({ t: 'connexion', id: compte.id, etape: 'echec' }));
   };
   const pilote = compte.type === 'gemini' ? parProtocole(compte, suivre) : parTerminal(compte.type, compte, suivre);
@@ -139,6 +148,37 @@ export function annulerConnexion(id) {
   if (!c) return;
   c.pilote.arreter();
   c.suivre({ etape: 'echec', motif: 'annulee' });
+}
+
+/** Lance une commande officielle de déconnexion et attend sa fin (20 s au plus). */
+function executer(commande, args, env) {
+  return new Promise((resoudre) => {
+    const enfant = spawn(commande, args, { env, stdio: 'ignore' });
+    const minuterie = setTimeout(() => enfant.kill('SIGTERM'), 20000);
+    enfant.on('exit', (code) => { clearTimeout(minuterie); resoudre(code === 0); });
+    enfant.on('error', () => { clearTimeout(minuterie); resoudre(false); });
+  });
+}
+
+/**
+ * Déconnecte un compte sur le serveur, avec la commande officielle de son outil quand il en a une.
+ * Le compte du serveur (~/.claude) ne se déconnecte pas d'ici. Gemini n'a pas de commande : on retire sa clé
+ * enregistrée et sa connexion Google en cache (ce que l'outil fait lui-même quand on change de compte).
+ */
+export async function deconnecterCompte(compte) {
+  if (compte.defaut || !compte.dossier) throw new Error('connexion_refusee');
+  annulerConnexion(compte.id);
+  if (compte.type === 'claude') await executer('claude', ['auth', 'logout'], { ...process.env, CLAUDE_CONFIG_DIR: compte.dossier });
+  else if (compte.type === 'codex') await executer(binaire('codex'), ['logout'], { ...process.env, CODEX_HOME: compte.dossier });
+  else if (compte.type === 'gemini') {
+    oublierCle(compte.id);
+    rmSync(path.join(compte.dossier, '.gemini', 'oauth_creds.json'), { force: true });
+  } else if (compte.type === 'copilot') {
+    // Copilot n'a pas de commande de déconnexion : on retire son jeton et sa connexion GitHub en cache.
+    oublierCle(compte.id);
+    rmSync(path.join(compte.dossier, '.copilot'), { recursive: true, force: true });
+  } else if (compte.type === 'qwen') oublierCle(compte.id);
+  else throw new Error('connexion_refusee');
 }
 
 export function annulerToutes() {

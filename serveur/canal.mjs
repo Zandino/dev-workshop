@@ -6,9 +6,13 @@ import { etatDuCompte } from './fournisseurs/index.mjs';
 import { demarrerConnexion, saisirCode, annulerConnexion } from './connexion.mjs';
 import { compte, listerComptes, creerCompte, definirCle, supprimerCompte } from './comptes.mjs';
 import { MAX_PARTICIPANTS } from './salon.mjs';
-import { MODES } from './fournisseurs/claude.mjs';
+import { MODES, EFFORTS } from './fournisseurs/claude.mjs';
 import { jetonValide, resoudreProjet, RACINE_PROJETS } from './securite.mjs';
-import { ouvrirSession, attacher, session, fermerSession, listerVivantes } from './sessions.mjs';
+import { ouvrirSession, attacher, session, fermerSession, listerVivantes, interrompues } from './sessions.mjs';
+import { ordresProjets } from './ordres-projets.mjs';
+import { messageAvecFichiers } from './fichiers.mjs';
+import { listerCorbeille } from './projets.mjs';
+import { listerSessionsCorbeille } from './corbeille-sessions.mjs';
 
 const NOM_PROJET = /^[A-Za-z0-9][A-Za-z0-9._-]{0,60}$/;
 const MAX_TEXTE = 200_000;
@@ -24,7 +28,7 @@ function projets() {
 const VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 
 function etatGeneral() {
-  return { t: 'general', version: VERSION, comptes: listerComptes(), projets: projets(), vivantes: listerVivantes(), modes: MODES };
+  return { t: 'general', version: VERSION, comptes: listerComptes(), projets: projets(), vivantes: listerVivantes(), modes: MODES, corbeille: listerCorbeille().length + listerSessionsCorbeille().length, interrompues: interrompues() };
 }
 
 export function brancher(ws, jeton) {
@@ -51,7 +55,7 @@ export function brancher(ws, jeton) {
 
     creer_compte(m) {
       const id = creerCompte({ type: m.type, nom: m.nom, url: m.url, modele: m.modele });
-      if (m.type === 'api' && m.cle) definirCle(id, m.cle);
+      if (['api', 'qwen'].includes(m.type) && m.cle) definirCle(id, m.cle);
       envoyer(etatGeneral());
     },
 
@@ -100,12 +104,11 @@ export function brancher(ws, jeton) {
           return { compte: c, modele: modeleDe(p.modele), nom, externe: Boolean(vues.find((v) => v.id === c.id)?.externe) };
         });
         if (new Set(participants.map((p) => p.nom)).size !== participants.length) throw new Error('noms_en_double');
-        // À plusieurs, on démarre toujours en « demander avant d'agir ».
-        s = await ouvrirSession({ ...commun, participants, mode: 'default', echanges: m.echanges });
+        s = await ouvrirSession({ ...commun, participants, mode: MODES.includes(m.mode) ? m.mode : 'default', echanges: m.echanges });
       } else {
         const c = compte(String(m.compte || 'defaut'));
         const reprise = c.defaut && typeof m.reprise === 'string' && /^[0-9a-f-]{36}$/.test(m.reprise) ? m.reprise : undefined;
-        s = await ouvrirSession({ ...commun, compte: c, modele: modeleDe(m.modele), mode: MODES.includes(m.mode) ? m.mode : 'default', reprise });
+        s = await ouvrirSession({ ...commun, compte: c, modele: modeleDe(m.modele), mode: MODES.includes(m.mode) ? m.mode : 'default', reprise, orchestre: m.orchestre === true, effort: EFFORTS.includes(m.effort) ? m.effort : undefined });
       }
       ordres.attacher({ session: s.id });
     },
@@ -123,12 +126,19 @@ export function brancher(ws, jeton) {
     envoyer(m) {
       const texte = String(m.texte || '');
       if (!texte.trim() || texte.length > MAX_TEXTE) throw new Error('texte_invalide');
-      session(m.session).pilote.envoyer(texte);
+      const s = session(m.session);
+      s.pilote.envoyer(messageAvecFichiers(texte, s.dossier, m.fichiers, s.avecOutils));
     },
 
     interrompre: (m) => session(m.session).pilote.interrompre(),
     modele: (m) => session(m.session).pilote.reglerModele(String(m.modele).slice(0, 80)),
     mode: (m) => session(m.session).pilote.reglerMode(m.mode),
+    // Puissance de réflexion : seuls les comptes Claude la règlent en cours de session.
+    effort(m) {
+      const pilote = session(m.session).pilote;
+      if (!pilote.reglerEffort) throw new Error('effort_sans_objet');
+      return pilote.reglerEffort(String(m.effort));
+    },
 
     permission(m) {
       if (!['autoriser', 'toujours', 'refuser'].includes(m.decision)) throw new Error('decision_invalide');
@@ -145,6 +155,9 @@ export function brancher(ws, jeton) {
       envoyer(etatGeneral());
     },
   };
+
+  const projetsEtFichiers = ordresProjets(envoyer, () => envoyer(etatGeneral()), (id) => ordres.attacher({ session: id }));
+  for (const [nom, f] of Object.entries(projetsEtFichiers.ordres)) if (!Object.hasOwn(ordres, nom)) ordres[nom] = f;
 
   ws.on('message', async (donnees) => {
     let m;
@@ -173,6 +186,7 @@ export function brancher(ws, jeton) {
 
   ws.on('close', () => {
     clearTimeout(delai);
+    projetsEtFichiers.fermer();
     for (const quitter of abonnements.values()) quitter();
     abonnements.clear();
   });

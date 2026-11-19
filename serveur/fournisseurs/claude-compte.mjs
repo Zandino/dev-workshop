@@ -18,11 +18,39 @@ export function optionsDeCompte(compte, consigne) {
   return options;
 }
 
+/** Entrée qui n'envoie jamais rien : on lit ce que l'outil annonce au démarrage, sans appeler le modèle. */
+async function* muet() {
+  await new Promise(() => {});
+}
+
+const commandesEnCache = new Map();
+
+/**
+ * Commandes « / » d'un compte Claude pour un dossier (celles du projet comprises), lues au démarrage de
+ * l'outil, sans rien envoyer au modèle. Gardées 10 minutes : l'écran les montre avant la première demande.
+ */
+export async function commandesDuCompte(compte, dossier) {
+  const cle = `${compte?.id || 'defaut'}|${dossier}`;
+  const deja = commandesEnCache.get(cle);
+  if (deja && Date.now() - deja.le < 10 * 60 * 1000) return deja.liste;
+  const q = query({ prompt: muet(), options: { cwd: dossier, settingSources: ['user', 'project', 'local'], ...(compte?.dossier ? { env: environnement(compte) } : {}) } });
+  try {
+    const init = await Promise.race([
+      q.initializationResult(),
+      new Promise((_, refuser) => setTimeout(() => refuser(new Error('delai')), 25000)),
+    ]);
+    const liste = (init.commands || []).map((c) => ({ nom: c.name, description: c.description || '', argument: c.argumentHint || '' }));
+    commandesEnCache.set(cle, { le: Date.now(), liste });
+    return liste;
+  } catch {
+    return [];
+  } finally {
+    try { q.close(); } catch { /* déjà fermée */ }
+  }
+}
+
 /** Interroge un compte Claude sans rien envoyer au modèle : connecté ou non, et sous quel abonnement. */
 export async function etatCompte(compte) {
-  async function* muet() {
-    await new Promise(() => {});
-  }
   const q = query({ prompt: muet(), options: { cwd: homedir(), ...(compte?.dossier ? { env: environnement(compte) } : {}) } });
   try {
     const init = await Promise.race([

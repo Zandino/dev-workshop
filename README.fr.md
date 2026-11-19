@@ -32,6 +32,45 @@ Le serveur écoute sur `127.0.0.1:5330` **uniquement**. Lancé dans un terminal,
 
 Il faut Node.js 20 ou plus récent, et Claude Code connecté sur le serveur pour le compte par défaut.
 
+### Logiciel de bureau (Windows ; macOS et Linux à venir)
+
+Le dossier `bureau/` contient un logiciel (Electron) qui évite le terminal : on enregistre son serveur une fois
+(alias SSH ou `utilisateur@adresse`, dossier de Dev Workshop sur le serveur), puis « Se connecter » :
+
+1. le logiciel se connecte par SSH avec le client du système (`ssh`), donc avec les clés, l'agent, la configuration et
+   les hôtes connus de la personne : il ne voit jamais une clé ni un mot de passe, et ne saute jamais la vérification
+   de l'hôte (un serveur inconnu se valide une fois dans un terminal, avec `ssh <serveur>`) ;
+2. si Dev Workshop ne répond pas sur le serveur, il le démarre, détaché (il continue de tourner quand le logiciel se
+   ferme ; journal dans `~/.config/dev-workshop/serveur.log`) ;
+3. il lit le jeton d'accès sur le serveur, par cette même liaison SSH, et le garde en mémoire : il n'est ni affiché, ni
+   écrit sur le disque du poste (la fenêtre de l'atelier n'a qu'un stockage en mémoire, vidé à la fermeture). C'est
+   une exception assumée à « le lien n'apparaît que dans un terminal » : il ne sort que vers la personne qui a déjà
+   la main sur le serveur par SSH ;
+4. il ouvre un tunnel SSH vers `127.0.0.1:5330` et affiche l'atelier dans sa propre fenêtre.
+
+La page du serveur n'a aucun accès au poste (pas de Node, pas de pont) ; ses liens s'ouvrent dans le navigateur.
+Les serveurs enregistrés sont rangés dans le dossier d'application de la personne, jamais dans le projet.
+
+```bash
+cd bureau
+npm install
+npx install-electron   # télécharge Electron (cette version ne le fait plus à l'installation)
+npm start              # lancer depuis les sources
+npm run dist           # fabriquer l'installeur Windows (bureau/dist/)
+```
+
+**Télécharger.** Les installeurs (Windows, macOS, Linux en AppImage) sont fabriqués par GitHub Actions à partir de ce
+dépôt, à chaque version, et déposés dans les « Releases » du projet (`.github/workflows/bureau.yml`).
+
+**Pas encore signés.** Windows affiche un avertissement SmartScreen au premier lancement (« Informations
+complémentaires », puis « Exécuter quand même ») ; si le « Contrôle intelligent des applications » de Windows 11 est
+actif, il bloque le logiciel sans proposer de passer outre. Sous macOS, le premier lancement demande une autorisation
+dans Réglages système › Confidentialité et sécurité. Une signature gratuite pour logiciels libres est demandée.
+
+**Mises à jour.** Sous Windows et en AppImage, le logiciel vérifie les nouvelles versions au démarrage puis toutes les
+six heures, les télécharge, contrôle leur empreinte (sha512) et propose de redémarrer ; rien ne s'installe sans
+accord. Cette vérification contacte `github.com` ; elle se coupe en bas de la fenêtre d'accueil (voir `PRIVACY.md`). Sous macOS (non signé), il indique seulement la page des versions (menu Aide › Rechercher des mises à jour).
+
 Variables : `DEVWORKSHOP_PORT` (5330 par défaut), `DEVWORKSHOP_ROOT` (racine des projets, `~/dev` par défaut).
 
 ## Comptes
@@ -49,8 +88,11 @@ fournisseur s'ouvre dans le navigateur, et l'outil officiel range la connexion d
 | ChatGPT | `codex app-server`, `CODEX_HOME` | lien + code à saisir sur la page | lien essayé, aucun tour réel |
 | Gemini | `gemini --acp`, `GEMINI_CLI_HOME` | lien, puis code à coller | lien essayé, aucun tour réel |
 
-Ces trois outils **agissent** (fichiers, commandes), et chaque action revient à l'écran pour accord. Les modes sans
-garde-fou des outils (`--yolo`, `--dangerously-*`, approbation automatique) ne sont jamais utilisés. Les règles de
+Ces trois outils **agissent** (fichiers, commandes). Par défaut (mode manuel), chaque action revient à l'écran pour
+accord. Le mode se choisit session par session : manuel, automatique (Claude : un classifieur valide et ne demande
+qu'en cas de doute), accepter les modifications, plan, et « tout autoriser » (aucune demande : Claude
+`bypassPermissions`, Codex `approvalPolicy: never`, Gemini `yolo`). Ce dernier se confirme à l'écran et reste signalé
+en rouge tant qu'il est actif ; avec Codex, les écritures restent bornées au dossier du projet. Les règles de
 `~/.claude/CLAUDE.md` sont transmises à tous : consigne ajoutée pour les autres comptes Claude et pour Codex, fichier
 `GEMINI.md` du compte pour Gemini. Les autres comptes démarrent sans les compétences, plugins et connecteurs du compte
 du serveur.
@@ -199,6 +241,20 @@ chez leur éditeur :
 | DOMPurify | MPL 2.0 ou Apache 2.0 |
 
 Dev Workshop n'est affilié ni à Anthropic, ni à OpenAI, ni à Google. Les noms de leurs produits leur appartiennent.
+
+## Code signing policy (politique de signature)
+
+Les versions Windows du logiciel de bureau doivent être signées gratuitement par [SignPath.io](https://signpath.io),
+avec un certificat de la [SignPath Foundation](https://signpath.org) (demande en cours ; d'ici là, elles ne sont pas
+signées). Seuls les fichiers fabriqués par GitHub Actions à partir de ce dépôt (`.github/workflows/bureau.yml`) sont
+signés, et chaque version est approuvée à la main avant signature.
+
+- Auteurs et relecteurs : [Zandino](https://github.com/Zandino). Les contributions extérieures (demandes de fusion)
+  sont relues avant d'être fusionnées.
+- Approbateurs : [Zandino](https://github.com/Zandino).
+
+Confidentialité : voir [PRIVACY.md](PRIVACY.md). Le logiciel de bureau ne contacte que les serveurs SSH que tu ajoutes
+et, pour les mises à jour, `github.com` (désactivable).
 
 ## Contribuer, signaler une faille
 
