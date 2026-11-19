@@ -23,6 +23,11 @@ credentials.
 - API keys and sign-ins stay on the server; Dev Workshop does not read the credential files of the tools it drives.
 - An agent sends to its vendor whatever it reads in the project. Which projects are handed to which agent remains
   the user's choice.
+- The desktop app reaches the server with the system SSH client and never turns off host-key checking. It never
+  reads a private key or a password. The SSH key its getting-started guide can create has no passphrase, so that the
+  app can connect on its own: anyone who can read the user's `~/.ssh` folder can use it.
+- "Install on this server" runs without administrator rights. It downloads Node.js from nodejs.org, at a pinned
+  version whose SHA-256 is written in the script, and the release matching the app from GitHub over HTTPS.
 
 ## Supported versions
 

@@ -3,7 +3,10 @@
 // Le lien et les codes ne sont ni journalisés ni gardés ; les identifiants restent dans le dossier du compte,
 // écrits par l'outil lui-même, et ne sont jamais lus ici.
 import { spawn } from 'node:child_process';
-import { lier, binaire } from './fournisseurs/jsonrpc.mjs';
+import { lier, binaire, binaireClaude } from './fournisseurs/jsonrpc.mjs';
+
+/** Entre apostrophes pour sh (la commande passe par « script -c »). */
+const cite = (v) => `'${String(v).replace(/'/g, `'\\''`)}'`;
 import { envGemini } from './fournisseurs/gemini.mjs';
 import { etatDuCompte } from './fournisseurs/index.mjs';
 import { oublierCle } from './comptes.mjs';
@@ -43,7 +46,7 @@ function parTerminal(type, compte, suivre) {
   const env = type === 'claude' ? { ...process.env, CLAUDE_CONFIG_DIR: compte.dossier }
     : type === 'copilot' ? { ...process.env, HOME: compte.dossier }
       : { ...process.env, CODEX_HOME: compte.dossier };
-  const commande = type === 'claude' ? 'claude auth login' : type === 'copilot' ? `${binaire('copilot')} login` : `${binaire('codex')} login --device-auth`;
+  const commande = type === 'claude' ? `${cite(binaireClaude())} auth login` : type === 'copilot' ? `${cite(binaire('copilot'))} login` : `${cite(binaire('codex'))} login --device-auth`;
   const enfant = dansTerminal(commande, env);
   let texte = '';
   let annonce = false;
@@ -168,7 +171,7 @@ function executer(commande, args, env) {
 export async function deconnecterCompte(compte) {
   if (compte.defaut || !compte.dossier) throw new Error('connexion_refusee');
   annulerConnexion(compte.id);
-  if (compte.type === 'claude') await executer('claude', ['auth', 'logout'], { ...process.env, CLAUDE_CONFIG_DIR: compte.dossier });
+  if (compte.type === 'claude') await executer(binaireClaude(), ['auth', 'logout'], { ...process.env, CLAUDE_CONFIG_DIR: compte.dossier });
   else if (compte.type === 'codex') await executer(binaire('codex'), ['logout'], { ...process.env, CODEX_HOME: compte.dossier });
   else if (compte.type === 'gemini') {
     oublierCle(compte.id);

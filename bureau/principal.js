@@ -2,7 +2,8 @@
 // Le serveur reste le seul juge de la sécurité ; ce logiciel ne fait que l'atteindre, par un tunnel SSH.
 const { app, BrowserWindow, ipcMain, Menu, dialog, nativeTheme } = require('electron');
 const serveurs = require('./src/serveurs');
-const { preparer, ouvrirTunnel, portLibre } = require('./src/ssh');
+const { preparer, installer, tester, ouvrirTunnel, portLibre } = require('./src/ssh');
+const cle = require('./src/cle-ssh');
 const { creerAccueil, creerAtelier, ouvrirDehors } = require('./src/fenetres');
 const { choisirLangue, t, tous } = require('./src/textes');
 const { demanderPort } = require('./src/apercu-port');
@@ -150,6 +151,23 @@ async function connecter(evenement, id) {
   return true;
 }
 
+/** Installe Dev Workshop sur un serveur enregistré (bouton de l'accueil), avec l'avancement. */
+function installerSur(evenement, id, auto) {
+  const dire = (etape) => !evenement.sender.isDestroyed() && evenement.sender.send('avancement', { id, etape });
+  dire('inst_verification');
+  return installer(serveurs.trouver(id), { ref: `v${app.getVersion()}`, auto }, dire);
+}
+
+/** Guide de premier branchement : clé SSH, dépôt sur le serveur, essai. Les saisies sont vérifiées ici. */
+function brancherGuide() {
+  const textesTerminal = () => ({ titre: t('guide_terminal_titre'), consigne: t('guide_terminal_consigne'), fin: t('guide_terminal_fin') });
+  gerer('guide:cle', () => ({ ...cle.etat(), terminal: process.platform === 'win32' }));
+  gerer('guide:creer_cle', () => cle.creer());
+  gerer('guide:commande', (_e, saisie) => cle.commandeManuelle(serveurs.validerAcces(saisie)));
+  gerer('guide:deposer', (_e, saisie) => cle.deposer(serveurs.validerAcces(saisie), textesTerminal()));
+  gerer('guide:tester', (_e, saisie) => tester(serveurs.validerAcces(saisie)));
+}
+
 app.on('web-contents-created', (_e, contenu) => {
   contenu.on('will-attach-webview', (e) => e.preventDefault());
 });
@@ -163,11 +181,13 @@ else {
     choisirLangue(app.getPreferredSystemLanguages?.()[0] || app.getLocale());
     nativeTheme.themeSource = 'system';
     Menu.setApplicationMenu(menu());
-    gerer('textes', () => tous());
+    gerer('textes', () => ({ ...tous(), version: app.getVersion() }));
     gerer('serveurs:lister', () => serveurs.lister());
     gerer('serveurs:enregistrer', (_e, saisie) => serveurs.enregistrer(saisie || {}));
     gerer('serveurs:supprimer', (_e, id) => serveurs.supprimer(String(id)));
     gerer('connecter', (e, id) => connecter(e, String(id)));
+    gerer('installer', (e, id, auto) => installerSur(e, String(id), auto === true));
+    brancherGuide();
     gerer('code-source', () => ouvrirDehors(CODE_SOURCE));
     gerer('majs:lire', () => majs.active());
     gerer('majs:definir', (_e, oui) => majs.definirActive(oui === true));

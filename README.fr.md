@@ -38,8 +38,8 @@ Le dossier `bureau/` contient un logiciel (Electron) qui évite le terminal : on
 (alias SSH ou `utilisateur@adresse`, dossier de Dev Workshop sur le serveur), puis « Se connecter » :
 
 1. le logiciel se connecte par SSH avec le client du système (`ssh`), donc avec les clés, l'agent, la configuration et
-   les hôtes connus de la personne : il ne voit jamais une clé ni un mot de passe, et ne saute jamais la vérification
-   de l'hôte (un serveur inconnu se valide une fois dans un terminal, avec `ssh <serveur>`) ;
+   les hôtes connus de la personne : il ne lit jamais une clé privée ni un mot de passe, et ne saute jamais la
+   vérification de l'hôte (un serveur inconnu se valide une fois dans un terminal) ;
 2. si Dev Workshop ne répond pas sur le serveur, il le démarre, détaché (il continue de tourner quand le logiciel se
    ferme ; journal dans `~/.config/dev-workshop/serveur.log`) ;
 3. il lit le jeton d'accès sur le serveur, par cette même liaison SSH, et le garde en mémoire : il n'est ni affiché, ni
@@ -47,6 +47,17 @@ Le dossier `bureau/` contient un logiciel (Electron) qui évite le terminal : on
    une exception assumée à « le lien n'apparaît que dans un terminal » : il ne sort que vers la personne qui a déjà
    la main sur le serveur par SSH ;
 4. il ouvre un tunnel SSH vers `127.0.0.1:5330` et affiche l'atelier dans sa propre fenêtre.
+
+**Premier branchement.** Le bouton « Guide de démarrage » accompagne pas à pas : il trouve la clé SSH du poste ou en
+crée une (ed25519, sans phrase secrète, dans `~/.ssh`), ouvre un terminal qui la dépose sur le serveur (c'est là, et
+seulement là, que la personne tape le mot de passe du serveur et valide son empreinte ; sous macOS et Linux, une
+commande `ssh-copy-id` est proposée), puis teste la connexion.
+
+**Installation sur le serveur.** Si Dev Workshop n'est pas dans le dossier indiqué, « Installer sur ce serveur »
+l'installe dans le compte de la personne, sans droits d'administrateur (`bureau/src/installer.sh`) : Node.js 22
+depuis nodejs.org s'il manque (version figée, empreinte SHA-256 vérifiée), le code de la version du logiciel depuis
+GitHub, puis `npm ci`. En option, une ligne `@reboot` ajoutée au crontab relance Dev Workshop quand le serveur
+redémarre. Rien n'est écrasé : un dossier non vide qui n'est pas Dev Workshop est refusé. Linux seulement.
 
 La page du serveur n'a aucun accès au poste (pas de Node, pas de pont) ; ses liens s'ouvrent dans le navigateur.
 Les serveurs enregistrés sont rangés dans le dossier d'application de la personne, jamais dans le projet.

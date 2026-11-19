@@ -19,7 +19,10 @@
     <section>
       <div class="section-tete">
         <h2 data-t="serveurs"></h2>
-        <button id="ajouter" class="principal" type="button" data-t="ajouter"></button>
+        <div class="boutons">
+          <button id="ouvrir-guide" class="discret" type="button" data-t="guide_ouvrir"></button>
+          <button id="ajouter" class="principal" type="button" data-t="ajouter"></button>
+        </div>
       </div>
       <p id="vide" class="vide" hidden data-t="aucun_serveur"></p>
       <div id="liste" class="liste"></div>
@@ -53,6 +56,48 @@
     </form>
   </dialog>
 
+  <dialog id="guide">
+    <div class="guide">
+      <h2 data-t="guide_titre"></h2>
+      <section>
+        <h3 data-t="guide_1_titre"></h3>
+        <p class="doux" data-t="guide_1_texte"></p>
+      </section>
+      <section>
+        <h3 data-t="guide_2_titre"></h3>
+        <p id="guide-cle"></p>
+        <button id="guide-creer-cle" type="button" data-t="guide_creer_cle" hidden></button>
+        <small class="doux" data-t="guide_2_aide"></small>
+      </section>
+      <section>
+        <h3 data-t="guide_3_titre"></h3>
+        <div class="deux">
+          <label><span data-t="hote"></span><input id="guide-hote" maxlength="120" autocomplete="off" spellcheck="false" placeholder="moi@mon-serveur"></label>
+          <label><span data-t="port_ssh"></span><input id="guide-port" inputmode="numeric" autocomplete="off" placeholder="22"></label>
+        </div>
+        <button id="guide-deposer" type="button" data-t="guide_deposer" hidden></button>
+        <small class="doux" id="guide-aide-terminal" data-t="guide_3_aide" hidden></small>
+        <p class="doux" data-t="guide_3_manuel"></p>
+        <div class="commande"><pre id="guide-commande"></pre><button id="guide-copier" class="discret" type="button" data-t="copier"></button></div>
+        <p id="guide-depot" class="message" hidden></p>
+      </section>
+      <section>
+        <h3 data-t="guide_4_titre"></h3>
+        <button id="guide-tester" type="button" data-t="guide_tester"></button>
+        <p id="guide-test" class="message" hidden></p>
+      </section>
+      <section>
+        <h3 data-t="guide_5_titre"></h3>
+        <p class="doux" data-t="guide_5_texte"></p>
+      </section>
+      <div class="actions">
+        <button id="guide-fermer" type="button" data-t="fermer"></button>
+        <button id="guide-ajouter" class="principal" type="button" data-t="guide_ajouter"></button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="guide.js"></script>
   <script src="accueil.js"></script>
 </body>
 </html>

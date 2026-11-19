@@ -24,6 +24,8 @@ else
   [ -f "$DW_DOSSIER/serveur/index.mjs" ] || { echo "ERREUR:dossier_absent"; exit 4; }
   [ -d "$DW_DOSSIER/node_modules" ] || { echo "ERREUR:dependances_absentes"; exit 5; }
   mkdir -p "$CONFIG" && chmod 700 "$CONFIG"
+  # Sur un serveur neuf, le dossier des projets n'existe pas encore : Dev Workshop refuserait de démarrer.
+  mkdir -p "${DW_RACINE:-$HOME/dev}"
   cd "$DW_DOSSIER" || { echo "ERREUR:dossier_absent"; exit 4; }
   [ -n "$DW_RACINE" ] && { DEVWORKSHOP_ROOT="$DW_RACINE"; export DEVWORKSHOP_ROOT; }
   DEVWORKSHOP_PORT="$DW_PORT"
