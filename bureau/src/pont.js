@@ -9,6 +9,9 @@ contextBridge.exposeInMainWorld('bureau', {
   supprimer: (id) => ipcRenderer.invoke('serveurs:supprimer', id),
   connecter: (id) => ipcRenderer.invoke('connecter', id),
   codeSource: () => ipcRenderer.invoke('code-source'),
+  majAuto: () => ipcRenderer.invoke('majs:lire'),
+  definirMajAuto: (oui) => ipcRenderer.invoke('majs:definir', oui === true),
+  confidentialite: () => ipcRenderer.invoke('confidentialite'),
   surAvancement: (rappel) => {
     ipcRenderer.removeAllListeners('avancement');
     ipcRenderer.on('avancement', (_e, m) => rappel(m));

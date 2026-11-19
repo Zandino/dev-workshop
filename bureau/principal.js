@@ -169,6 +169,9 @@ else {
     gerer('serveurs:supprimer', (_e, id) => serveurs.supprimer(String(id)));
     gerer('connecter', (e, id) => connecter(e, String(id)));
     gerer('code-source', () => ouvrirDehors(CODE_SOURCE));
+    gerer('majs:lire', () => majs.active());
+    gerer('majs:definir', (_e, oui) => majs.definirActive(oui === true));
+    gerer('confidentialite', () => ouvrirDehors(`${CODE_SOURCE}/blob/main/PRIVACY.md`));
     montrerAccueil();
     majs.surveiller(t);
     app.on('activate', () => BrowserWindow.getAllWindows().length || montrerAccueil());

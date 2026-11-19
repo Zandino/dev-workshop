@@ -1,0 +1,19 @@
+﻿Dev Workshop — free software, Apache License 2.0 / logiciel libre, licence Apache 2.0
+https://github.com/Zandino/dev-workshop
+
+PRIVACY
+No analytics, no telemetry. The app connects only to the SSH servers you add.
+On Windows it contacts github.com at start and every six hours to check for updates.
+To turn this off: untick "Check for updates" at the bottom of the home window.
+Full policy: https://github.com/Zandino/dev-workshop/blob/main/PRIVACY.md
+
+CONFIDENTIALITÉ
+Ni mesure d’audience, ni télémétrie. Le logiciel ne se connecte qu’aux serveurs SSH que tu ajoutes.
+Sous Windows, il interroge github.com au démarrage puis toutes les six heures pour les mises à jour.
+Pour le couper : décocher « Vérifier les mises à jour » en bas de la fenêtre d’accueil.
+Politique complète : https://github.com/Zandino/dev-workshop/blob/main/PRIVACY.md
+
+Uninstall / désinstaller : Windows Settings › Apps / Paramètres › Applications › Dev Workshop.
+
+Licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
+Distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND.

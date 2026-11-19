@@ -65,7 +65,8 @@ Installers (Windows, macOS, Linux AppImage) are built by GitHub Actions from thi
 GitHub Release (`.github/workflows/bureau.yml`). They are not signed yet: Windows shows a SmartScreen warning on first
 launch, and blocks the app outright when Windows 11 Smart App Control is on; macOS asks for approval in System
 Settings › Privacy & Security. On Windows and AppImage the app checks for new releases at start and every six hours,
-downloads them, verifies their sha512 and asks before restarting; on macOS it only points to the releases page.
+downloads them, verifies their sha512 and asks before restarting; on macOS it only points to the releases page. The
+check contacts `github.com` and can be turned off at the bottom of the home window (see [PRIVACY.md](PRIVACY.md)).
 
 ## Accounts
 
@@ -154,6 +155,20 @@ It drives tools that keep their own licence and terms, and each needs an account
 | DOMPurify | MPL 2.0 or Apache 2.0 |
 
 Dev Workshop is not affiliated with Anthropic, OpenAI or Google. Their product names belong to them.
+
+## Code signing policy
+
+Windows builds of the desktop app are to be signed for free by [SignPath.io](https://signpath.io), with a certificate
+from the [SignPath Foundation](https://signpath.org) (application in progress; until then, builds are unsigned).
+Only files built by GitHub Actions from this repository (`.github/workflows/bureau.yml`) are signed, and each release
+is approved by hand before signing.
+
+- Committers and reviewers: [Zandino](https://github.com/Zandino). Changes from other contributors (pull requests)
+  are reviewed before merging.
+- Approvers: [Zandino](https://github.com/Zandino).
+
+Privacy: see [PRIVACY.md](PRIVACY.md). The desktop app only contacts the SSH servers you add and, for update checks,
+`github.com` (can be turned off).
 
 ## Contributing, reporting a vulnerability
 

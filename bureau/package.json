@@ -42,7 +42,8 @@
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
-      "artifactName": "Dev-Workshop-Setup-${version}.${ext}"
+      "artifactName": "Dev-Workshop-Setup-${version}.${ext}",
+      "license": "ressources/installation.txt"
     },
     "mac": {
       "target": [

@@ -69,7 +69,7 @@ dans Réglages système › Confidentialité et sécurité. Une signature gratui
 
 **Mises à jour.** Sous Windows et en AppImage, le logiciel vérifie les nouvelles versions au démarrage puis toutes les
 six heures, les télécharge, contrôle leur empreinte (sha512) et propose de redémarrer ; rien ne s'installe sans
-accord. Sous macOS (non signé), il indique seulement la page des versions (menu Aide › Rechercher des mises à jour).
+accord. Cette vérification contacte `github.com` ; elle se coupe en bas de la fenêtre d'accueil (voir `PRIVACY.md`). Sous macOS (non signé), il indique seulement la page des versions (menu Aide › Rechercher des mises à jour).
 
 Variables : `DEVWORKSHOP_PORT` (5330 par défaut), `DEVWORKSHOP_ROOT` (racine des projets, `~/dev` par défaut).
 
@@ -241,6 +241,20 @@ chez leur éditeur :
 | DOMPurify | MPL 2.0 ou Apache 2.0 |
 
 Dev Workshop n'est affilié ni à Anthropic, ni à OpenAI, ni à Google. Les noms de leurs produits leur appartiennent.
+
+## Code signing policy (politique de signature)
+
+Les versions Windows du logiciel de bureau doivent être signées gratuitement par [SignPath.io](https://signpath.io),
+avec un certificat de la [SignPath Foundation](https://signpath.org) (demande en cours ; d'ici là, elles ne sont pas
+signées). Seuls les fichiers fabriqués par GitHub Actions à partir de ce dépôt (`.github/workflows/bureau.yml`) sont
+signés, et chaque version est approuvée à la main avant signature.
+
+- Auteurs et relecteurs : [Zandino](https://github.com/Zandino). Les contributions extérieures (demandes de fusion)
+  sont relues avant d'être fusionnées.
+- Approbateurs : [Zandino](https://github.com/Zandino).
+
+Confidentialité : voir [PRIVACY.md](PRIVACY.md). Le logiciel de bureau ne contacte que les serveurs SSH que tu ajoutes
+et, pour les mises à jour, `github.com` (désactivable).
 
 ## Contribuer, signaler une faille
 

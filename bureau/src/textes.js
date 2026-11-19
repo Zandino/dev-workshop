@@ -84,6 +84,9 @@ const TEXTES = {
     maj_echec: 'Impossible de vérifier les mises à jour pour l’instant.',
     maj_manuelle: 'Tu utilises la version {version}. Sur ce système, les nouvelles versions s’installent à la main, depuis la page des versions.',
     maj_ouvrir_page: 'Ouvrir la page des versions',
+    maj_auto: 'Vérifier les mises à jour',
+    maj_auto_aide: 'Le logiciel interroge github.com au démarrage puis toutes les six heures. Rien d’autre n’est envoyé.',
+    confidentialite: 'Confidentialité',
   },
   en: {
     titre: 'Dev Workshop',
@@ -169,6 +172,9 @@ const TEXTES = {
     maj_echec: 'Cannot check for updates right now.',
     maj_manuelle: 'You are using version {version}. On this system, new versions are installed by hand, from the releases page.',
     maj_ouvrir_page: 'Open the releases page',
+    maj_auto: 'Check for updates',
+    maj_auto_aide: 'The app contacts github.com at start and every six hours. Nothing else is sent.',
+    confidentialite: 'Privacy',
   },
 };
 

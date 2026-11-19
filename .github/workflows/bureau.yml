@@ -71,6 +71,12 @@ jobs:
       - name: Publier la version
         env:
           GH_TOKEN: ${{ github.token }}
+          NOTES: |
+            Installers for the desktop app: Windows (`Dev-Workshop-Setup-*.exe`), macOS (`*.dmg`, arm64 and x64), Linux (`*.AppImage`).
+            The server (`serveur/`) is in the source code below: see the README to install it.
+
+            Not signed yet: Windows SmartScreen warns on first launch, and Windows 11 Smart App Control may block it.
+            [Code signing policy](https://github.com/${{ github.repository }}#code-signing-policy) · [Privacy](https://github.com/${{ github.repository }}/blob/main/PRIVACY.md)
         run: >
           gh release create "$GITHUB_REF_NAME" fichiers/*
-          --repo "$GITHUB_REPOSITORY" --title "Dev Workshop $GITHUB_REF_NAME" --generate-notes --verify-tag
+          --repo "$GITHUB_REPOSITORY" --title "Dev Workshop $GITHUB_REF_NAME" --notes "$NOTES" --generate-notes --verify-tag

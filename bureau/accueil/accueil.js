@@ -136,6 +136,17 @@ async function demarrer() {
     e.preventDefault();
     window.bureau.codeSource();
   });
+  $('confidentialite').addEventListener('click', (e) => {
+    e.preventDefault();
+    window.bureau.confidentialite();
+  });
+  const maj = await window.bureau.majAuto();
+  $('maj-auto').checked = maj.ok ? maj.valeur : true;
+  $('maj-auto').title = t('maj_auto_aide');
+  $('maj-auto').addEventListener('change', async (e) => {
+    const r = await window.bureau.definirMajAuto(e.target.checked);
+    if (r.ok) e.target.checked = r.valeur;
+  });
   await charger();
 }
 
