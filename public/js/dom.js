@@ -71,6 +71,18 @@ export function dateCourte(ms) {
   return new Intl.DateTimeFormat(langue(), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(ms));
 }
 
+/** Petite notification en bas à droite, visible même quand un panneau couvre le fil. */
+export function notifier(texte, { echec = false, duree: ms = 6000 } = {}) {
+  let pile = document.getElementById('notifications');
+  if (!pile) {
+    pile = h('div.notifications', { id: 'notifications', role: 'status', 'aria-live': 'polite' });
+    document.body.append(pile);
+  }
+  const note = h('div.notification' + (echec ? '.echec' : ''), {}, texte);
+  pile.append(note);
+  setTimeout(() => note.remove(), ms);
+}
+
 /** Recherche sans accents ni casse. */
 export function normaliser(texte) {
   return String(texte || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();

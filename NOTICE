@@ -6,3 +6,7 @@ This software is distributed under the Apache License, Version 2.0 (see the LICE
 It drives, without including them, third-party tools installed through npm, each under its own licence:
 Claude Agent SDK (Anthropic, commercial terms), Codex (OpenAI, Apache 2.0),
 Gemini CLI (Google, Apache 2.0). Dev Workshop is not affiliated with any of these vendors.
+
+The AI logos in public/logos/ come from LobeHub Icons (https://github.com/lobehub/lobe-icons),
+MIT licence, Copyright (c) LobeHub. They are trademarks of their respective owners and are used
+only to identify each service; their use does not imply any endorsement.

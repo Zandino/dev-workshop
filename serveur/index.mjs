@@ -8,6 +8,18 @@ import { chargerJeton, hoteAutorise, origineAutorisee, EN_TETES_SECURITE } from 
 import { brancher } from './canal.mjs';
 import { fermerTout } from './sessions.mjs';
 import { annulerToutes } from './connexion.mjs';
+import { purgerCorbeille } from './projets.mjs';
+import { servirApercu } from './apercu.mjs';
+import { purgerSessions } from './corbeille-sessions.mjs';
+
+// La corbeille garde un projet 30 jours : on la passe en revue au démarrage, puis toutes les 6 heures.
+function revoirCorbeille() {
+  const n = purgerCorbeille();
+  if (n) console.log(`Corbeille : ${n} projet(s) effacé(s) définitivement après 30 jours.`);
+  purgerSessions().then((s) => s && console.log(`Corbeille : ${s} session(s) effacée(s) définitivement après 30 jours.`), () => {});
+}
+revoirCorbeille();
+setInterval(revoirCorbeille, 6 * 3600 * 1000).unref();
 
 const RACINE = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const PUBLIC = path.join(RACINE, 'public');
@@ -50,6 +62,7 @@ const serveur = http.createServer((req, res) => {
   } catch {
     return repondre(400, 'Adresse invalide');
   }
+  if (servirApercu(chemin, req, res)) return;
   const fichier = fichierDemande(chemin);
   try {
     if (!fichier || !statSync(fichier).isFile()) throw new Error('absent');

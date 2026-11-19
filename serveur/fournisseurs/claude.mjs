@@ -1,6 +1,8 @@
 // Fournisseur « Claude Code » : pilote le SDK d'agent et relaie les demandes de permission à l'écran.
 import { randomUUID } from 'node:crypto';
 import { optionsDeCompte } from './claude-compte.mjs';
+import { versClaude } from '../connecteurs.mjs';
+import { decisionAuto, interditsClaude, MOTIF_REFUS } from '../regles-accord.mjs';
 import { query, listSessions, getSessionMessages } from '@anthropic-ai/claude-agent-sdk';
 import {
   assistantVersEvenement,
@@ -10,8 +12,15 @@ import {
   historiqueVersEvenements,
 } from './claude-normaliser.mjs';
 
-/** Modes proposés. Le contournement complet des permissions n'est volontairement pas offert. */
-export const MODES = ['default', 'acceptEdits', 'plan'];
+/**
+ * Modes proposés, du plus prudent au plus libre : manuel (tout demander), automatique (un classifieur valide
+ * et ne demande qu'en cas de doute), accepter les modifications, plan (rien n'est exécuté), et « tout
+ * autoriser » (aucune demande), choisi explicitement par la personne, session par session.
+ */
+export const MODES = ['default', 'auto', 'acceptEdits', 'plan', 'bypassPermissions'];
+
+/** Puissance de réflexion (« effort ») ; absente = celle par défaut du modèle. */
+export const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'];
 
 /** File d'entrée : les messages saisis sont livrés au SDK au fil de l'eau. */
 function fileEntree() {
@@ -38,7 +47,7 @@ function fileEntree() {
   };
 }
 
-export function ouvrir({ dossier, modele, mode, reprise, compte, consigne }, emettre) {
+export function ouvrir({ dossier, modele, mode, reprise, compte, consigne, connecteurs, serveursMcp, outilsPermis, effort }, emettre) {
   const entree = fileEntree();
   const permissions = new Map();
   let fenetre = null;
@@ -46,6 +55,10 @@ export function ouvrir({ dossier, modele, mode, reprise, compte, consigne }, eme
 
   const canUseTool = (outil, saisie, o) =>
     new Promise((resoudre) => {
+      // Règles d'accord du projet : ce qui est permis passe sans demande, ce qui est interdit est refusé.
+      const auto = decisionAuto(dossier, outil, saisie);
+      if (auto === 'autoriser') return resoudre({ behavior: 'allow', updatedInput: saisie });
+      if (auto === 'refuser') return resoudre({ behavior: 'deny', message: MOTIF_REFUS });
       const id = randomUUID();
       const clore = () => {
         if (permissions.delete(id)) emettre({ t: 'permission_fin', id });
@@ -73,10 +86,21 @@ export function ouvrir({ dossier, modele, mode, reprise, compte, consigne }, eme
     includePartialMessages: true,
     settingSources: ['user', 'project', 'local'],
     canUseTool,
+    // Nécessaire pour que « tout autoriser » puisse être choisi, au début ou en cours de session.
+    allowDangerouslySkipPermissions: true,
     ...optionsDeCompte(compte, consigne),
   };
   if (modele && modele !== 'default') options.model = modele;
+  if (EFFORTS.includes(effort)) options.effort = effort;
   if (reprise) options.resume = reprise;
+  // Connecteurs partagés de Dev Workshop, en plus de ceux que le compte a déjà (claude.ai, réglages), et outils
+  // propres à Dev Workshop (mode orchestre), qui tournent dans le serveur même.
+  if (connecteurs?.length || serveursMcp) options.mcpServers = { ...versClaude(connecteurs || []), ...(serveursMcp || {}) };
+  // Seuls nos propres outils passent sans demande d'accord ; tout le reste revient à l'écran.
+  if (outilsPermis?.length) options.allowedTools = outilsPermis;
+  // Les refus du projet valent dans tous les modes, « tout autoriser » compris.
+  const interdits = interditsClaude(dossier);
+  if (interdits.length) options.disallowedTools = interdits;
 
   const q = query({ prompt: entree, options });
 
@@ -166,6 +190,12 @@ export function ouvrir({ dossier, modele, mode, reprise, compte, consigne }, eme
       await q.setPermissionMode(m);
       emettre({ t: 'etat', mode: m });
     },
+    /** Puissance de réflexion en cours de session ; « default » rend celle du modèle. */
+    async reglerEffort(e) {
+      if (e !== 'default' && !EFFORTS.includes(e)) throw new Error('effort_refuse');
+      await q.applyFlagSettings({ effortLevel: e === 'default' ? null : e });
+      emettre({ t: 'etat', effort: e });
+    },
     repondrePermission(id, { decision, reponses, motif }) {
       const p = permissions.get(id);
       if (!p) return false;
@@ -190,8 +220,9 @@ export function ouvrir({ dossier, modele, mode, reprise, compte, consigne }, eme
 
 /** Sessions enregistrées d'un dossier de projet (les plus récentes d'abord). */
 export async function historique(dossier) {
-  const liste = await listSessions({ dir: dossier, limit: 40, includeWorktrees: false });
-  return liste.map((s) => ({
+  const liste = await listSessions({ dir: dossier, limit: 60, includeWorktrees: false });
+  // Une session archivée est à la corbeille : elle n'apparaît plus parmi les sessions passées.
+  return liste.filter((s) => !s.archived).slice(0, 40).map((s) => ({
     id: s.sessionId,
     titre: (s.customTitle || s.summary || s.firstPrompt || '').slice(0, 120),
     modifieLe: s.lastModified,

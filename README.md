@@ -13,7 +13,9 @@ Free software, built by the Deltinfo Studio team and published under the Apache 
 
 - **Live conversation**: streamed answers, collapsible thinking, tool cards with the command, the diff or the file
   content, then the result.
-- **Approvals**: allow, always allow, or deny each action. No mode that bypasses approvals is offered.
+- **Approvals**: allow, always allow, or deny each action. Modes per session: manual (default), automatic (a
+  classifier approves and asks only when unsure), accept edits, plan, and "allow everything" (no prompts), which must
+  be confirmed on screen and stays flagged in red while active.
 - **Several accounts**: as many Claude, ChatGPT or Google accounts as you want, each signed in from the screen
   with the provider's own sign-in page. No API key needed for these.
 - **Local and API models**: LM Studio, Ollama or any OpenAI-compatible address. These can talk but do not touch
@@ -44,6 +46,26 @@ ssh -L 5330:127.0.0.1:5330 <server>
 
 Settings: `DEVWORKSHOP_PORT` (default 5330), `DEVWORKSHOP_ROOT` (projects root, default `~/dev`), `DEVWORKSHOP_CONFIG`
 (settings folder, default `~/.config/dev-workshop`).
+
+### Desktop app (Windows; macOS and Linux to follow)
+
+`bureau/` holds an Electron app that replaces the terminal steps. Save your server once (SSH alias or `user@host`, and
+the Dev Workshop folder on it), then click Connect. The app uses your system `ssh` (your keys, agent, config and known
+hosts; it never sees a key or password and never skips host-key checking), starts Dev Workshop on the server if it is
+not answering (detached, so it keeps running), reads the access token over that same SSH link and keeps it in memory
+only, opens an SSH tunnel and shows the workshop in its own window. The server page gets no access to your machine.
+
+```bash
+cd bureau && npm install && npx install-electron
+npm start        # run from source
+npm run dist     # build the Windows installer (unsigned) into bureau/dist/
+```
+
+Installers (Windows, macOS, Linux AppImage) are built by GitHub Actions from this repository and attached to each
+GitHub Release (`.github/workflows/bureau.yml`). They are not signed yet: Windows shows a SmartScreen warning on first
+launch, and blocks the app outright when Windows 11 Smart App Control is on; macOS asks for approval in System
+Settings › Privacy & Security. On Windows and AppImage the app checks for new releases at start and every six hours,
+downloads them, verifies their sha512 and asks before restarting; on macOS it only points to the releases page.
 
 ## Accounts
 

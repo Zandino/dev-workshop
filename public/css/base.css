@@ -1,107 +1,140 @@
-/* Couleurs, typographie et éléments de base. Style d'outil : chasse fixe, noir sur blanc, bordures nettes.
+/* Couleurs, typographie et éléments de base. Style sobre et moderne : surfaces douces, coins arrondis, un accent.
    Thème clair et sombre selon le système. Polices du système seulement (aucun chargement extérieur). */
 :root {
-  --fond: #ffffff;
+  --fond: #f7f7f9;
   --surface: #ffffff;
-  --surface-2: #f6f6f4;
-  --trait: #d4d4d0;
-  --trait-fort: #111111;
-  --texte: #111111;
-  --texte-doux: #555555;
-  --accent: #0b57d0;
-  --plein: #111111;
+  --surface-2: #f1f1f4;
+  --surface-3: #e8e8ed;
+  --trait: #e4e4ea;
+  --trait-fort: #d2d2da;
+  --texte: #18181b;
+  --texte-doux: #6b6b76;
+  --accent: #6d4aff;
+  --accent-doux: rgba(109, 74, 255, 0.1);
+  --sur-accent: #ffffff;
+  --plein: #18181b;
   --sur-plein: #ffffff;
-  --vert: #1a7f37;
-  --rouge: #cf222e;
-  --orange: #9a6700;
-  --code-fond: #111111;
-  --code-texte: #ffffff;
-  --diff-plus: #dafbe1;
-  --diff-moins: #ffebe9;
-  --rayon: 3px;
-  --police: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
-  --mono: "IBM Plex Mono", "JetBrains Mono", "Cascadia Code", ui-monospace, Menlo, Consolas, monospace;
+  --vert: #16a34a;
+  --vert-doux: rgba(22, 163, 74, 0.12);
+  --rouge: #dc2626;
+  --rouge-doux: rgba(220, 38, 38, 0.1);
+  --orange: #d97706;
+  --orange-doux: rgba(217, 119, 6, 0.12);
+  --code-fond: #17171c;
+  --code-texte: #e8e8ee;
+  --diff-plus: rgba(22, 163, 74, 0.14);
+  --diff-moins: rgba(220, 38, 38, 0.12);
+  --ombre: 0 1px 2px rgba(16, 16, 24, 0.05), 0 1px 1px rgba(16, 16, 24, 0.03);
+  --ombre-haute: 0 12px 32px rgba(16, 16, 24, 0.14), 0 2px 6px rgba(16, 16, 24, 0.06);
+  --rayon: 10px;
+  --rayon-petit: 7px;
+  --police: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Inter", "Helvetica Neue", sans-serif;
+  --mono: "Cascadia Code", "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --fond: #0e0e0e;
-    --surface: #0e0e0e;
-    --surface-2: #1a1a1a;
-    --trait: #3a3a3a;
-    --trait-fort: #ededed;
-    --texte: #ededed;
-    --texte-doux: #a8a8a8;
-    --accent: #7ab7ff;
-    --plein: #ededed;
-    --sur-plein: #111111;
-    --code-fond: #1a1a1a;
-    --code-texte: #ededed;
-    --diff-plus: #12361f;
-    --diff-moins: #4a1a1d;
+    --fond: #111114;
+    --surface: #18181c;
+    --surface-2: #1f1f24;
+    --surface-3: #2a2a31;
+    --trait: #26262d;
+    --trait-fort: #34343d;
+    --texte: #ececf1;
+    --texte-doux: #9a9aa6;
+    --accent: #8b6dff;
+    --accent-doux: rgba(139, 109, 255, 0.16);
+    --plein: #ececf1;
+    --sur-plein: #111114;
+    --vert: #22c55e;
+    --vert-doux: rgba(34, 197, 94, 0.15);
+    --rouge: #f05252;
+    --rouge-doux: rgba(240, 82, 82, 0.15);
+    --orange: #f59e0b;
+    --orange-doux: rgba(245, 158, 11, 0.15);
+    --code-fond: #0c0c0f;
+    --code-texte: #e8e8ee;
+    --ombre: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --ombre-haute: 0 16px 40px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
     color-scheme: dark;
   }
 }
 
 * { box-sizing: border-box; }
 
-/* On défile, mais sans barre visible. */
-* { scrollbar-width: none; }
-*::-webkit-scrollbar { display: none; }
+/* Barres de défilement fines et discrètes. */
+* { scrollbar-width: thin; scrollbar-color: var(--surface-3) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 10px; border: 3px solid transparent; background-clip: padding-box; }
+*::-webkit-scrollbar-track { background: transparent; }
 
 html, body { height: 100%; margin: 0; }
 
 body {
   background: var(--fond);
   color: var(--texte);
-  font: 15px/1.5 var(--police);
+  font: 14.5px/1.55 var(--police);
+  -webkit-font-smoothing: antialiased;
 }
 
 [hidden] { display: none !important; }
 
-h1, h2, h3 { margin: 0; font-family: var(--mono); font-weight: 600; }
+h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.01em; }
 
-a { color: var(--accent); }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
 
 button, select, input, textarea { font: inherit; color: inherit; }
 
-button, select { font-family: var(--mono); font-size: 13.5px; }
-
 button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   border: 1px solid var(--trait-fort);
   background: var(--surface);
-  border-radius: var(--rayon);
-  padding: 7px 13px;
+  border-radius: var(--rayon-petit);
+  padding: 6px 12px;
+  font-size: 13.5px;
+  font-weight: 500;
   cursor: pointer;
+  box-shadow: var(--ombre);
+  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
 }
 button:hover:not(:disabled) { background: var(--surface-2); }
 button:disabled { opacity: 0.45; cursor: not-allowed; }
-button.principal { background: var(--plein); border-color: var(--plein); color: var(--sur-plein); font-weight: 600; }
-button.principal:hover:not(:disabled) { background: var(--plein); text-decoration: underline; }
+button.principal { background: var(--accent); border-color: var(--accent); color: var(--sur-accent); font-weight: 600; }
+button.principal:hover:not(:disabled) { background: var(--accent); filter: brightness(1.08); }
 button.danger { background: var(--rouge); border-color: var(--rouge); color: #fff; font-weight: 600; }
-button.danger:hover:not(:disabled) { background: var(--rouge); text-decoration: underline; }
+button.danger:hover:not(:disabled) { background: var(--rouge); filter: brightness(1.08); }
 
 select, input[type="text"], input[type="password"], input[type="url"], input[type="number"], textarea {
   border: 1px solid var(--trait-fort);
   background: var(--surface);
-  border-radius: var(--rayon);
-  padding: 7px 10px;
+  border-radius: var(--rayon-petit);
+  padding: 6px 10px;
   min-width: 0;
+  font-size: 13.5px;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
-select:focus-visible, input:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
+select { cursor: pointer; padding-right: 8px; }
+input::placeholder, textarea::placeholder { color: var(--texte-doux); opacity: 0.8; }
+select:focus-visible, input:focus-visible, textarea:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-doux);
 }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-pre, code { font-family: var(--mono); font-size: 13px; }
+pre, code { font-family: var(--mono); font-size: 12.5px; }
 
 pre.code {
   margin: 0;
-  padding: 10px 12px;
+  padding: 12px 14px;
   background: var(--code-fond);
   color: var(--code-texte);
-  border-radius: var(--rayon);
+  border-radius: var(--rayon-petit);
   overflow: auto;
   max-height: 340px;
   white-space: pre-wrap;
@@ -110,15 +143,31 @@ pre.code {
 
 .bandeau {
   position: fixed;
-  inset: 0 0 auto 0;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 30;
-  padding: 6px 12px;
-  text-align: center;
+  padding: 8px 16px;
+  border-radius: 999px;
   background: var(--orange);
   color: #fff;
-  font-family: var(--mono);
+  font-size: 13px;
   font-weight: 600;
+  box-shadow: var(--ombre-haute);
 }
+
+.notifications { position: fixed; right: 18px; bottom: 18px; z-index: 50; display: grid; gap: 8px; max-width: min(420px, calc(100% - 36px)); }
+.notification {
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--trait);
+  box-shadow: var(--ombre-haute);
+  font-size: 13.5px;
+  animation: entree 0.2s ease-out;
+}
+.notification.echec { border-color: color-mix(in srgb, var(--rouge) 45%, var(--trait)); border-left: 4px solid var(--rouge); }
+@keyframes entree { from { opacity: 0; transform: translateY(8px); } }
 
 .porte {
   position: fixed;
@@ -130,13 +179,15 @@ pre.code {
   padding: 16px;
 }
 .porte form {
-  width: min(440px, 100%);
+  width: min(420px, 100%);
   display: grid;
-  gap: 12px;
-  padding: 22px;
+  gap: 14px;
+  padding: 28px;
   background: var(--surface);
-  border: 1px solid var(--trait-fort);
-  border-radius: var(--rayon);
+  border: 1px solid var(--trait);
+  border-radius: 16px;
+  box-shadow: var(--ombre-haute);
 }
+.porte h2 { font-size: 19px; }
 .porte p { margin: 0; color: var(--texte-doux); }
-.porte .erreur { color: #fff; background: var(--rouge); padding: 6px 10px; }
+.porte .erreur { color: var(--rouge); background: var(--rouge-doux); padding: 8px 12px; border-radius: var(--rayon-petit); }

@@ -95,7 +95,8 @@ function dessiner() {
     h('span.libelle', {}, t('contexte') + (c?.auteur?.nom ? ` (${c.auteur.nom})` : '')),
     barre,
     h('span.valeur', {}, c ? `${format.format(pourcent)} % · ${jetons(c.utilises)} / ${jetons(c.max)}` : conso?.tours.size ? `${jetons(sortis)} ${t('sortie').toLowerCase()}` : '–'),
-    cout != null ? h('span.cout', {}, dollars(cout)) : null,
+    // replaceChildren écrirait « null » en toutes lettres : sans coût connu, on n'ajoute rien.
+    ...(cout != null ? [h('span.cout', {}, dollars(cout))] : []),
   );
   panneau.replaceChildren(
     h('h2', {}, t('conso_titre')),

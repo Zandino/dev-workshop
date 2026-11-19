@@ -39,7 +39,8 @@ function ajusterHauteur() {
 function valider() {
   const texte = champ.value.trim();
   if (!texte || champ.disabled) return;
-  actions.envoyer(texte);
+  // Faux : le message ne peut pas encore partir (fichiers joints en cours d'envoi) ; la saisie reste.
+  if (actions.envoyer(texte) === false) return;
   champ.value = '';
   ajusterHauteur();
   fermerPalette();

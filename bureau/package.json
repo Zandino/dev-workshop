@@ -1,0 +1,86 @@
+{
+  "name": "dev-workshop-bureau",
+  "productName": "Dev Workshop",
+  "version": "0.6.0",
+  "description": "Desktop client for Dev Workshop: connects to your server over SSH and opens the workshop in its own window",
+  "main": "principal.js",
+  "author": "Deltinfo Studio",
+  "license": "Apache-2.0",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "icone": "node outils/icone.js",
+    "dist": "electron-builder --win --publish never",
+    "dist:mac": "electron-builder --mac --publish never",
+    "dist:linux": "electron-builder --linux --publish never"
+  },
+  "devDependencies": {
+    "electron": "45.4.1",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "io.github.zandino.devworkshop",
+    "productName": "Dev Workshop",
+    "directories": {
+      "output": "dist",
+      "buildResources": "ressources"
+    },
+    "files": [
+      "principal.js",
+      "src/**",
+      "accueil/**",
+      "ressources/icone.png",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "ressources/icone.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "Dev-Workshop-Setup-${version}.${ext}"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "icon": "ressources/icone.png",
+      "category": "public.app-category.developer-tools",
+      "artifactName": "Dev-Workshop-${version}-${arch}.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "icon": "ressources/icone.png",
+      "category": "Development",
+      "artifactName": "Dev-Workshop-${version}-${arch}.${ext}"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Zandino",
+        "repo": "dev-workshop"
+      }
+    ]
+  },
+  "homepage": "https://github.com/Zandino/dev-workshop",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Zandino/dev-workshop.git",
+    "directory": "bureau"
+  },
+  "dependencies": {
+    "electron-updater": "6.8.12"
+  }
+}

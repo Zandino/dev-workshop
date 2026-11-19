@@ -72,6 +72,11 @@ export function utilisateurVersEvenements(m, { avecTexte }) {
   return evenements;
 }
 
+/** Le message d'erreur parle-t-il d'une limite d'utilisation (abonnement, quota, débit) ? Tous fournisseurs. */
+export function estLimite(texte) {
+  return /hit your .{0,20}limit|usage limit|rate limit|weekly limit|daily limit|quota|limit (reached|exceeded)|too many requests|resource.?exhausted|insufficient.?(quota|credit)|credit balance|\b429\b/i.test(String(texte || ''));
+}
+
 /** Fin de tour : consommation et coût tels que renvoyés par le SDK, sans recalcul de prix. */
 export function resultatVersEvenement(m) {
   const modeles = Object.entries(m.modelUsage || {}).map(([nom, u]) => ({
@@ -83,11 +88,16 @@ export function resultatVersEvenement(m) {
     cout: u.costUSD ?? null,
     fenetre: u.contextWindow || null,
   }));
+  const ok = m.subtype === 'success' && !m.is_error;
+  // Limite d'abonnement atteinte : l'outil finit le tour en « success » avec is_error, le vrai motif est dans
+  // `result` (« You've hit your weekly limit… »). On le montre tel quel, et on le signale comme limite.
+  const texte = ok ? null : (m.errors || []).join(' ; ') || (m.is_error && typeof m.result === 'string' ? m.result : '') || m.subtype;
   return {
     t: 'tour',
-    ok: m.subtype === 'success' && !m.is_error,
-    motif: m.subtype,
-    message: m.subtype === 'success' ? null : (m.errors || []).join(' ; ') || m.subtype,
+    ok,
+    motif: ok ? m.subtype : estLimite(texte) ? 'limite' : m.subtype === 'success' ? 'erreur' : m.subtype,
+    limite: !ok && estLimite(texte),
+    message: texte ? String(texte).slice(0, 500) : null,
     dureeMs: m.duration_ms ?? null,
     appels: m.num_turns ?? null,
     coutSession: m.total_cost_usd ?? null,

@@ -2,10 +2,29 @@
 // Formes des messages : schéma du protocole généré par l'outil lui-même (codex 0.170.0).
 // Chaque commande ou modification de fichier revient à l'écran pour accord ; aucun mode sans garde-fou.
 import { randomUUID } from 'node:crypto';
+import { readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { lier, binaire } from './jsonrpc.mjs';
 import { consigneComplete } from './regles.mjs';
+import { versCodexToml } from '../connecteurs.mjs';
+import { decisionAuto } from '../regles-accord.mjs';
 
 const env = (compte) => ({ ...process.env, CODEX_HOME: compte.dossier });
+const DEBUT = '# >>> dev-workshop : connecteurs partagés (bloc géré par Dev Workshop, réécrit à chaque session)';
+const FIN = '# <<< dev-workshop';
+
+/** Codex lit ses serveurs MCP dans config.toml : on y tient un bloc à nous, sans toucher au reste du fichier. */
+function poserConnecteurs(compte, connecteurs) {
+  const fichier = path.join(compte.dossier, 'config.toml');
+  let actuel = '';
+  try { actuel = readFileSync(fichier, 'utf8'); } catch { /* pas encore de configuration */ }
+  const debut = actuel.indexOf(DEBUT);
+  const fin = actuel.indexOf(FIN, debut);
+  const reste = debut >= 0 && fin > debut ? actuel.slice(0, debut) + actuel.slice(fin + FIN.length) : actuel;
+  const bloc = connecteurs?.length ? `${DEBUT}\n${versCodexToml(connecteurs)}\n${FIN}\n` : '';
+  const nouveau = reste.trimEnd() + (reste.trim() && bloc ? '\n\n' : '') + bloc;
+  if (nouveau !== actuel) writeFileSync(fichier, nouveau, { mode: 0o600 });
+}
 
 function lancer(compte, crochets) {
   const l = lier(binaire('codex'), ['app-server'], { env: env(compte), ...crochets });
@@ -49,7 +68,8 @@ function resultatDe(item) {
   return { contenu: '', erreur: false };
 }
 
-export function ouvrir({ compte, dossier, modele, mode, consigne }, emettre) {
+export function ouvrir({ compte, dossier, modele, mode, consigne, connecteurs }, emettre) {
+  poserConnecteurs(compte, connecteurs);
   const accords = new Map();
   const elements = new Map();
   let fil = null;
@@ -62,6 +82,9 @@ export function ouvrir({ compte, dossier, modele, mode, consigne }, emettre) {
     surDemande(methode, p) {
       const commande = methode === 'item/commandExecution/requestApproval';
       if (!commande && methode !== 'item/fileChange/requestApproval') throw new Error('demande_non_geree');
+      // Règles d'accord du projet : décision immédiate quand elles tranchent.
+      const auto = decisionAuto(dossier, commande ? 'Bash' : 'Patch', commande ? { command: p.command || elements.get(p.itemId)?.entree.command } : {});
+      if (auto) return Promise.resolve({ decision: auto === 'autoriser' ? 'accept' : 'decline' });
       return new Promise((resoudre) => {
         const id = randomUUID();
         const connu = elements.get(p.itemId);
@@ -133,14 +156,16 @@ export function ouvrir({ compte, dossier, modele, mode, consigne }, emettre) {
     } catch { /* liste indisponible : le modèle par défaut du compte sert */ }
     const r = await l.demander('thread/start', {
       cwd: dossier,
-      approvalPolicy: 'untrusted',
+      // Manuel : tout demander ; automatique : Codex ne demande que s'il en a besoin ; tout autoriser : jamais.
+      // Les écritures restent bornées au dossier du projet (bac à sable de Codex), même sans demande.
+      approvalPolicy: mode === 'bypassPermissions' ? 'never' : ['auto', 'acceptEdits'].includes(mode) ? 'on-request' : 'untrusted',
       sandbox: mode === 'plan' ? 'read-only' : 'workspace-write',
       developerInstructions: consigneComplete(consigne) || null,
       ...(choisi ? { model: choisi } : {}),
     });
     fil = r.thread.id;
     choisi = choisi || r.model;
-    emettre({ t: 'pret', sessionId: fil, modele: choisi, mode: mode === 'plan' ? 'plan' : 'default', dossier });
+    emettre({ t: 'pret', sessionId: fil, modele: choisi, mode: mode || 'default', dossier });
   })();
   // L'échec du démarrage est rapporté à chaque envoi (voir `envoyer`) : ici, on évite seulement un rejet non géré.
   demarre.catch(() => {});

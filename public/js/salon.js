@@ -7,7 +7,7 @@ const MAX = 4;
 let comptes = [];
 let lignes = [];
 let demarrer = () => {};
-let nombreEchanges = 2;
+let nombreEchanges = 4;
 
 export function initSalon(action) {
   demarrer = action;
@@ -48,7 +48,7 @@ function ligne(p, i) {
 }
 
 function dessiner() {
-  const echanges = h('input', { type: 'number', min: 1, max: 6, value: nombreEchanges, oninput: (e) => (nombreEchanges = Number(e.target.value) || 2) });
+  const echanges = h('input', { type: 'number', min: 1, max: 10, value: nombreEchanges, oninput: (e) => (nombreEchanges = Number(e.target.value) || 4) });
   const externe = lignes.some((p) => comptes.find((c) => c.id === p.compte)?.externe);
   document.getElementById('panneau-salon').replaceChildren(
     h('form.boite', { onsubmit: (e) => {

@@ -1,0 +1,10 @@
+/* Petite fenêtre « Aperçu d'un port du serveur » (les couleurs viennent de accueil.css). */
+.port { display: grid; gap: 12px; padding: 22px; }
+.port h2 { font-size: 17px; }
+.port .doux { font-size: 13px; }
+.ligne-port { display: flex; gap: 8px; }
+.ligne-port input {
+  flex: 1; font: inherit; font-size: 15px; color: inherit; padding: 8px 11px; border-radius: 8px;
+  border: 1px solid var(--trait-fort); background: var(--surface);
+}
+.ligne-port input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-doux); }

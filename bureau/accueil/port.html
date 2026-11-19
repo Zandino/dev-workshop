@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'">
+  <title>Dev Workshop</title>
+  <link rel="stylesheet" href="accueil.css">
+  <link rel="stylesheet" href="port.css">
+</head>
+<body>
+  <form id="formulaire" class="port">
+    <h2 id="titre"></h2>
+    <p id="aide" class="doux"></p>
+    <p id="erreur" class="erreur" hidden></p>
+    <div class="ligne-port">
+      <input id="port" inputmode="numeric" autocomplete="off" placeholder="5173" required autofocus>
+      <button id="ouvrir" class="principal" type="submit"></button>
+    </div>
+  </form>
+  <script src="port.js"></script>
+</body>
+</html>

@@ -7,15 +7,16 @@ import * as claude from './claude.mjs';
 import * as api from './api.mjs';
 import * as codex from './codex.mjs';
 import * as gemini from './gemini.mjs';
+import * as copilot from './copilot.mjs';
+import * as qwen from './qwen.mjs';
 import { etatCompte as etatClaude } from './claude-compte.mjs';
 
-const FOURNISSEURS = { claude, api, codex, gemini };
+const FOURNISSEURS = { claude, api, codex, gemini, copilot, qwen };
 
 /** Connecté ou non, demandé à l'outil officiel du compte. */
 export function etatDuCompte(compte) {
   if (compte.type === 'claude') return etatClaude(compte);
-  if (compte.type === 'codex') return codex.etatCompte(compte);
-  if (compte.type === 'gemini') return gemini.etatCompte(compte);
+  if (FOURNISSEURS[compte.type]?.etatCompte) return FOURNISSEURS[compte.type].etatCompte(compte);
   throw new Error('compte_inconnu');
 }
 

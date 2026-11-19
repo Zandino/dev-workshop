@@ -1,0 +1,121 @@
+/* Vue « En direct », fichiers joints, réglages du projet, petits ajouts de la barre latérale. */
+
+.direct { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; padding: 18px max(20px, calc((100% - 1000px) / 2)); }
+.barre-direct { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.barre-direct select { max-width: 240px; }
+.en-direct { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--rouge); padding: 3px 10px; border-radius: 99px; background: var(--rouge-doux); }
+
+.ecran-partage { border-radius: 16px; background: var(--code-fond); color: var(--code-texte); border: 1px solid var(--trait); box-shadow: var(--ombre-haute); overflow: hidden; min-height: 220px; display: flex; flex-direction: column; }
+.ecran-partage header { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); font-size: 13px; }
+.ecran-partage header span:last-child { color: #a5a5b2; font-family: var(--mono); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ecran-partage pre { margin: 0; padding: 14px 16px; flex: 1; font-size: 12.5px; white-space: pre-wrap; word-break: break-word; max-height: 46vh; overflow: auto; }
+.ecran-partage.vide pre { display: grid; place-items: center; color: #8a8a96; font-family: var(--police); font-size: 14px; }
+
+.vignettes { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
+.vignette { position: relative; display: grid; justify-items: center; gap: 4px; padding: 18px 12px 14px; border-radius: 16px; background: var(--surface); border: 1px solid var(--trait); box-shadow: var(--ombre); transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s; }
+.vignette.parle { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-doux), var(--ombre-haute); transform: translateY(-2px); }
+.vignette.accord { border-color: var(--orange); box-shadow: 0 0 0 3px var(--orange-doux); }
+.vignette .visage { position: relative; width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(135deg, #6d4aff, #b06dff); color: #fff; margin-bottom: 6px; }
+.vignette.rang-1 .visage { background: linear-gradient(135deg, #db2777, #f472b6); }
+.vignette.rang-2 .visage { background: linear-gradient(135deg, #0d9488, #5eead4); }
+.vignette.rang-3 .visage { background: linear-gradient(135deg, #d97706, #fbbf24); }
+.vignette.toi .visage { background: var(--surface-3); font-size: 30px; }
+.vignette .initiale { font-size: 26px; font-weight: 700; }
+.vignette .visage .logo-ia { position: absolute; right: -2px; bottom: -2px; width: 26px; height: 26px; box-shadow: 0 0 0 2px var(--surface); }
+.vignette .visage .logo-ia img { width: 16px; height: 16px; }
+.vignette .nom { font-weight: 650; font-size: 14px; }
+.vignette .etat { font-size: 12px; color: var(--texte-doux); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.vignette .compteurs { display: flex; gap: 8px; font-size: 11.5px; color: var(--texte-doux); min-height: 16px; }
+.vignette .compteurs .erreurs { color: var(--rouge); }
+/* L'onde : trois barres qui bougent quand l'IA parle ou écrit. */
+.onde { position: absolute; bottom: 10px; display: none; gap: 3px; align-items: flex-end; height: 14px; }
+.onde i { width: 3px; height: 4px; border-radius: 2px; background: #fff; animation: onde 0.9s ease-in-out infinite; }
+.onde i:nth-child(2) { animation-delay: 0.15s; }
+.onde i:nth-child(3) { animation-delay: 0.3s; }
+.vignette.parle .onde { display: flex; }
+.vignette.parle .initiale { transform: translateY(-6px); }
+@keyframes onde { 50% { height: 14px; } }
+
+/* Fichiers joints : puces au-dessus de la saisie, dépôt sur l'atelier. */
+.pieces { position: absolute; left: 10px; right: 10px; bottom: calc(100% + 6px); display: flex; flex-wrap: wrap; gap: 6px; }
+.piece { display: inline-flex; align-items: center; gap: 6px; max-width: 260px; padding: 3px 4px 3px 11px; border-radius: 99px; background: var(--surface); border: 1px solid var(--trait-fort); box-shadow: var(--ombre); font-size: 12.5px; }
+.piece .nom { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.piece .avance { color: var(--texte-doux); font-size: 11.5px; white-space: nowrap; }
+.piece.prete { border-color: color-mix(in srgb, var(--vert) 45%, var(--trait)); }
+.piece.echec { border-color: var(--rouge); color: var(--rouge); }
+.piece button { padding: 1px 7px; font-size: 11px; }
+.saisie .joindre { flex: none; width: 36px; height: 36px; padding: 0; border-radius: 10px; font-size: 20px; font-weight: 400; color: var(--texte-doux); box-shadow: none; }
+.saisie .joindre:hover:not(:disabled) { color: var(--accent); }
+.scene.depot::after {
+  content: attr(data-depot);
+  position: absolute; inset: 12px; z-index: 15; display: grid; place-items: center; pointer-events: none;
+  border: 2px dashed var(--accent); border-radius: 18px; background: color-mix(in srgb, var(--accent) 8%, transparent);
+  color: var(--accent); font-size: 17px; font-weight: 600; backdrop-filter: blur(2px);
+}
+
+/* Réglages du projet. */
+.bloc-projet { display: grid; gap: 10px; align-content: start; padding: 16px; border: 1px solid var(--trait); border-radius: 14px; }
+.bloc-projet > button { justify-self: start; }
+.bloc-projet .option { align-items: center; }
+.bloc-projet .option small { margin-top: 2px; }
+.bloc-projet.danger { border-color: color-mix(in srgb, var(--rouge) 35%, var(--trait)); }
+.bloc-projet .rangee input { flex: 1; min-width: 200px; }
+textarea.contexte { width: 100%; resize: vertical; min-height: 140px; font-size: 13.5px; line-height: 1.55; }
+.grille { display: grid; gap: 8px; }
+.grille textarea { resize: vertical; font-family: var(--mono); font-size: 12.5px; }
+.vide { margin: 0; color: var(--texte-doux); }
+
+/* Barre d'activité : IA, modèle, puissance, et ce qu'elle fait à l'instant. */
+.travail {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin: 6px max(20px, calc((100% - 860px) / 2)) 0; padding: 7px 12px;
+  border-radius: 12px; border: 1px solid var(--trait); background: var(--surface); font-size: 12.5px; color: var(--texte-doux);
+}
+.travail strong { color: var(--texte); font-weight: 600; }
+.travail .modele-actif { font-family: var(--mono); font-size: 11.5px; padding: 1px 8px; border-radius: 99px; background: var(--surface-2); }
+.travail .effort-actif { padding: 1px 8px; border-radius: 99px; background: var(--accent-doux); color: var(--accent); font-weight: 600; }
+.travail .alerte-libre { padding: 1px 8px; border-radius: 99px; background: var(--rouge-doux); color: var(--rouge); font-weight: 700; }
+.travail .activite { display: inline-flex; align-items: center; gap: 7px; font-variant-numeric: tabular-nums; }
+.travail.actif { border-color: color-mix(in srgb, var(--accent) 45%, var(--trait)); }
+.travail.actif .activite { color: var(--accent); font-weight: 600; }
+.travail .points { display: inline-flex; gap: 3px; }
+.travail .points i { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); animation: pouls 1.2s ease-in-out infinite; }
+.travail .points i:nth-child(2) { animation-delay: 0.2s; }
+.travail .points i:nth-child(3) { animation-delay: 0.4s; }
+/* « Tout autoriser » : la saisie se borde de rouge, pour qu'on ne l'oublie pas. */
+body.mode-libre .saisie { border-color: var(--rouge); box-shadow: 0 0 0 3px var(--rouge-doux), var(--ombre-haute); }
+
+/* Aperçu à droite : le fichier sur lequel l'IA travaille. */
+body.avec-apercu .atelier { grid-template-columns: 260px minmax(0, 1fr) minmax(360px, 40%); }
+.apercu { display: flex; flex-direction: column; min-width: 0; min-height: 0; height: 100vh; border-left: 1px solid var(--trait); background: var(--surface); }
+.entete-apercu { display: flex; align-items: center; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--trait); }
+.entete-apercu input[type="text"] { flex: 1; font-family: var(--mono); font-size: 12.5px; }
+.entete-apercu button { padding: 5px 10px; }
+.entete-apercu .suivre { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--texte-doux); white-space: nowrap; }
+.entete-apercu .suivre input { accent-color: var(--accent); }
+.contenu-apercu { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
+.contenu-apercu > .vide { margin: auto; padding: 24px; text-align: center; max-width: 360px; }
+.page-apercu { flex: 1; width: 100%; border: 0; background: #fff; }
+.image-apercu { flex: 1; display: grid; place-items: center; padding: 16px; background: repeating-conic-gradient(var(--surface-2) 0 25%, var(--surface) 0 50%) 0 0 / 16px 16px; }
+.image-apercu img { max-width: 100%; max-height: 100%; border-radius: 6px; box-shadow: var(--ombre-haute); }
+.markdown-apercu { padding: 18px 22px; }
+.code-apercu { margin: 0; padding: 10px 0; font-size: 12px; line-height: 1.55; counter-reset: ligne; }
+.code-apercu .ligne { display: block; padding-right: 14px; white-space: pre-wrap; word-break: break-word; }
+.code-apercu .ligne i { display: inline-block; width: 44px; padding-right: 12px; text-align: right; color: var(--texte-doux); opacity: 0.6; font-style: normal; user-select: none; }
+@media (max-width: 1100px) { body.avec-apercu .atelier { grid-template-columns: 220px minmax(0, 1fr) minmax(300px, 45%); } }
+
+/* Barre latérale : réglages du projet actif, liens du pied. */
+.projet-actif, .avec-poubelle { position: relative; }
+.projet-actif .ligne { padding-right: 66px; }
+.avec-poubelle .ligne { padding-right: 36px; }
+.poubelle {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; padding: 0;
+  border: 0; border-radius: 7px; background: transparent; box-shadow: none; font-size: 13px; opacity: 0; transition: opacity 0.15s, background 0.15s;
+}
+.avec-poubelle:hover .poubelle, .projet-actif .poubelle, .poubelle:focus-visible { opacity: 0.75; }
+.poubelle:hover:not(:disabled) { opacity: 1; background: var(--rouge-doux); }
+.reglages-projet { position: absolute; right: 34px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; padding: 0; border: 0; border-radius: 7px; background: transparent; box-shadow: none; color: var(--accent); font-size: 15px; }
+.reglages-projet:hover:not(:disabled) { background: var(--surface); }
+.liens-barre { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px; }
+.liens-barre button { font-size: 12.5px; }
+.nombre:not(:empty) { margin-left: 4px; padding: 0 6px; border-radius: 99px; background: var(--surface-3); font-size: 11px; }
