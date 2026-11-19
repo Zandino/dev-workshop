@@ -117,6 +117,7 @@ function surEvenement(m) {
 
 function surGeneral(m) {
   ecran.general = m;
+  $('version').textContent = m.version || '';
   const choisi = m.comptes.some((c) => c.id === $('compte').value) ? $('compte').value : 'defaut';
   options($('compte'), m.comptes.map((c) => [c.id, libelleCompte(c)]), choisi);
   majComptes(m.comptes);

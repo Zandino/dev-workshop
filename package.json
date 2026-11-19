@@ -1,6 +1,6 @@
 {
   "name": "dev-workshop",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Self-hosted web interface for coding with AI agents (Claude Code, Codex, Gemini CLI, local models) from a server",
   "main": "serveur/index.mjs",
   "scripts": {

@@ -1,5 +1,5 @@
 // Canal WebSocket : une connexion authentifiée par jeton, puis des ordres courts en JSON.
-import { mkdirSync, readdirSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import * as claude from './fournisseurs/claude.mjs';
 import { etatDuCompte } from './fournisseurs/index.mjs';
@@ -20,8 +20,11 @@ function projets() {
     .sort((a, b) => a.localeCompare(b));
 }
 
+/** Version affichée dans le pied de page de l'écran. */
+const VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
+
 function etatGeneral() {
-  return { t: 'general', comptes: listerComptes(), projets: projets(), vivantes: listerVivantes(), modes: MODES };
+  return { t: 'general', version: VERSION, comptes: listerComptes(), projets: projets(), vivantes: listerVivantes(), modes: MODES };
 }
 
 export function brancher(ws, jeton) {

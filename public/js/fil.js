@@ -100,7 +100,7 @@ const TRAITEMENTS = {
   utilisateur: (e) => {
     document.querySelector('#fil .accueil')?.remove();
     auBas = true;
-    ajouter(h('article.message.utilisateur', {}, e.texte));
+    ajouter(h('article.message.utilisateur', { dataset: { auteur: t('toi') } }, e.texte));
   },
   delta: surDelta,
   assistant: surAssistant,

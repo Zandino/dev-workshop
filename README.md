@@ -6,7 +6,7 @@ Dev Workshop drives the official tools (Claude Code, OpenAI Codex, Gemini CLI) a
 (LM Studio, Ollama, an API). Accounts sign in once on the server, the browser only displays, and every command or
 file change comes back to the screen for approval.
 
-Free software, built by the Deltinfo Studio team and published under the Apache 2.0 licence. Status: version 0.3, young. Read
+Free software, built by the Deltinfo Studio team and published under the Apache 2.0 licence. Status: version 0.4, young. Read
 "Known limits" before relying on it. Documentation en français : [README.fr.md](README.fr.md).
 
 ## What it does
@@ -77,7 +77,7 @@ This page gives control over the machine it runs on. The safeguards are enforced
 
 An agent sends to its vendor whatever it reads in the project. Which projects you hand to which agent is your call.
 
-## Known limits (v0.3)
+## Known limits (v0.4)
 
 - never tried with a real account so far: a sign-in carried through to the end, a turn with Codex or Gemini (their
   adapters are written from the tools' protocols), a real API or LM Studio;
