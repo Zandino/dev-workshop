@@ -109,7 +109,7 @@ button.principal:hover:not(:disabled) { background: var(--accent); filter: brigh
 button.danger { background: var(--rouge); border-color: var(--rouge); color: #fff; font-weight: 600; }
 button.danger:hover:not(:disabled) { background: var(--rouge); filter: brightness(1.08); }
 
-select, input[type="text"], input[type="password"], input[type="url"], input[type="number"], textarea {
+select, input[type="text"], input[type="search"], input[type="password"], input[type="url"], input[type="number"], textarea {
   border: 1px solid var(--trait-fort);
   background: var(--surface);
   border-radius: var(--rayon-petit);

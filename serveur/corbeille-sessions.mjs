@@ -1,6 +1,7 @@
 // Corbeille des sessions (compte Claude du serveur, celui des « Sessions passées ») : une session mise à la
 // corbeille est archivée par l'outil lui-même (elle reste sur le disque, masquée de la liste), récupérable
-// pendant 30 jours, puis supprimée pour de bon. On ne touche jamais soi-même aux fichiers de Claude Code.
+// pendant 30 jours, puis supprimée pour de bon. On ne touche pas soi-même aux fichiers de Claude Code (seule
+// exception : « Ranger », que le SDK ne sait pas faire, voir deplacer-session.mjs).
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { archiveSession, unarchiveSession, deleteSession } from '@anthropic-ai/claude-agent-sdk';

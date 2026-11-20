@@ -47,6 +47,17 @@ export function brancher(ws, jeton) {
       envoyer({ t: 'historique', projet: m.projet, sessions: await claude.historique(resoudreProjet(m.projet)) });
     },
 
+    // Toutes les discussions de tous les projets, les plus récentes d'abord (vue « Toutes les discussions »).
+    async toutes_discussions() {
+      const liste = [];
+      for (const projet of projets()) {
+        try {
+          for (const s of await claude.historique(resoudreProjet(projet))) liste.push({ ...s, projet });
+        } catch { /* projet illisible : ignoré */ }
+      }
+      envoyer({ t: 'discussions', liste: liste.sort((a, b) => b.modifieLe - a.modifieLe) });
+    },
+
     creer_projet(m) {
       if (!NOM_PROJET.test(String(m.nom || ''))) throw new Error('nom_invalide');
       mkdirSync(path.join(RACINE_PROJETS, m.nom), { recursive: false });

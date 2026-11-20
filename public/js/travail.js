@@ -20,7 +20,7 @@ ajouterTextes({
     info_changement_ia: '{vers} reprend la conversation à la place de {de}, avec son historique',
     refus_changement_impossible: 'On ne change pas d’IA dans une discussion à plusieurs ni dans l’orchestre.',
     refus_changement_occupe: 'Attends que l’IA ait fini son tour (ou arrête-la) avant de changer d’IA.',
-    orchestre_en_debut: 'L’orchestre se choisit au début d’une session : ouvre une « Nouvelle session ».',
+    orchestre_en_debut: 'L’orchestre se choisit au début d’une discussion : ouvre une « Nouvelle discussion ».',
     notif_accord: '{nom} attend ton accord', notif_fini: 'Session terminée · {projet}', notif_echec: 'Tour interrompu · {projet}',
   },
   en: {
@@ -35,7 +35,7 @@ ajouterTextes({
     info_changement_ia: '{vers} takes over the conversation from {de}, with its history',
     refus_changement_impossible: 'The AI cannot be switched in a group discussion or in the orchestra.',
     refus_changement_occupe: 'Wait until the AI has finished its turn (or stop it) before switching AI.',
-    orchestre_en_debut: 'The orchestra is chosen when a session starts: open a “New session”.',
+    orchestre_en_debut: 'The orchestra is chosen when a conversation starts: open a “New conversation”.',
     notif_accord: '{nom} is waiting for your approval', notif_fini: 'Session finished · {projet}', notif_echec: 'Turn interrupted · {projet}',
   },
 });

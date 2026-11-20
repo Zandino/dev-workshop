@@ -8,7 +8,7 @@ import { homedir } from 'node:os';
 import { ticketApercu } from './apercu.mjs';
 import { deconnecterCompte } from './connexion.mjs';
 import { etatDuCompte } from './fournisseurs/index.mjs';
-import { lireContexte, ecrireContexte, mettreALaCorbeille, listerCorbeille, restaurer, effacerDefinitivement, DUREE_CORBEILLE } from './projets.mjs';
+import { lireContexte, ecrireContexte, ajouterAuContexte, mettreALaCorbeille, listerCorbeille, restaurer, effacerDefinitivement, DUREE_CORBEILLE } from './projets.mjs';
 import { receptions } from './fichiers.mjs';
 import { vueConnecteurs, definirConnecteur, supprimerConnecteur, reglerAcces, importerConnecteurs } from './connecteurs.mjs';
 import { listerSessionsCorbeille } from './corbeille-sessions.mjs';
@@ -39,6 +39,12 @@ export function ordresProjets(envoyer, general, attacher) {
     projet_contexte(m) {
       ecrireContexte(String(m.nom || ''), m.contexte);
       envoyer({ t: 'projet_enregistre', nom: m.nom });
+    },
+
+    // « Retenir pour le projet » : ce que la personne a relu et validé s'ajoute à la fin de la fiche.
+    projet_retenir(m) {
+      ajouterAuContexte(String(m.nom || ''), typeof m.texte === 'string' ? m.texte.slice(0, 20000) : '');
+      envoyer({ t: 'projet_retenu', nom: m.nom });
     },
 
     // La confirmation (nom retapé) est vérifiée ici aussi : l'écran seul ne suffit pas.

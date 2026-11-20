@@ -2,12 +2,15 @@
 // l'effacer pour de bon. Seules les sessions du compte Claude du serveur sont enregistrées (et donc archivables).
 import path from 'node:path';
 import { resoudreProjet, RACINE_PROJETS } from './securite.mjs';
-import { session, fermerSession, ouvrirSession } from './sessions.mjs';
+import { mkdirSync, existsSync } from 'node:fs';
+import { session, fermerSession, ouvrirSession, listerVivantes, interrompues } from './sessions.mjs';
+import { deplacerSession } from './deplacer-session.mjs';
+import { NOM_PROJET } from './projets.mjs';
 import { chargerInterrompue, oublierSession } from './sauvegarde-sessions.mjs';
 import { consigneRelais } from './relais.mjs';
 import { listerComptes } from './comptes.mjs';
 import * as claude from './fournisseurs/claude.mjs';
-import { mettreSessionCorbeille, restaurerSession, effacerSession } from './corbeille-sessions.mjs';
+import { mettreSessionCorbeille, restaurerSession, effacerSession, listerSessionsCorbeille } from './corbeille-sessions.mjs';
 import { compte } from './comptes.mjs';
 
 const nomProjet = (dossier) => path.relative(RACINE_PROJETS, dossier).split(path.sep)[0];
@@ -82,6 +85,25 @@ export function ordresSessions(envoyer, general, corbeille, attacher) {
       general();
       corbeille();
       await historique(projet);
+    },
+
+    // Range une discussion dans un autre projet (créé au passage si `creer`). Refus si elle est ouverte,
+    // interrompue ou à la corbeille. Voir deplacer-session.mjs.
+    async deplacer_discussion(m) {
+      const projet = String(m.projet || '');
+      const vers = String(m.vers || '');
+      if (!NOM_PROJET.test(projet) || !NOM_PROJET.test(vers)) throw new Error('nom_invalide');
+      const de = resoudreProjet(projet);
+      if (m.creer === true && !existsSync(path.join(RACINE_PROJETS, vers))) mkdirSync(path.join(RACINE_PROJETS, vers));
+      const arrivee = resoudreProjet(vers);
+      const bloquee = (id) => listerVivantes().some((s) => s.sessionId === id)
+        || interrompues().some((s) => s.sessionId === id)
+        || listerSessionsCorbeille().some((s) => s.id === id);
+      await deplacerSession({ id: String(m.id || ''), de, vers: arrivee, bloquee });
+      envoyer({ t: 'discussion_deplacee', id: m.id, de: projet, vers });
+      general();
+      await historique(projet);
+      await historique(vers);
     },
 
     async corbeille_session_effacer(m) {

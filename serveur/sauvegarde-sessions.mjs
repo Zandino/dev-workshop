@@ -51,7 +51,7 @@ export function listerInterrompues(vivantes) {
       const d = JSON.parse(readFileSync(path.join(DOSSIER, n), 'utf8'));
       liste.push({
         id, titre: d.titre || '', projet: path.relative(RACINE_PROJETS, d.dossier) || '.',
-        compte: d.compte, salon: Boolean(d.participants), orchestre: d.orchestre, le: statSync(path.join(DOSSIER, n)).mtimeMs,
+        compte: d.compte, sessionId: d.etat?.sessionId || null, salon: Boolean(d.participants), orchestre: d.orchestre, le: statSync(path.join(DOSSIER, n)).mtimeMs,
       });
     } catch { /* sauvegarde abîmée : ignorée */ }
   }

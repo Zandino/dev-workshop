@@ -1,7 +1,7 @@
 {
   "name": "dev-workshop-bureau",
   "productName": "Dev Workshop",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "description": "Desktop client for Dev Workshop: connects to your server over SSH and opens the workshop in its own window",
   "main": "principal.js",
   "author": "Deltinfo Studio",

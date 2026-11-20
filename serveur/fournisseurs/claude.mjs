@@ -220,9 +220,9 @@ export function ouvrir({ dossier, modele, mode, reprise, compte, consigne, conne
 
 /** Sessions enregistrées d'un dossier de projet (les plus récentes d'abord). */
 export async function historique(dossier) {
-  const liste = await listSessions({ dir: dossier, limit: 60, includeWorktrees: false });
-  // Une session archivée est à la corbeille : elle n'apparaît plus parmi les sessions passées.
-  return liste.filter((s) => !s.archived).slice(0, 40).map((s) => ({
+  const liste = await listSessions({ dir: dossier, limit: 1000, includeWorktrees: false });
+  // Une session archivée est à la corbeille : elle n'apparaît plus parmi les discussions.
+  return liste.filter((s) => !s.archived).map((s) => ({
     id: s.sessionId,
     titre: (s.customTitle || s.summary || s.firstPrompt || '').slice(0, 120),
     modifieLe: s.lastModified,

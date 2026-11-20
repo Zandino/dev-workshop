@@ -7,7 +7,7 @@ Interface en français ou en anglais.
 
 Tout tourne sur le serveur : les comptes y sont connectés une fois, l'écran ne fait qu'afficher.
 
-Logiciel libre, développé par l'équipe Deltinfo Studio et publié sous licence Apache 2.0. État : version 0.6, jeune ; lire « Limites
+Logiciel libre, développé par l'équipe Deltinfo Studio et publié sous licence Apache 2.0. État : version 0.7, jeune ; lire « Limites
 connues » avant de s'en servir.
 
 > **In English.** Dev Workshop is a self-hosted web interface for coding with AI agents (Claude Code, OpenAI Codex,
@@ -175,8 +175,22 @@ tests/parcours.mjs                parcours du canal (sécurité, permission, com
 tests/ecran.mjs                   la vraie page dans un navigateur simulé, sur le vrai serveur
 ```
 
-Une session continue de tourner si l'onglet se ferme ; elle apparaît dans « Sessions en cours » et se rejoue à la
-reconnexion. Elle s'arrête avec le serveur (elle reste reprenable depuis « Sessions passées »).
+Une discussion continue de tourner si l'onglet se ferme ; elle apparaît en tête de la liste « Discussions » de son
+projet (ou dans « Ouvertes dans d'autres projets ») et se rejoue à la reconnexion. Elle s'arrête avec le serveur et
+reste reprenable depuis la liste de son projet.
+
+## Discussions et fiche du projet
+
+- Chaque projet liste ses discussions, les plus récentes en haut. « Toutes les discussions » les montre tous projets
+  confondus, avec une recherche dans les titres.
+- « Ranger » déplace une discussion dans un autre projet, créé au passage si besoin : elle y reprend avec la fiche de
+  ce projet. Refusé si elle est ouverte, interrompue ou à la corbeille. Le SDK de Claude Code ne sait pas déplacer une
+  session : Dev Workshop recopie lui-même son fichier dans le dossier de Claude du nouveau projet (dossier de travail
+  réécrit, date et sous-agents conservés), puis ne retire l'original, par le SDK, qu'une fois la copie reconnue.
+  C'est le seul endroit où il écrit dans les fichiers de Claude Code.
+- La fiche du projet (réglages ⚙) est donnée à toutes les IA au début de chaque discussion du projet. Dans une
+  discussion, « Retenir pour le projet » demande à l'IA ce qu'il faut garder ; tu relis et corriges, et rien n'est
+  ajouté à la fiche sans ton clic.
 
 ## Essais
 
@@ -188,6 +202,16 @@ DEVWORKSHOP_PORT=5330 node tests/ecran.mjs <projet> fr     # ou en
 DEVWORKSHOP_PORT=5330 node tests/avance.mjs <projet>       # question de Claude, arrêt, cumul, reprise
 DEVWORKSHOP_PORT=5330 node tests/salon.mjs <projet>        # comptes, API (faux serveur local), salon
 DEVWORKSHOP_PORT=5330 node tests/connexion.mjs <projet>    # connexion par compte jusqu'au lien, sans appel au modèle
+```
+
+Les discussions (liste, « Ranger », « Retenir ») s'essaient sans modèle, mais en écrivant dans le dossier de Claude
+Code : sur un serveur lancé avec un `HOME` jetable sous `/tmp` (l'essai refuse sinon), avec les mêmes `HOME`,
+`DEVWORKSHOP_CONFIG`, `DEVWORKSHOP_ROOT` et `DEVWORKSHOP_PORT` des deux côtés :
+
+```bash
+node tests/discussions.mjs prepare        # avant de lancer le serveur : fabrique des discussions factices
+node tests/discussions.mjs                # canal : liste, déplacement et ses refus, fiche
+node tests/ecran-discussions.mjs          # la vraie page (sur des discussions refabriquées)
 ```
 
 Les essais créent des comptes : les lancer avec `DEVWORKSHOP_CONFIG` sur un dossier d'essai, côté serveur et côté
@@ -218,9 +242,10 @@ déclarer dans `serveur/fournisseurs/index.mjs` sous un type de compte. Événem
 Codex et Gemini CLI sont installés avec le projet, en versions figées (`package.json`) : leurs adaptateurs lisent
 leurs protocoles, une montée de version se fait donc avec un essai.
 
-## Limites connues (v0.6)
+## Limites connues (v0.7)
 
-- les sessions passées et leur reprise ne concernent que le compte du serveur ;
+- les discussions enregistrées, leur reprise et « Ranger » ne concernent que le compte Claude du serveur ;
+- « Retenir pour le projet » n'a pas encore été essayé de bout en bout avec un vrai modèle ;
 - jamais essayé avec un compte réel : une connexion menée à son terme, un tour de Codex ou de Gemini (adaptateurs
   écrits d'après leurs protocoles), une vraie API ou un vrai LM Studio ; le bac à sable de Codex démarre
   bien dans ce conteneur (essai d'écriture bloquée), mais n'a pas été vu sur un vrai tour ;

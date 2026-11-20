@@ -6,7 +6,7 @@ Dev Workshop drives the official tools (Claude Code, OpenAI Codex, Gemini CLI) a
 (LM Studio, Ollama, an API). Accounts sign in once on the server, the browser only displays, and every command or
 file change comes back to the screen for approval.
 
-Free software, built by the Deltinfo Studio team and published under the Apache 2.0 licence. Status: version 0.6, young. Read
+Free software, built by the Deltinfo Studio team and published under the Apache 2.0 licence. Status: version 0.7, young. Read
 "Known limits" before relying on it. Documentation en français : [README.fr.md](README.fr.md).
 
 ## What it does
@@ -23,7 +23,10 @@ Free software, built by the Deltinfo Studio team and published under the Apache 
 - **Group discussions**: two to four agents answer each other in turn on your request, then stop. Messages and
   approval requests are signed with the agent's name.
 - **Token usage**: context gauge and per-model, per-agent counters, exactly as reported by each tool.
-- **Sessions** keep running if the tab closes, and past sessions can be resumed.
+- **Conversations** keep running if the tab closes. Each project lists its conversations; "All conversations"
+  searches them across projects, and "Move" puts one in another project, where it resumes with that project's notes.
+- **Project notes**, given to every AI at the start of each conversation in the project. "Remember for the project"
+  asks the AI what is worth keeping; you review it, and nothing is added without your click.
 - **French and English** interface, including the searchable `/` command palette.
 
 ## Run it
@@ -107,12 +110,15 @@ This page gives control over the machine it runs on. The safeguards are enforced
 
 An agent sends to its vendor whatever it reads in the project. Which projects you hand to which agent is your call.
 
-## Known limits (v0.6)
+## Known limits (v0.7)
 
 - never tried with a real account so far: a sign-in carried through to the end, a turn with Codex or Gemini (their
   adapters are written from the tools' protocols), a real API or LM Studio;
 - the page layout has not been checked in a real browser by the authors' test suite, which uses a simulated one;
-- past sessions and resume only cover the server's Claude account;
+- saved conversations, resume and "Move" only cover the server's Claude account. Claude Code's SDK cannot move a
+  session, so "Move" copies the file itself (working folder rewritten), and removes the original through the SDK only
+  once the copy is recognised: the one place where Dev Workshop writes into Claude Code's files;
+- "Remember for the project" has not been tried end to end with a real model yet;
 - Codex: the mode (normal, or read-only plan) is chosen when the session opens;
 - Codex and Gemini report no cost, and Gemini no per-turn token counts;
 - no images or attachments in the composer, no file explorer;
@@ -146,6 +152,10 @@ DEVWORKSHOP_PORT=5331 node tests/connexion.mjs <project>   # account sign-in up 
 DEVWORKSHOP_PORT=5331 node tests/parcours.mjs <project>    # channel security, approval, counters
 DEVWORKSHOP_PORT=5331 node tests/ecran.mjs <project> en    # the real page in a simulated browser
 ```
+
+`tests/discussions.mjs` and `tests/ecran-discussions.mjs` cover conversations (list, move, notes) without any model
+call, but they write into Claude Code's folder: run the server and the tests with a scratch `HOME` under `/tmp` (see
+README.fr.md, "Essais").
 
 ## Licence and third-party tools
 

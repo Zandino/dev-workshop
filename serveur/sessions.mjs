@@ -35,6 +35,7 @@ function resume(s) {
     titre: s.titre,
     orchestre: Boolean(s.orchestre),
     occupe: s.etat.occupe,
+    sessionId: s.etat.sessionId || null, // discussion enregistrée par Claude Code (compte du serveur)
     attente: s.attente.size > 0,
     creeLe: s.creeLe,
   };

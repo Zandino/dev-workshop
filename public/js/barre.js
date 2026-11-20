@@ -1,4 +1,4 @@
-// Barre latérale : projets, sessions en cours, sessions passées du projet choisi.
+// Barre latérale : projets, discussions du projet choisi (ouvertes puis enregistrées), discussions ouvertes ailleurs.
 import { h, dateCourte } from './dom.js';
 import { t } from './i18n.js';
 import { dire } from './canal.js';
@@ -6,15 +6,19 @@ import './projet.js'; // ses textes (corbeille) servent aussi ici
 import { ajouterTextes } from './i18n.js';
 
 ajouterTextes({
-  fr: { interrompues: 'Sessions interrompues', oublier_interrompue: 'Oublier cette session', confirmer_oublier: 'Oublier la session interrompue « {titre} » ? Elle ne pourra plus être reprise d’ici.' },
-  en: { interrompues: 'Interrupted sessions', oublier_interrompue: 'Forget this session', confirmer_oublier: 'Forget the interrupted session “{titre}”? It can no longer be resumed from here.' },
+  fr: { ranger_titre_court: 'Ranger dans un autre projet', voir_toutes: 'Voir les {n} discussions du projet', interrompues: 'Discussions interrompues', oublier_interrompue: 'Oublier cette discussion', confirmer_oublier: 'Oublier la discussion interrompue « {titre} » ? Elle ne pourra plus être reprise d’ici.' },
+  en: { ranger_titre_court: 'Move to another project', voir_toutes: 'See all {n} conversations of this project', interrompues: 'Interrupted conversations', oublier_interrompue: 'Forget this conversation', confirmer_oublier: 'Forget the interrupted conversation “{titre}”? It can no longer be resumed from here.' },
 });
 
 let actions = {};
 let vue = { general: null, projet: null, active: null, historique: [] };
 
+// Au-delà, la liste du projet renvoie vers « Toutes les discussions » (recherche, filtre).
+const MAX_LISTE = 30;
+
 export function initBarre(a) {
   actions = a;
+  document.getElementById('voir-toutes').addEventListener('click', () => actions.voirToutes(vue.projet));
   document.getElementById('form-projet').addEventListener('submit', (e) => {
     e.preventDefault();
     const champ = document.getElementById('nom-projet');
@@ -64,19 +68,18 @@ function dessiner() {
     }),
   );
 
-  const vivantes = g.vivantes;
-  document.getElementById('bloc-vivantes').hidden = !vivantes.length;
-  document.getElementById('liste-vivantes').replaceChildren(
-    ...vivantes.map((s) =>
-      avecPoubelle(element('ligne', {
-        actif: s.id === vue.active,
-        titre: s.titre || t('sans_titre'),
-        sous: s.projet,
-        pastille: s.attente ? 'attente' : s.occupe ? 'occupe' : 'libre',
-        onclick: () => actions.rejoindre(s),
-      }), { session: s.id, titre: s.titre }),
-    ),
-  );
+  // Discussions ouvertes : celles du projet choisi vont dans sa liste, les autres restent visibles ici.
+  const ouverte = (s, sous) => avecPoubelle(element('ligne', {
+    actif: s.id === vue.active,
+    titre: s.titre || t('sans_titre'),
+    sous,
+    pastille: s.attente ? 'attente' : s.occupe ? 'occupe' : 'libre',
+    onclick: () => actions.rejoindre(s),
+  }), { session: s.id, titre: s.titre });
+  const ici = vue.projet ? g.vivantes.filter((s) => s.projet === vue.projet) : [];
+  const ailleurs = g.vivantes.filter((s) => !ici.includes(s));
+  document.getElementById('bloc-vivantes').hidden = !ailleurs.length;
+  document.getElementById('liste-vivantes').replaceChildren(...ailleurs.map((s) => ouverte(s, s.projet)));
 
   // Sessions interrompues par un redémarrage du serveur : un clic les reprend avec leur historique.
   const coupees = g.interrompues || [];
@@ -87,14 +90,26 @@ function dessiner() {
       poubelle(t('oublier_interrompue'), () => confirm(t('confirmer_oublier', { titre: s.titre || t('sans_titre') })) && dire({ t: 'oublier_interrompue', id: s.id })))),
   );
 
+  // Discussions du projet : les ouvertes d'abord (pastille), puis les enregistrées, les plus récentes en haut.
   const bloc = document.getElementById('bloc-historique');
   bloc.hidden = !vue.projet;
   const liste = document.getElementById('liste-historique');
-  if (!vue.historique.length) return liste.replaceChildren(h('p.vide', {}, t('aucune_session')));
+  const dejaOuvertes = new Set(ici.map((s) => s.sessionId).filter(Boolean));
+  const enregistrees = vue.historique.filter((s) => !dejaOuvertes.has(s.id));
+  if (!ici.length && !enregistrees.length) return liste.replaceChildren(h('p.vide', {}, t('aucune_session')));
+  const ranger = (d) => h('button.ranger', { type: 'button', title: t('ranger_titre_court'), 'aria-label': t('ranger_titre_court'), onclick: (e) => { e.stopPropagation(); actions.ranger(d); } }, '⇄');
   liste.replaceChildren(
-    ...vue.historique.map((s) =>
-      avecPoubelle(element('ligne', { titre: s.titre || t('sans_titre'), sous: dateCourte(s.modifieLe), onclick: () => actions.reprendre(s) }),
-        { projet: vue.projet, id: s.id, titre: s.titre }),
-    ),
+    ...ici.map((s) => ouverte(s, null)),
+    ...enregistrees.slice(0, MAX_LISTE).map((s) => {
+      const d = { projet: vue.projet, id: s.id, titre: s.titre, modifieLe: s.modifieLe };
+      const ligne = avecPoubelle(element('ligne', { titre: s.titre || t('sans_titre'), sous: dateCourte(s.modifieLe), onclick: () => actions.reprendre(s) }), d);
+      ligne.classList.add('avec-ranger');
+      ligne.append(ranger(d));
+      return ligne;
+    }),
+    // replaceChildren écrirait « null » en toutes lettres : le bouton n'est ajouté que s'il sert.
+    ...(enregistrees.length > MAX_LISTE
+      ? [h('button.discret.voir-plus', { type: 'button', onclick: () => actions.voirToutes(vue.projet) }, t('voir_toutes', { n: enregistrees.length }))]
+      : []),
   );
 }

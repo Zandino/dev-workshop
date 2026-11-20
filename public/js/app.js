@@ -1,6 +1,6 @@
 // Point d'entrée : état de l'écran et aiguillage des événements du serveur.
 import { h, notifier } from './dom.js';
-import { t, traduirePage, langue, changerLangue, LANGUES, aTexte } from './i18n.js';
+import { t, traduirePage, langue, changerLangue, LANGUES, aTexte, ajouterTextes } from './i18n.js';
 import { jetonInitial, definirJeton, oublierJeton, connecter, ecouter, dire } from './canal.js';
 import { initFil, viderFil, afficher, noteFil, definirSignature } from './fil.js';
 import { afficherPermission, retirerPermission, viderPermissions } from './permissions.js';
@@ -11,10 +11,26 @@ import { definirCommandes } from './commandes.js';
 import { majComptes, surEtatCompte, surConnexion, ouvrirComptes, libelleCompte } from './comptes.js';
 import { initSalon, majComptesSalon, ouvrirSalon } from './salon.js';
 import { prendrePieces } from './pieces.js';
-import { ouvrirProjet, majCorbeille } from './projet.js';
+import { ouvrirProjet, majCorbeille, ouvrirRetenir } from './projet.js';
+import { initDiscussions, ouvrirDiscussions, ouvrirRanger, majProjetsDiscussions } from './discussions.js';
 import { nouvelAppel, surEvenementDirect } from './direct.js';
 import { pastilleLogo } from './logos.js';
 import { brancherAjouts } from './ajouts.js';
+
+ajouterTextes({
+  fr: {
+    retenir_bouton: 'Retenir pour le projet',
+    retenir_consigne: 'Pour la fiche du projet : résume en quelques puces courtes ce qu’il faut retenir de cette discussion pour les prochaines (décisions prises, informations durables, pièges à éviter). Ne répète pas ce que la fiche du projet contient déjà. Réponds uniquement par ces puces, sans introduction ni conclusion, et sans utiliser d’outil.',
+    retenir_occupe: 'L’IA travaille encore : attends la fin de sa réponse pour « Retenir pour le projet ».',
+    retenir_echec: 'L’IA n’a pas pu proposer de texte à retenir : réessaie, ou écris-le toi-même dans la fiche (réglages du projet).',
+  },
+  en: {
+    retenir_bouton: 'Remember for the project',
+    retenir_consigne: 'For the project notes: summarise in a few short bullet points what is worth keeping from this conversation for the next ones (decisions made, lasting facts, pitfalls to avoid). Do not repeat what the project notes already say. Reply with the bullet points only, no introduction or conclusion, and without using any tool.',
+    retenir_occupe: 'The AI is still working: wait for its answer to finish before “Remember for the project”.',
+    retenir_echec: 'The AI could not suggest anything to remember: try again, or write it yourself in the notes (project settings).',
+  },
+});
 
 const $ = (id) => document.getElementById(id);
 // `journal` : les événements de la session affichée, gardés pour l'export.
@@ -36,6 +52,7 @@ function options(select, liste, choisi) {
 function majEntete() {
   $('titre-session').textContent = ecran.projet || t('titre');
   $('fermer-session').hidden = !ecran.session;
+  $('retenir').hidden = !ecran.session || ecran.salon || Boolean(ecran.etat.ferme);
   // À plusieurs, compte et modèle sont fixés par participant.
   for (const id of ['compte', 'modele']) $(id).disabled = ecran.salon; // en session, changer de compte passe la main
   etatSaisie({ active: Boolean(ecran.projet) && !ecran.etat.ferme, occupe: Boolean(ecran.etat.occupe) });
@@ -46,7 +63,7 @@ function majEntete() {
 
 function quitterSession() {
   if (ecran.session) dire({ t: 'detacher', session: ecran.session });
-  Object.assign(ecran, { session: null, salon: false, etat: {}, journal: [], titre: '' });
+  Object.assign(ecran, { session: null, salon: false, etat: {}, journal: [], titre: '', retenir: null });
   definirSignature(null);
   nouvelAppel(null);
   viderPermissions();
@@ -66,6 +83,28 @@ function choisirProjet(projet) {
   majEntete();
 }
 
+/** Rouvre une discussion enregistrée (compte Claude du serveur) ; si elle est déjà ouverte, on la rejoint. */
+function reprendreDiscussion(d, projet = ecran.projet) {
+  const ouverte = ecran.general?.vivantes.find((v) => v.sessionId && v.sessionId === d.id);
+  if (ouverte) return ouverte.id !== ecran.session && dire({ t: 'attacher', session: ouverte.id });
+  if (projet !== ecran.projet) choisirProjet(projet);
+  else quitterSession();
+  ouvrir({ reprise: d.id, titre: d.titre, compte: 'defaut' });
+}
+
+/** « Retenir pour le projet » : la réponse de l'IA à la consigne, proposée à la relecture avant la fiche. */
+function finirRetenir(tour) {
+  const depuis = ecran.retenir;
+  ecran.retenir = null;
+  if (!tour.ok) return notifier(t('retenir_echec'), { echec: true });
+  const texte = ecran.journal.slice(depuis)
+    .filter((e) => e.t === 'assistant' && !e.sousAgent)
+    .flatMap((e) => (e.blocs || []).filter((b) => b.type === 'texte').map((b) => b.texte))
+    .join('\n\n').trim();
+  if (!texte) return notifier(t('retenir_echec'), { echec: true });
+  ouvrirRetenir({ projet: ecran.projet, titre: ecran.titre, texte });
+}
+
 function ouvrir(extra = {}) {
   const orchestre = $('compte').value === 'orchestre'; // Claude (compte du serveur) en cheffe d'orchestre
   dire({ t: 'ouvrir', compte: orchestre ? 'defaut' : $('compte').value, orchestre, projet: ecran.projet, modele: $('modele').value, mode: $('mode').value, effort: $('effort').value, ...extra });
@@ -82,6 +121,12 @@ function envoyer(texte) {
 
 function surRejouer(m) {
   if (ecran.session && ecran.session !== m.session) dire({ t: 'detacher', session: ecran.session });
+  // Rejoindre une discussion d'un autre projet : la liste de la barre suit ce projet.
+  if (m.resume.projet !== ecran.projet) {
+    memoire('devworkshop.projet', m.resume.projet);
+    majBarre({ historique: [] });
+    dire({ t: 'historique', projet: m.resume.projet });
+  }
   ecran.session = m.session;
   ecran.projet = m.resume.projet;
   ecran.salon = Boolean(m.resume.participants);
@@ -145,6 +190,7 @@ function surGeneral(m) {
   majComptes(m.comptes);
   majComptesSalon(m.comptes);
   majCorbeille(m.corbeille);
+  majProjetsDiscussions(m.projets);
   majBarre({ general: m });
   majEntete();
   if (!ecran.projet) {
@@ -182,6 +228,7 @@ ecouter((m) => {
   } else if (m.session && m.session === ecran.session) {
     ecran.journal.push(m);
     surEvenement(m);
+    if (m.t === 'tour' && ecran.retenir != null) finirRetenir(m);
   }
 });
 
@@ -203,6 +250,12 @@ function demarrer() {
   $('fermer-session').addEventListener('click', () => {
     dire({ t: 'fermer', session: ecran.session });
     choisirProjet(ecran.projet);
+  });
+  $('retenir').addEventListener('click', () => {
+    if (!ecran.session || ecran.salon || ecran.retenir != null) return;
+    if (ecran.etat.occupe) return notifier(t('retenir_occupe'));
+    ecran.retenir = ecran.journal.length;
+    dire({ t: 'envoyer', session: ecran.session, texte: t('retenir_consigne') });
   });
   $('jauge').addEventListener('click', () => $('conso').toggleAttribute('hidden')); $('ouvrir-comptes').addEventListener('click', ouvrirComptes);
   $('ouvrir-salon').addEventListener('click', () => ecran.projet && ouvrirSalon());
@@ -235,12 +288,12 @@ function demarrer() {
     ouvrirProjet,
     sessionCorbeille: (quoi) => dire({ t: 'session_corbeille', ...quoi }),
     rejoindre: (s) => s.id !== ecran.session && dire({ t: 'attacher', session: s.id }),
-    reprendre: (s) => {
-      quitterSession();
-      // Les sessions passées appartiennent au compte du serveur : la reprise se fait toujours sur lui.
-      ouvrir({ reprise: s.id, titre: s.titre, compte: 'defaut' });
-    },
+    // Les discussions enregistrées appartiennent au compte du serveur : la reprise se fait toujours sur lui.
+    reprendre: (s) => reprendreDiscussion(s),
+    ranger: ouvrirRanger,
+    voirToutes: ouvrirDiscussions,
   });
+  initDiscussions({ reprendre: (d) => reprendreDiscussion(d, d.projet) });
   razJauge();
   majEntete();
   if (jetonInitial()) connecter();
