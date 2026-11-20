@@ -8,7 +8,8 @@ import { decisionAuto } from '../regles-accord.mjs';
 
 /**
  * Fiche d'un outil : { nom, binaire(), args(modele), env(compte), preparer?(compte), modes: {nos modes -> les
- * siens}, methodeAuth?: id de connexion à demander avant d'ouvrir une session, optionModele?: '-m' }.
+ * siens}, methodeAuth?: id de connexion à demander avant d'ouvrir une session, optionModele?: '-m',
+ * sansConnexion?(compte): motif quand le compte n'a visiblement aucune connexion (l'outil n'est alors pas interrogé) }.
  */
 const initialiser = (l) => l.demander('initialize', { protocolVersion: 1, clientCapabilities: {} });
 
@@ -19,6 +20,8 @@ async function connecter(fiche, l) {
 
 /** Connecté ou non : une session ne s'ouvre que si le compte l'est. Le motif de l'outil est transmis. */
 export async function etatAcp(fiche, compte) {
+  // Sans aucune connexion, certains outils attendent indéfiniment au lieu de refuser : on répond tout de suite.
+  if (fiche.sansConnexion?.(compte)) return { connecte: false, adresse: null, organisation: null, abonnement: null, motif: null };
   fiche.preparer?.(compte);
   const l = lier(fiche.binaire(), fiche.args(null), { env: fiche.env(compte), cwd: compte.dossier });
   try {
@@ -109,6 +112,8 @@ export function ouvrirAcp(fiche, { compte, dossier, modele, mode, consigne, conn
   });
 
   const demarre = (async () => {
+    const absente = fiche.sansConnexion?.(compte);
+    if (absente) throw new Error(`Compte non connecté (${absente}) : connecte-le depuis le panneau « Comptes ».`);
     await connecter(fiche, l);
     let r;
     try {
