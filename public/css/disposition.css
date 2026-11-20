@@ -22,7 +22,9 @@
   box-shadow: 0 2px 8px var(--accent-doux);
 }
 .barre h2 { font-size: 11.5px; font-weight: 600; color: var(--texte-doux); padding: 0 10px 6px; text-transform: uppercase; letter-spacing: 0.06em; }
-.barre section.extensible { flex: 1; min-height: 120px; }
+/* Les blocs gardent leur hauteur : c'est la barre qui défile (sinon une longue liste passe sous le pied). */
+.barre > * { flex-shrink: 0; }
+.barre section.extensible { flex: 1 0 auto; }
 .barre footer { margin-top: auto; padding: 10px 6px 0; border-top: 1px solid var(--trait); }
 .barre footer label, .entete label { display: flex; align-items: center; gap: 7px; color: var(--texte-doux); font-size: 12.5px; }
 .barre footer select { flex: 1; }
