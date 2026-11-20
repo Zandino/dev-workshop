@@ -178,6 +178,10 @@ const TEXTES = {
   },
 };
 
+// Les textes du guide et de l'installation vivent à part (taille des fichiers).
+const GUIDE = require('./textes-guide');
+for (const l of Object.keys(TEXTES)) Object.assign(TEXTES[l], GUIDE[l]);
+
 let langue = 'en';
 
 function choisirLangue(locale) {

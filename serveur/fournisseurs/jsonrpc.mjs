@@ -1,6 +1,7 @@
 // Liaison JSON-RPC par lignes avec un outil officiel lancé en sous-processus (Codex, Gemini).
 // On ne parle qu'au binaire officiel : ses fichiers d'identifiants ne sont jamais lus ici.
 import { spawn } from 'node:child_process';
+import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -8,6 +9,22 @@ const RACINE = path.dirname(path.dirname(path.dirname(fileURLToPath(import.meta.
 
 /** Chemin d'un outil installé avec le projet (versions figées dans package.json). */
 export const binaire = (nom) => path.join(RACINE, 'node_modules', '.bin', nom);
+
+/**
+ * Claude Code : celui que la personne a installé (dans le PATH) s'il existe, sinon celui que le SDK embarque
+ * (paquet @anthropic-ai/claude-agent-sdk-<système>-<processeur>). Un serveur fraîchement installé n'a ainsi
+ * besoin de rien d'autre.
+ */
+export function binaireClaude() {
+  for (const dossier of (process.env.PATH || '').split(path.delimiter)) {
+    if (dossier && existsSync(path.join(dossier, 'claude'))) return 'claude';
+  }
+  const famille = path.join(RACINE, 'node_modules', '@anthropic-ai');
+  const prefixe = `claude-agent-sdk-${process.platform}-${process.arch}`;
+  const paquet = existsSync(famille) ? readdirSync(famille).filter((n) => n.startsWith(prefixe)).sort()[0] : null;
+  const embarque = paquet && path.join(famille, paquet, 'claude');
+  return embarque && existsSync(embarque) ? embarque : 'claude';
+}
 
 /**
  * Lance `commande` et échange des messages JSON, un par ligne.

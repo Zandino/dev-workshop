@@ -91,3 +91,21 @@ dialog input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0
 .deux { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .erreur { margin: 0; padding: 9px 12px; border-radius: 8px; background: var(--rouge-doux); color: var(--rouge); font-size: 13px; }
 .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+
+/* Guide de démarrage et installation sur le serveur. */
+.boutons { display: flex; gap: 8px; align-items: center; }
+.serveur .installation { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--rouge-doux); color: var(--texte); display: grid; gap: 10px; justify-items: start; }
+.serveur .installation p { margin: 0; font-size: 13px; }
+.serveur .etat.erreur > button.discret { margin-top: 8px; color: var(--texte); }
+.serveur .etat .avertissement { margin: 6px 0 0; color: var(--texte); font-size: 12.5px; }
+dialog#guide { width: min(640px, 100% - 32px); max-height: calc(100vh - 48px); }
+.guide { display: grid; gap: 18px; padding: 24px; }
+.guide section { display: grid; gap: 8px; justify-items: start; }
+.guide section > * { max-width: 100%; }
+.guide h3 { margin: 0; font-size: 14.5px; font-weight: 600; }
+.guide .deux { width: 100%; }
+.guide .commande { width: 100%; display: flex; gap: 8px; align-items: flex-start; }
+.guide .commande pre { flex: 1; margin: 0; padding: 9px 11px; border-radius: 8px; background: var(--surface-2); font-family: var(--mono); font-size: 12px; font-variant-ligatures: none; white-space: pre-wrap; word-break: break-all; }
+.guide .message { margin: 0; font-size: 13px; color: var(--vert); }
+.guide .message.erreur { padding: 8px 11px; color: var(--rouge); }
+.guide .actions { margin-top: 0; }

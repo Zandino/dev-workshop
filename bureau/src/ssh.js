@@ -7,7 +7,9 @@ const net = require('node:net');
 const path = require('node:path');
 
 // Fins de ligne Unix quoi qu'il arrive : un « \r » venu d'une copie Windows casserait le script sur le serveur.
-const SCRIPT = fs.readFileSync(path.join(__dirname, 'distant.sh'), 'utf8').replace(/\r\n/g, '\n');
+const lire = (nom) => fs.readFileSync(path.join(__dirname, nom), 'utf8').replace(/\r\n/g, '\n');
+const SCRIPT = lire('distant.sh');
+const SCRIPT_INSTALLATION = lire('installer.sh');
 
 /** Entre apostrophes pour sh : la seule séquence à protéger est l'apostrophe elle-même. */
 const cite = (v) => `'${String(v).replace(/'/g, `'\\''`)}'`;
@@ -39,12 +41,11 @@ class ErreurLiaison extends Error {
 }
 
 /**
- * Prépare le serveur : le démarre s'il ne répond pas, puis lit son jeton. `etape` reçoit l'avancement.
- * Le jeton n'est rendu qu'à l'appelant ; il n'est ni journalisé ni écrit.
+ * Lance un script sur le serveur (sh -s) et lit ses lignes « CLE:valeur ». `surLigne(cle, valeur)` les reçoit ;
+ * rend { code, erreurs } quand ssh se termine.
  */
-function preparer(serveur, etape) {
+function lancerScript(serveur, script, surLigne) {
   return new Promise((resoudre, rejeter) => {
-    const entete = `DW_DOSSIER=${cite(serveur.dossier)}\nDW_PORT=${cite(serveur.port)}\nDW_RACINE=${cite(serveur.racine || '')}\n`;
     let enfant;
     try {
       enfant = spawn('ssh', [...optionsCommunes(serveur), '-T', '--', serveur.hote, 'sh -s'], { windowsHide: true });
@@ -53,31 +54,74 @@ function preparer(serveur, etape) {
     }
     let sortie = '';
     let erreurs = '';
-    let jeton = null;
-    let motif = null;
-    const journal = [];
     enfant.stdout.on('data', (d) => {
       sortie += d.toString();
       let fin;
       while ((fin = sortie.indexOf('\n')) >= 0) {
         const ligne = sortie.slice(0, fin).replace(/\r$/, '');
         sortie = sortie.slice(fin + 1);
-        if (ligne.startsWith('JETON:')) jeton = ligne.slice(6).trim();
-        else if (ligne.startsWith('ETAT:')) etape(ligne.slice(5));
-        else if (ligne.startsWith('ERREUR:')) motif = ligne.slice(7);
-        else if (ligne.startsWith('JOURNAL:')) journal.push(ligne.slice(8));
+        const deux = ligne.indexOf(':');
+        if (deux > 0) surLigne(ligne.slice(0, deux), ligne.slice(deux + 1));
       }
     });
     enfant.stderr.on('data', (d) => { erreurs = (erreurs + d.toString()).slice(-4000); });
     enfant.on('error', (e) => rejeter(new ErreurLiaison(e.code === 'ENOENT' ? 'ssh_absent' : 'ssh_echec', e.message)));
-    enfant.on('close', (code) => {
-      if (jeton && /^[A-Za-z0-9_-]{32,}$/.test(jeton)) return resoudre(jeton);
-      if (motif) return rejeter(new ErreurLiaison('distant_' + motif, journal.join('\n')));
-      if (code === 255) return rejeter(new ErreurLiaison(motifSsh(erreurs), erreurs));
-      rejeter(new ErreurLiaison('distant_inattendu', erreurs || `code ${code}`));
-    });
-    enfant.stdin.end(entete + SCRIPT);
+    enfant.on('close', (code) => resoudre({ code, erreurs }));
+    enfant.stdin.end(script);
   });
+}
+
+const entete = (valeurs) => Object.entries(valeurs).map(([k, v]) => `${k}=${cite(v)}\n`).join('');
+
+/**
+ * Prépare le serveur : le démarre s'il ne répond pas, puis lit son jeton. `etape` reçoit l'avancement.
+ * Le jeton n'est rendu qu'à l'appelant ; il n'est ni journalisé ni écrit.
+ */
+async function preparer(serveur, etape) {
+  let jeton = null;
+  let motif = null;
+  const journal = [];
+  const valeurs = { DW_DOSSIER: serveur.dossier, DW_PORT: serveur.port, DW_RACINE: serveur.racine || '' };
+  const { code, erreurs } = await lancerScript(serveur, entete(valeurs) + SCRIPT, (cle, v) => {
+    if (cle === 'JETON') jeton = v.trim();
+    else if (cle === 'ETAT') etape(v);
+    else if (cle === 'ERREUR') motif = v;
+    else if (cle === 'JOURNAL') journal.push(v);
+  });
+  if (jeton && /^[A-Za-z0-9_-]{32,}$/.test(jeton)) return jeton;
+  if (motif) throw new ErreurLiaison('distant_' + motif, journal.join('\n'));
+  if (code === 255) throw new ErreurLiaison(motifSsh(erreurs), erreurs);
+  throw new ErreurLiaison('distant_inattendu', erreurs || `code ${code}`);
+}
+
+/**
+ * Installe Dev Workshop sur le serveur (version `ref`, démarrage automatique si `auto`). `etape` reçoit
+ * l'avancement (« inst_… »). Rend la liste des avertissements ; lance une ErreurLiaison « installation_… ».
+ */
+async function installer(serveur, { ref, auto }, etape) {
+  let motif = null;
+  let fini = false;
+  const journal = [];
+  const avertissements = [];
+  const valeurs = { DW_DOSSIER: serveur.dossier, DW_PORT: serveur.port, DW_RACINE: serveur.racine || '', DW_REF: ref, DW_AUTO: auto ? '1' : '0', DW_ARCHIVE: '' };
+  const { code, erreurs } = await lancerScript(serveur, entete(valeurs) + SCRIPT_INSTALLATION, (cle, v) => {
+    if (cle === 'ETAT') etape('inst_' + v);
+    else if (cle === 'AVERTISSEMENT') avertissements.push(v);
+    else if (cle === 'ERREUR') motif = v;
+    else if (cle === 'JOURNAL') journal.push(v);
+    else if (cle === 'FIN') fini = v === 'ok';
+  });
+  if (fini) return avertissements;
+  if (motif) throw new ErreurLiaison('installation_' + motif, journal.join('\n'));
+  if (code === 255) throw new ErreurLiaison(motifSsh(erreurs), erreurs);
+  throw new ErreurLiaison('installation_inattendu', erreurs || `code ${code}`);
+}
+
+/** Essai de connexion sans rien lancer : rend true, ou lance une ErreurLiaison au motif lisible. */
+async function tester(serveur) {
+  const { code, erreurs } = await lancerScript(serveur, 'echo PRET:oui\n', () => {});
+  if (code === 0) return true;
+  throw new ErreurLiaison(code === 255 ? motifSsh(erreurs) : 'ssh_echec', erreurs);
 }
 
 /** Le port local accepte-t-il une connexion ? */
@@ -135,4 +179,4 @@ function ouvrirTunnel(serveur, surFin) {
   });
 }
 
-module.exports = { preparer, ouvrirTunnel, portLibre, ErreurLiaison };
+module.exports = { preparer, installer, tester, ouvrirTunnel, portLibre, ErreurLiaison };

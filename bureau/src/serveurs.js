@@ -52,6 +52,15 @@ function valider(saisie) {
   return { nom, hote, dossier, racine, portSsh, port };
 }
 
+/** Adresse SSH et port saisis dans le guide, vérifiés comme pour un serveur enregistré. */
+function validerAcces(saisie) {
+  const hote = String(saisie?.hote || '').trim();
+  const portSsh = saisie?.portSsh ? Number(saisie.portSsh) : null;
+  if (!HOTE.test(hote) || hote.length > 120) throw new Error('erreur_hote');
+  if (portSsh !== null && !(Number.isInteger(portSsh) && portSsh > 0 && portSsh < 65536)) throw new Error('erreur_port');
+  return { hote, portSsh };
+}
+
 function lister() {
   return lire();
 }
@@ -100,4 +109,4 @@ function noterConnexion(id) {
   }
 }
 
-module.exports = { lister, trouver, enregistrer, supprimer, changerPortLocal, noterConnexion };
+module.exports = { lister, trouver, validerAcces, enregistrer, supprimer, changerPortLocal, noterConnexion };

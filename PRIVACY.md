@@ -15,6 +15,10 @@ sent to the Dev Workshop authors.
   <https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement>.
   **To turn it off:** untick « Check for updates » at the bottom of the app's home window. You can still check by hand
   from Help › Check for updates. On macOS the app never checks on its own.
+- **Installing on a server.** Only when you click « Install on this server »: your server downloads Node.js from
+  `nodejs.org` (if it has none; checksum verified) and Dev Workshop from GitHub (`codeload.github.com`).
+- **SSH key.** The getting-started guide can create a key in your `~/.ssh` folder and open a terminal that copies the
+  public part to your server. The server password is typed in that terminal only; the app never sees it.
 - **Links** from the workshop open in your usual web browser.
 
 ## Server (`serveur/`)
@@ -41,6 +45,12 @@ n'est envoyé à ses auteurs.
   s'applique (lien ci-dessus).
   **Pour la couper :** décocher « Vérifier les mises à jour » en bas de la fenêtre d'accueil. La vérification reste
   possible à la main (Aide › Rechercher des mises à jour). Sous macOS, le logiciel ne vérifie jamais de lui-même.
+- **Installation sur un serveur.** Seulement quand tu cliques « Installer sur ce serveur » : ton serveur télécharge
+  Node.js depuis `nodejs.org` (s'il n'en a pas ; empreinte vérifiée) et Dev Workshop depuis GitHub
+  (`codeload.github.com`).
+- **Clé SSH.** Le guide de démarrage peut créer une clé dans ton dossier `~/.ssh` et ouvrir un terminal qui en copie
+  la partie publique sur ton serveur. Le mot de passe du serveur se tape dans ce terminal seulement ; le logiciel ne
+  le voit jamais.
 - **Les liens** de l'atelier s'ouvrent dans ton navigateur habituel.
 
 ### Serveur (`serveur/`)

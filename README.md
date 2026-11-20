@@ -55,6 +55,13 @@ hosts; it never sees a key or password and never skips host-key checking), start
 not answering (detached, so it keeps running), reads the access token over that same SSH link and keeps it in memory
 only, opens an SSH tunnel and shows the workshop in its own window. The server page gets no access to your machine.
 
+A **Getting started** guide finds or creates your SSH key (ed25519, no passphrase, in `~/.ssh`), opens a terminal that
+adds it to the server (you type the server password there, never in the app; macOS and Linux get an `ssh-copy-id`
+command), then tests the connection. If Dev Workshop is missing on the server, **Install on this server** sets it up in
+your account without administrator rights (`bureau/src/installer.sh`): Node.js 22 from nodejs.org if missing (pinned,
+SHA-256 checked), the matching release from GitHub, `npm ci`, and optionally an `@reboot` crontab line. It never
+overwrites anything and refuses a non-empty folder that is not Dev Workshop. Linux servers only.
+
 ```bash
 cd bureau && npm install && npx install-electron
 npm start        # run from source

@@ -7,6 +7,10 @@ let serveurs = [];
 /** Avancement par serveur : { etape } ou { erreur, detail }. */
 const etats = new Map();
 let enCours = null;
+let version = '';
+/** Erreurs qu'un clic sur « Installer » règle, et erreurs SSH que le guide explique. */
+const INSTALLABLES = ['distant_dossier_absent', 'distant_dependances_absentes', 'distant_node_absent'];
+const GUIDABLES = ['ssh_cle_hote', 'ssh_refuse', 'ssh_hote_inconnu', 'ssh_absent'];
 
 function t(cle, valeurs = {}) {
   return String(textes[cle] ?? cle).replace(/\{(\w+)\}/g, (_, k) => valeurs[k] ?? '');
@@ -34,13 +38,27 @@ function dateLisible(iso) {
   return new Intl.DateTimeFormat(langue, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
 }
 
+/** Proposition d'installer Dev Workshop sur ce serveur (il n'y est pas, ou pas entièrement). */
+function panneauInstallation(s) {
+  const auto = h('input', { type: 'checkbox', checked: true });
+  return h('div.installation', {},
+    h('p', {}, t('installer_explication', { version })),
+    h('label.case', {}, auto, h('span', {}, t('installer_auto'))),
+    h('button.principal', { type: 'button', disabled: Boolean(enCours), onclick: () => installerSur(s, auto.checked) }, t('installer_bouton')));
+}
+
 function blocEtat(s) {
   const e = etats.get(s.id);
   if (!e) return null;
   if (e.erreur) {
     return h('div.etat.erreur', {},
       h('div', {}, t(e.erreur, { hote: s.hote })),
+      INSTALLABLES.includes(e.erreur) ? panneauInstallation(s) : null,
+      GUIDABLES.includes(e.erreur) ? h('button.discret', { type: 'button', onclick: () => ouvrirGuide(s) }, t('guide_besoin')) : null,
       e.detail ? h('details', {}, h('summary', {}, t('detail')), h('pre', {}, e.detail)) : null);
+  }
+  if (e.installe) {
+    return h('div.etat', {}, h('div', {}, t('installer_fini')), e.avertissements.map((a) => h('p.avertissement', {}, t('avert_' + a))));
   }
   return h('div.etat', {}, e.etape === 'ouvert' ? null : h('span.rond'), t('etape_' + e.etape));
 }
@@ -82,6 +100,18 @@ async function connecter(s) {
   await charger();
 }
 
+async function installerSur(s, auto) {
+  enCours = s.id;
+  etats.set(s.id, { etape: 'inst_verification' });
+  afficher();
+  const r = await window.bureau.installer(s.id, auto);
+  enCours = null;
+  if (!r.ok) etats.set(s.id, { erreur: r.cle, detail: r.detail });
+  else if (r.valeur.length) etats.set(s.id, { installe: true, avertissements: r.valeur });
+  else return connecter(s);
+  afficher();
+}
+
 async function retirer(s) {
   if (!confirm(t('confirmer_suppression', { nom: s.nom }))) return;
   const r = await window.bureau.supprimer(s.id);
@@ -92,14 +122,15 @@ async function retirer(s) {
 
 let edite = null;
 
-function ouvrirFormulaire(s = null) {
+function ouvrirFormulaire(s = null, prerempli = null) {
   edite = s;
   const form = $('form-serveur');
   form.reset();
   $('form-erreur').hidden = true;
   $('form-titre').textContent = s ? t('modifier') : t('ajouter');
-  if (s) {
-    for (const champ of ['nom', 'hote', 'portSsh', 'port', 'dossier', 'racine']) form.elements[champ].value = s[champ] ?? '';
+  const valeurs = s || prerempli;
+  if (valeurs) {
+    for (const champ of ['nom', 'hote', 'portSsh', 'port', 'dossier', 'racine']) form.elements[champ].value = valeurs[champ] ?? '';
   }
   $('formulaire').showModal();
   form.elements.nom.focus();
@@ -123,13 +154,14 @@ async function envoyerFormulaire(e) {
 
 async function demarrer() {
   const r = await window.bureau.textes();
-  if (r.ok) ({ langue, textes } = r.valeur);
+  if (r.ok) ({ langue, textes, version } = r.valeur);
   traduire();
   window.bureau.surAvancement(({ id, etape }) => {
     etats.set(id, { etape });
     afficher();
   });
   $('ajouter').addEventListener('click', () => ouvrirFormulaire());
+  brancherGuide();
   $('form-annuler').addEventListener('click', () => $('formulaire').close());
   $('form-serveur').addEventListener('submit', envoyerFormulaire);
   $('code-source').addEventListener('click', (e) => {
