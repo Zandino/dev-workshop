@@ -53,14 +53,21 @@ async function attendre(condition, ms = 15000) {
 const cliquer = (el) => el.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
 const titres = (sel) => $$(sel).map((e) => e.textContent);
 
-// Liste « Discussions » du projet.
-const alpha = await attendre(() => $$('#liste-projets .ligne').find((b) => b.textContent === 'alpha'));
+// Arborescence : un clic sur un projet montre ses discussions juste en dessous, un second clic les replie.
+const dossier = (nom) => $$('#liste-projets .ligne.dossier').find((b) => b.querySelector('.titre')?.textContent === nom);
+const alpha = await attendre(() => dossier('alpha'));
 noter('projets listés', alpha);
 cliquer(alpha);
-noter('bloc « Discussions »', await attendre(() => !$('#bloc-historique').hidden && $('#bloc-historique h2 span').textContent === 'Discussions'));
-const lignes = await attendre(() => ($$('#liste-historique .ligne .titre').length === 2 ? $$('#liste-historique .ligne .titre') : null));
-noter('discussions du projet, avec leur titre', lignes && titres('#liste-historique .ligne .titre').includes('proxmox essai'), titres('#liste-historique .ligne .titre').join(' | '));
-noter('bouton « ranger » sur chaque discussion', $$('#liste-historique .ranger').length === 2);
+const sousTitres = () => $$('.sous-liste .avec-poubelle .ligne .titre').map((e) => e.textContent);
+noter('discussions du projet, avec leur titre', await attendre(() => sousTitres().length === 2) && sousTitres().includes('proxmox essai'), sousTitres().join(' | '));
+const blocAlpha = dossier('alpha').closest('.projet-actif');
+noter('juste sous leur projet, avant le projet suivant', blocAlpha?.nextElementSibling?.classList.contains('sous-liste') && blocAlpha.nextElementSibling.nextElementSibling === dossier('beta'));
+noter('« Nouvelle discussion » en tête', $('.sous-liste .nouvelle-discussion'));
+noter('bouton « ranger » sur chaque discussion', $$('.sous-liste .ranger').length === 2);
+cliquer(dossier('alpha'));
+noter('second clic : repliées', await attendre(() => !$('.sous-liste')) && dossier('alpha').getAttribute('aria-expanded') === 'false');
+cliquer(dossier('alpha'));
+noter('troisième clic : dépliées', await attendre(() => sousTitres().length === 2));
 noter('« Retenir » caché sans discussion ouverte', $('#retenir').hidden);
 noter('aucun « null » affiché dans la barre', !/\bnull\b/.test($('.barre').textContent));
 
@@ -81,12 +88,13 @@ champ.value = 'gamma';
 cliquer($('#panneau-discussions form button[type=submit]'));
 noter('notification « rangée »', await attendre(() => $$('.notification').find((n) => n.textContent.includes('« gamma »'))));
 noter('retour à la liste, discussion dans « gamma »', await attendre(() => $$('.ouvrir-discussion .sous').some((s) => s.textContent.startsWith('gamma'))));
-noter('liste du projet à jour', await attendre(() => $$('#liste-historique .ligne').length === 1));
-noter('nouveau projet dans la barre', await attendre(() => $$('#liste-projets .ligne').some((b) => b.textContent === 'gamma')));
+noter('liste du projet à jour', await attendre(() => sousTitres().length === 1));
+noter('nouveau projet dans la barre', await attendre(() => dossier('gamma')));
 
 // Rouvrir depuis « Toutes les discussions » : on passe dans son nouveau projet.
 cliquer($$('.ouvrir-discussion').find((b) => b.textContent.includes('proxmox essai')));
 noter('rouverte dans « gamma »', await attendre(() => $('#titre-session').textContent === 'gamma' && $('.message.utilisateur')), $('#titre-session').textContent);
+noter('« gamma » déplié dans la barre, la discussion en dessous', await attendre(() => dossier('gamma')?.getAttribute('aria-expanded') === 'true' && sousTitres().includes('proxmox essai')), sousTitres().join(' | '));
 noter('« Retenir » proposé dans la discussion', await attendre(() => !$('#retenir').hidden));
 noter('panneau refermé', $('#panneau-discussions').hidden);
 

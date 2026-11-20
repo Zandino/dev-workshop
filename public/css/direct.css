@@ -146,3 +146,13 @@ body.avec-apercu .atelier { grid-template-columns: 260px minmax(0, 1fr) minmax(3
 .choix-projets { display: flex; flex-wrap: wrap; gap: 6px; }
 textarea.retenu { width: 100%; min-height: 200px; resize: vertical; }
 .retour-liste { justify-self: start; }
+
+/* Arborescence : un projet est un dossier, ses discussions s'affichent en retrait juste en dessous. */
+.ligne.dossier { grid-template-columns: 14px 1fr; }
+.ligne.dossier .chevron { grid-column: 1; font-size: 13px; color: var(--texte-doux); text-align: center; }
+.ligne.dossier.actif .chevron { color: var(--accent); }
+.sous-liste { display: grid; gap: 1px; margin: 2px 0 6px 15px; padding-left: 7px; border-left: 1px solid var(--trait-fort); }
+.sous-liste .ligne { min-height: 32px; font-size: 13px; }
+.sous-liste .ligne .sous { font-size: 11.5px; }
+.sous-liste .nouvelle-discussion { color: var(--accent); font-weight: 600; }
+.sous-liste .vide { padding: 4px 10px; }

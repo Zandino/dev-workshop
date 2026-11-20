@@ -292,6 +292,7 @@ function demarrer() {
     reprendre: (s) => reprendreDiscussion(s),
     ranger: ouvrirRanger,
     voirToutes: ouvrirDiscussions,
+    nouvelle: () => ecran.projet && choisirProjet(ecran.projet),
   });
   initDiscussions({ reprendre: (d) => reprendreDiscussion(d, d.projet) });
   razJauge();
