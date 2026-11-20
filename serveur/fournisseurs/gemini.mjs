@@ -1,6 +1,6 @@
 // Fournisseur « Gemini » (Google) : pilote `gemini --acp` par le moteur ACP commun (acp.mjs).
 // Noms des méthodes et des mises à jour relevés dans l'outil lui-même (gemini-cli 0.69.0).
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { binaire } from './jsonrpc.mjs';
 import { reglesCommunes } from './regles.mjs';
@@ -47,6 +47,14 @@ const FICHE = {
   preparer(compte) {
     poserRegles(compte);
     poserConnexionGoogle(compte);
+  },
+  // Sans clé d'API ni connexion Google enregistrée, Gemini attend une connexion qui ne vient pas (au lieu de
+  // refuser) : on ne le lance pas. Ses identifiants Google sont rangés dans <dossier du compte>/.gemini.
+  sansConnexion(compte) {
+    if (cleDe(compte.id)) return null;
+    const dossier = path.join(compte.dossier, '.gemini');
+    const enregistree = ['oauth_creds.json', 'gemini-credentials.json'].some((f) => existsSync(path.join(dossier, f)));
+    return enregistree ? null : 'aucune clé ni connexion Google';
   },
   // Gemini n'a pas de classifieur : « automatique » = autoEdit.
   modes: { default: 'default', auto: 'autoEdit', acceptEdits: 'autoEdit', plan: 'plan', bypassPermissions: 'yolo' },
