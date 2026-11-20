@@ -68,6 +68,24 @@ cliquer(dossier('alpha'));
 noter('second clic : repliées', await attendre(() => !$('.sous-liste')) && dossier('alpha').getAttribute('aria-expanded') === 'false');
 cliquer(dossier('alpha'));
 noter('troisième clic : dépliées', await attendre(() => sousTitres().length === 2));
+
+// Glisser-déposer : « intervizio essai » lâchée sur le projet « beta ».
+const transfert = { donnees: {}, types: [], setData(type, v) { this.donnees[type] = v; this.types.push(type); }, getData(type) { return this.donnees[type]; } };
+const evenement = (nom, cible) => {
+  const e = new window.Event(nom, { bubbles: true, cancelable: true });
+  Object.defineProperty(e, 'dataTransfer', { value: transfert });
+  cible.dispatchEvent(e);
+  return e;
+};
+const aGlisser = $$('.sous-liste .avec-poubelle').find((d) => d.querySelector('.titre')?.textContent === 'intervizio essai');
+noter('discussion glissable, ⇄ visible', aGlisser?.draggable === true && window.getComputedStyle(aGlisser.querySelector('.ranger')).opacity !== '0');
+evenement('dragstart', aGlisser);
+noter('son propre projet refuse le dépôt', !evenement('dragover', dossier('alpha')).defaultPrevented);
+noter('un autre projet l’accepte', evenement('dragover', dossier('beta')).defaultPrevented && dossier('beta').classList.contains('cible'));
+evenement('drop', dossier('beta'));
+evenement('dragend', aGlisser);
+noter('lâchée sur « beta » : rangée', await attendre(() => $$('.notification').find((n) => n.textContent.includes('rangée dans « beta »'))));
+noter('elle quitte la liste d’alpha', await attendre(() => sousTitres().length === 1 && sousTitres()[0] === 'proxmox essai'), sousTitres().join(' | '));
 noter('« Retenir » caché sans discussion ouverte', $('#retenir').hidden);
 noter('aucun « null » affiché dans la barre', !/\bnull\b/.test($('.barre').textContent));
 
@@ -88,7 +106,7 @@ champ.value = 'gamma';
 cliquer($('#panneau-discussions form button[type=submit]'));
 noter('notification « rangée »', await attendre(() => $$('.notification').find((n) => n.textContent.includes('« gamma »'))));
 noter('retour à la liste, discussion dans « gamma »', await attendre(() => $$('.ouvrir-discussion .sous').some((s) => s.textContent.startsWith('gamma'))));
-noter('liste du projet à jour', await attendre(() => sousTitres().length === 1));
+noter('liste du projet à jour', await attendre(() => sousTitres().length === 0));
 noter('nouveau projet dans la barre', await attendre(() => dossier('gamma')));
 
 // Rouvrir depuis « Toutes les discussions » : on passe dans son nouveau projet.

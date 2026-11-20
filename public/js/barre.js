@@ -1,14 +1,14 @@
 // Barre latérale en arborescence : les projets, et sous le projet ouvert, ses discussions (ouvertes puis
 // enregistrées). Les discussions ouvertes dans d'autres projets restent visibles plus bas.
-import { h, dateCourte } from './dom.js';
+import { h, dateCourte, notifier } from './dom.js';
 import { t } from './i18n.js';
 import { dire } from './canal.js';
 import './projet.js'; // ses textes (corbeille) servent aussi ici
 import { ajouterTextes } from './i18n.js';
 
 ajouterTextes({
-  fr: { ranger_titre_court: 'Ranger dans un autre projet', voir_toutes: 'Voir les {n} discussions du projet', interrompues: 'Discussions interrompues', oublier_interrompue: 'Oublier cette discussion', confirmer_oublier: 'Oublier la discussion interrompue « {titre} » ? Elle ne pourra plus être reprise d’ici.' },
-  en: { ranger_titre_court: 'Move to another project', voir_toutes: 'See all {n} conversations of this project', interrompues: 'Interrupted conversations', oublier_interrompue: 'Forget this conversation', confirmer_oublier: 'Forget the interrupted conversation “{titre}”? It can no longer be resumed from here.' },
+  fr: { glisser_aide: 'Glisse-la sur un autre projet pour l’y ranger', rangement_vers: 'Rangement dans « {projet} »…', ranger_titre_court: 'Ranger dans un autre projet', voir_toutes: 'Voir les {n} discussions du projet', interrompues: 'Discussions interrompues', oublier_interrompue: 'Oublier cette discussion', confirmer_oublier: 'Oublier la discussion interrompue « {titre} » ? Elle ne pourra plus être reprise d’ici.' },
+  en: { glisser_aide: 'Drag it onto another project to move it there', rangement_vers: 'Moving to “{projet}”…', ranger_titre_court: 'Move to another project', voir_toutes: 'See all {n} conversations of this project', interrompues: 'Interrupted conversations', oublier_interrompue: 'Forget this conversation', confirmer_oublier: 'Forget the interrupted conversation “{titre}”? It can no longer be resumed from here.' },
 });
 
 let actions = {};
@@ -17,6 +17,47 @@ let replie = false; // un second clic sur le projet ouvert replie ses discussion
 
 // Au-delà, la liste du projet renvoie vers « Toutes les discussions » (recherche, filtre).
 const MAX_LISTE = 30;
+
+// Glisser-déposer : une discussion enregistrée se lâche sur un autre projet de l'arborescence pour l'y ranger.
+const TYPE_GLISSE = 'application/x-devworkshop-discussion';
+let glissee = null; // la discussion en cours de glisser (dataTransfer n'est pas lisible pendant le survol)
+
+function rendreGlissable(ligne, d) {
+  ligne.draggable = true;
+  ligne.title = t('glisser_aide');
+  ligne.addEventListener('dragstart', (e) => {
+    glissee = d;
+    e.dataTransfer.setData(TYPE_GLISSE, d.id);
+    e.dataTransfer.effectAllowed = 'move';
+    ligne.classList.add('en-glisse');
+  });
+  ligne.addEventListener('dragend', () => {
+    glissee = null;
+    ligne.classList.remove('en-glisse');
+    for (const c of document.querySelectorAll('.ligne.dossier.cible')) c.classList.remove('cible');
+  });
+}
+
+/** Un projet de l'arborescence accepte une discussion venue d'un autre projet. */
+function rendreCible(ligne, projet) {
+  const accepte = (e) => glissee && glissee.projet !== projet && [...(e.dataTransfer?.types || [])].includes(TYPE_GLISSE);
+  ligne.addEventListener('dragover', (e) => {
+    if (!accepte(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    ligne.classList.add('cible');
+  });
+  ligne.addEventListener('dragleave', () => ligne.classList.remove('cible'));
+  ligne.addEventListener('drop', (e) => {
+    ligne.classList.remove('cible');
+    if (!accepte(e)) return;
+    e.preventDefault();
+    const d = glissee;
+    glissee = null;
+    notifier(t('rangement_vers', { projet }));
+    dire({ t: 'deplacer_discussion', projet: d.projet, id: d.id, vers: projet });
+  });
+}
 
 export function initBarre(a) {
   actions = a;
@@ -87,6 +128,7 @@ function dessiner() {
           }
         },
       }, h('span.chevron', { 'aria-hidden': 'true' }, deplie ? '▾' : '▸'), h('span.titre', {}, p));
+      rendreCible(ligne, p);
       if (!actif) return [ligne];
       // Le projet ouvert garde ses réglages à portée : fiche, règles, export, et sa corbeille.
       const tete = h('div.projet-actif', {}, ligne,
@@ -122,6 +164,7 @@ function sousListe(projet, ici, ouverte) {
       const ligne = avecPoubelle(element('ligne', { titre: s.titre || t('sans_titre'), sous: dateCourte(s.modifieLe), onclick: () => actions.reprendre(s) }), d);
       ligne.classList.add('avec-ranger');
       ligne.append(ranger(d));
+      rendreGlissable(ligne, d);
       return ligne;
     }),
   ];
