@@ -67,7 +67,7 @@ noter('aucun « null » affiché dans la barre', !/\bnull\b/.test($('.barre').te
 // « Toutes les discussions » : recherche.
 cliquer($('#ouvrir-discussions'));
 noter('panneau ouvert', await attendre(() => !$('#panneau-discussions').hidden));
-noter('toutes les discussions chargées', await attendre(() => $$('.ouvrir-discussion').length === 3), $('#compte-discussions')?.textContent);
+noter('toutes les discussions chargées', await attendre(() => $$('.ouvrir-discussion').length === 4), $('#compte-discussions')?.textContent);
 const recherche = $('#panneau-discussions input[type=search]');
 recherche.value = 'PROXMOX';
 recherche.dispatchEvent(new window.Event('input', { bubbles: true }));

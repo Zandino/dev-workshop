@@ -7,14 +7,10 @@ import { createReadStream, createWriteStream, existsSync, cpSync, renameSync, rm
 import { once } from 'node:events';
 import readline from 'node:readline';
 import path from 'node:path';
-import { homedir } from 'node:os';
-import { getSessionInfo, deleteSession } from '@anthropic-ai/claude-agent-sdk';
+import { getSessionInfo, getSessionMessages, deleteSession } from '@anthropic-ai/claude-agent-sdk';
+import { racineClaude, encoder } from './sessions-claude.mjs';
 
 const ID = /^[0-9a-f-]{36}$/;
-const racineClaude = () => path.join(process.env.CLAUDE_CONFIG_DIR || path.join(homedir(), '.claude'), 'projects');
-// Nom du dossier où Claude Code range les sessions d'un dossier de travail : tout caractère autre qu'une lettre
-// ou un chiffre devient « - ». Au-delà de 200 caractères, Claude Code raccourcit le nom : on refuse alors.
-const encoder = (dossier) => dossier.replace(/[^a-zA-Z0-9]/g, '-');
 
 /** Recopie le fichier ligne à ligne (il peut peser des centaines de Mo) en changeant le dossier de travail. */
 async function recopier(de, vers, ancien, nouveau) {
@@ -96,8 +92,11 @@ async function deplacer(id, de, vers) {
     annuler();
     throw new Error('deplacement_impossible');
   }
-  // Claude Code doit la retrouver dans le nouveau projet avant qu'on retire l'original.
-  const trouvee = await getSessionInfo(id, { dir: vers }).catch(() => null);
+  // Claude Code doit la retrouver dans le nouveau projet avant qu'on retire l'original. Une discussion reprise
+  // après un résumé automatique n'a pas de fiche pour le SDK (voir sessions-claude.mjs) : on vérifie alors qu'il
+  // en lit bien les messages.
+  const trouvee = await getSessionInfo(id, { dir: vers }).catch(() => null)
+    || (await getSessionMessages(id, { dir: vers, limit: 1 }).catch(() => [])).length > 0;
   if (!trouvee) {
     annuler();
     throw new Error('deplacement_impossible');

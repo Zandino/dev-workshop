@@ -50,9 +50,34 @@ function fabriquer(projet, titre, lignesEnPlus = 0) {
   return id;
 }
 
+/**
+ * Discussion reprise après un résumé automatique, disposée comme les vraies : elle s'ouvre sur le résumé, puis des
+ * messages sans texte simple ; sa ligne de titre est au milieu. Le SDK, qui ne lit que le début et la fin d'un
+ * fichier, ne lui trouve ni titre ni premier message, et ne la liste pas.
+ */
+function fabriquerReprise(projet, titre) {
+  const dossier = path.join(realpathSync(RACINE), projet);
+  const id = randomUUID();
+  const base = { sessionId: id, cwd: dossier, isSidechain: false, userType: 'external', version: '2.1.0', gitBranch: '' };
+  const reponse = (i, texte) => ({ ...base, type: 'assistant', uuid: `c${i + 1}`, parentUuid: `c${i}`, timestamp: '2026-10-02T09:00:05.000Z', message: { id: `n${i}`, type: 'message', role: 'assistant', model: 'essai', content: [{ type: 'text', text: texte }], stop_reason: 'end_turn', usage: { input_tokens: 1, output_tokens: 1 } } });
+  const remplissage = (de, n) => Array.from({ length: n }, (_, k) => reponse(de + k, 'y'.repeat(2000)));
+  const lignes = [
+    { ...base, type: 'user', uuid: 'c1', parentUuid: null, isCompactSummary: true, timestamp: '2026-10-02T09:00:00.000Z', message: { role: 'user', content: 'This session is being continued from a previous conversation. Summary: essai.' } },
+    ...remplissage(1, 1000),
+    { type: 'summary', summary: titre, leafUuid: 'c2' },
+    ...remplissage(1001, 1000),
+  ];
+  const ici = path.join(CLAUDE, encoder(dossier));
+  mkdirSync(ici, { recursive: true });
+  writeFileSync(path.join(ici, `${id}.jsonl`), lignes.map((l) => JSON.stringify(l)).join('\n') + '\n');
+  const date = new Date('2026-10-02T09:01:00Z');
+  utimesSync(path.join(ici, `${id}.jsonl`), date, date);
+  return id;
+}
+
 if (process.argv[2] === 'prepare') {
   for (const p of ['alpha', 'beta']) mkdirSync(path.join(RACINE, p), { recursive: true });
-  const ids = { grande: fabriquer('alpha', 'proxmox essai', 3000), petite: fabriquer('alpha', 'intervizio essai'), autre: fabriquer('beta', 'beta essai') };
+  const ids = { grande: fabriquer('alpha', 'proxmox essai', 3000), petite: fabriquer('alpha', 'intervizio essai'), autre: fabriquer('beta', 'beta essai'), reprise: fabriquerReprise('beta', 'reprise essai') };
   writeFileSync(ETAT, JSON.stringify(ids));
   console.log('Discussions fabriquées :', Object.keys(ids).join(', '));
   process.exit(0);
@@ -105,7 +130,14 @@ noter('liste du projet : titres et dates', alpha.length === 2 && alpha.some((s) 
 recus.splice(0);
 dire({ t: 'toutes_discussions' });
 const toutes = (await attendre((m) => m.t === 'discussions'))?.liste || [];
-noter('toutes les discussions, avec leur projet', toutes.length === 3 && toutes.find((d) => d.id === ids.autre)?.projet === 'beta');
+noter('toutes les discussions, avec leur projet', toutes.length === 4 && toutes.find((d) => d.id === ids.autre)?.projet === 'beta');
+
+// Une discussion reprise après un résumé automatique : le SDK ne la liste pas, Dev Workshop la retrouve.
+const { getSessionInfo } = await import('@anthropic-ai/claude-agent-sdk');
+const inconnueDuSdk = !(await getSessionInfo(ids.reprise, { dir: path.join(realpathSync(RACINE), 'beta') }));
+noter('discussion reprise : listée avec son titre (le SDK, lui, ne la voit pas)', inconnueDuSdk && toutes.find((d) => d.id === ids.reprise)?.titre === 'reprise essai');
+noter('discussion reprise : rangée comme les autres', await refus({ t: 'deplacer_discussion', projet: 'beta', id: ids.reprise, vers: 'alpha' }) === 'accepte'
+  && (await historique('alpha')).some((s) => s.id === ids.reprise && s.titre === 'reprise essai'));
 
 // Ranger dans un nouveau projet (créé au passage).
 const racine = realpathSync(RACINE);

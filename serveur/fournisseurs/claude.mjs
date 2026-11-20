@@ -4,6 +4,8 @@ import { optionsDeCompte } from './claude-compte.mjs';
 import { versClaude } from '../connecteurs.mjs';
 import { decisionAuto, interditsClaude, MOTIF_REFUS } from '../regles-accord.mjs';
 import { query, listSessions, getSessionMessages } from '@anthropic-ai/claude-agent-sdk';
+import { discussionsNonListees } from '../sessions-claude.mjs';
+import { listerSessionsCorbeille } from '../corbeille-sessions.mjs';
 import {
   assistantVersEvenement,
   utilisateurVersEvenements,
@@ -222,11 +224,15 @@ export function ouvrir({ dossier, modele, mode, reprise, compte, consigne, conne
 export async function historique(dossier) {
   const liste = await listSessions({ dir: dossier, limit: 1000, includeWorktrees: false });
   // Une session archivée est à la corbeille : elle n'apparaît plus parmi les discussions.
-  return liste.filter((s) => !s.archived).map((s) => ({
+  const vues = liste.filter((s) => !s.archived).map((s) => ({
     id: s.sessionId,
     titre: (s.customTitle || s.summary || s.firstPrompt || '').slice(0, 120),
     modifieLe: s.lastModified,
   }));
+  // Celles que le SDK ne liste pas (reprises après un résumé automatique), trouvées dans son dossier.
+  const ecartees = new Set([...liste.map((s) => s.sessionId), ...listerSessionsCorbeille().map((s) => s.id)]);
+  const oubliees = await discussionsNonListees(dossier, ecartees).catch(() => []);
+  return [...vues, ...oubliees].sort((a, b) => b.modifieLe - a.modifieLe);
 }
 
 export async function lireHistorique(dossier, sessionId) {
