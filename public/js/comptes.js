@@ -127,7 +127,9 @@ function etatConnexion(c) {
     } }, t('se_deconnecter')));
   }
   const badge = h('span.badge.non', {}, e.echec ? t('connexion_echec') : t('non_connecte'));
-  return e.motif ? h('span', {}, badge, ' ', h('span.aide', {}, e.motif)) : badge;
+  // Le compte du serveur ne se connecte pas d'ici : on montre le chemin le plus simple.
+  const aide = e.motif || (c.defaut ? t('defaut_non_connecte') : null);
+  return aide ? h('span', {}, badge, ' ', h('span.aide', {}, aide)) : badge;
 }
 
 function carte(c) {

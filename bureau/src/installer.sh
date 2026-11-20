@@ -67,9 +67,17 @@ installer() {
     archive="$TRAVAIL/dev-workshop.tar.gz"
     if [ -n "$DW_ARCHIVE" ]; then cp "$DW_ARCHIVE" "$archive" || { echo "ERREUR:telechargement"; return 1; }
     else telecharger "$DEPOT/$DW_REF" "$archive" || { echo "ERREUR:telechargement"; echo "JOURNAL:github.com $DW_REF"; return 1; }; fi
-    mkdir -p "$DW_DOSSIER" && tar -xzf "$archive" -C "$DW_DOSSIER" --strip-components=1 </dev/null || { echo "ERREUR:inattendu"; return 1; }
-    [ -f "$DW_DOSSIER/serveur/index.mjs" ] || { echo "ERREUR:inattendu"; return 1; }
+    # Extraction à côté, puis renommage : une coupure en cours de route ne laisse pas un dossier à moitié rempli.
+    mkdir -p "$(dirname "$DW_DOSSIER")"
+    voisin="$DW_DOSSIER.installation-$$"
+    mkdir "$voisin" && tar -xzf "$archive" -C "$voisin" --strip-components=1 </dev/null && [ -f "$voisin/serveur/index.mjs" ] \
+      || { rm -rf "$voisin"; echo "ERREUR:inattendu"; return 1; }
+    [ -d "$DW_DOSSIER" ] && rmdir "$DW_DOSSIER"
+    mv "$voisin" "$DW_DOSSIER" || { rm -rf "$voisin"; echo "ERREUR:inattendu"; return 1; }
   fi
+
+  # Dossier des projets : sans lui, Dev Workshop refuse de démarrer (au redémarrage par cron, par exemple).
+  mkdir -p "${DW_RACINE:-$HOME/dev}"
 
   echo "ETAT:dependances"
   cd "$DW_DOSSIER" || { echo "ERREUR:inattendu"; return 1; }
@@ -99,7 +107,8 @@ demarrage_auto() {
   case "$DW_DOSSIER$DW_RACINE$CONFIG" in *%*) echo "AVERTISSEMENT:cron_illisible"; return 0 ;; esac
   env_racine=""
   [ -n "$DW_RACINE" ] && env_racine="DEVWORKSHOP_ROOT='$DW_RACINE' "
-  ligne="@reboot sleep 20; . \"\$HOME/.profile\" >/dev/null 2>&1; cd '$DW_DOSSIER' && PATH=\"\$HOME/.local/bin:\$PATH\" DEVWORKSHOP_PORT=$DW_PORT ${env_racine}node serveur/index.mjs >>'$CONFIG/serveur.log' 2>&1 $marque"
+  # cron lance la ligne avec sh (dash sous Debian) : lire un ~/.profile absent y arrêterait tout, d'où le test.
+  ligne="@reboot sleep 20; [ -f \"\$HOME/.profile\" ] && . \"\$HOME/.profile\" >/dev/null 2>&1; PATH=\"\$HOME/.local/bin:\$PATH\"; export PATH; cd '$DW_DOSSIER' && DEVWORKSHOP_PORT=$DW_PORT ${env_racine}node serveur/index.mjs >>'$CONFIG/serveur.log' 2>&1 $marque"
   if [ -n "$actuel" ]; then printf '%s\n%s\n' "$actuel" "$ligne"; else printf '%s\n' "$ligne"; fi | crontab - \
     && echo "ETAT:demarrage_auto_ok" || echo "AVERTISSEMENT:cron_illisible"
 }
