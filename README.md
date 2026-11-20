@@ -118,7 +118,8 @@ An agent sends to its vendor whatever it reads in the project. Which projects yo
 - saved conversations, resume and "Move" only cover the server's Claude account. Claude Code's SDK cannot move a
   session, so "Move" copies the file itself (working folder rewritten), and removes the original through the SDK only
   once the copy is recognised: the one place where Dev Workshop writes into Claude Code's files;
-- "Remember for the project" has not been tried end to end with a real model yet;
+- not tried end to end with a real model yet: "Remember for the project", and Claude resuming a moved
+  conversation (the test checks its history is read from the new project);
 - Codex: the mode (normal, or read-only plan) is chosen when the session opens;
 - Codex and Gemini report no cost, and Gemini no per-turn token counts;
 - no images or attachments in the composer, no file explorer;

@@ -245,7 +245,8 @@ leurs protocoles, une montée de version se fait donc avec un essai.
 ## Limites connues (v0.7)
 
 - les discussions enregistrées, leur reprise et « Ranger » ne concernent que le compte Claude du serveur ;
-- « Retenir pour le projet » n'a pas encore été essayé de bout en bout avec un vrai modèle ;
+- pas encore essayés de bout en bout avec un vrai modèle : « Retenir pour le projet », et la reprise par Claude
+  d'une discussion rangée (l'essai vérifie que son historique est relu depuis le nouveau projet) ;
 - jamais essayé avec un compte réel : une connexion menée à son terme, un tour de Codex ou de Gemini (adaptateurs
   écrits d'après leurs protocoles), une vraie API ou un vrai LM Studio ; le bac à sable de Codex démarre
   bien dans ce conteneur (essai d'écriture bloquée), mais n'a pas été vu sur un vrai tour ;

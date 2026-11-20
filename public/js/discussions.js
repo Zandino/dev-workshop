@@ -16,6 +16,7 @@ ajouterTextes({
     refus_discussion_occupee: 'Cette discussion est ouverte (ou interrompue, ou à la corbeille) : ferme-la avant de la ranger.',
     refus_deplacement_impossible: 'La discussion n’a pas pu être rangée : elle est restée où elle était.',
     refus_meme_projet: 'Elle est déjà dans ce projet.',
+    rangement_en_cours: 'Rangement en cours… (une longue discussion peut prendre quelques secondes)',
   },
   en: {
     toutes_discussions: 'All conversations', tout_voir: 'See all', chercher_discussion: 'Search titles…',
@@ -27,6 +28,7 @@ ajouterTextes({
     refus_discussion_occupee: 'This conversation is open (or interrupted, or in the trash): close it before moving it.',
     refus_deplacement_impossible: 'The conversation could not be moved: it stayed where it was.',
     refus_meme_projet: 'It is already in this project.',
+    rangement_en_cours: 'Moving… (a long conversation can take a few seconds)',
   },
 });
 
@@ -84,11 +86,19 @@ function dessinerListe() {
 }
 
 /** Choix du projet où ranger la discussion `d` ({ projet, id, titre }). */
-export function ouvrirRanger(d) {
-  vue = { deplacer: d, retour: vue === 'toutes' };
+export function ouvrirRanger(d, retour = vue === 'toutes') {
+  vue = { deplacer: d, retour, enCours: false };
   panneau().hidden = false;
   const nouveau = h('input', { type: 'text', maxLength: 60, autocomplete: 'off', placeholder: t('nouveau_projet') });
-  const ranger = (vers, creer = false) => dire({ t: 'deplacer_discussion', projet: d.projet, id: d.id, vers, creer });
+  const etat = h('p.aide', { hidden: true }, t('rangement_en_cours'));
+  // Un seul ordre à la fois : les choix se figent jusqu'à la réponse du serveur (rangée, ou refus).
+  const ranger = (vers, creer = false) => {
+    if (vue?.enCours) return;
+    vue.enCours = true;
+    for (const el of panneau().querySelectorAll('.choix-projets button, form input, form button')) el.disabled = true;
+    etat.hidden = false;
+    dire({ t: 'deplacer_discussion', projet: d.projet, id: d.id, vers, creer });
+  };
   panneau().replaceChildren(h('div.boite', {},
     entete(t('ranger_titre')),
     h('p', {}, h('strong', {}, d.titre || t('sans_titre')), ' ', h('span.aide', {}, t('actuellement_dans', { projet: d.projet }))),
@@ -99,6 +109,7 @@ export function ouvrirRanger(d) {
       const nom = nouveau.value.trim();
       if (nom) ranger(nom, true);
     } }, nouveau, h('button.principal', { type: 'submit' }, t('creer_et_ranger'))),
+    etat,
     vue.retour ? h('button.discret.retour-liste', { type: 'button', onclick: () => ouvrirDiscussions(filtre.projet) }, t('retour_liste')) : null));
 }
 
@@ -114,6 +125,8 @@ export function initDiscussions(a) {
     if (m.t === 'discussions') {
       liste = m.liste;
       dessinerListe();
+    } else if (m.t === 'refus' && vue?.deplacer && vue.enCours) {
+      ouvrirRanger(vue.deplacer, vue.retour); // le refus est affiché par l'écran : on rend la main
     } else if (m.t === 'discussion_deplacee') {
       notifier(t('discussion_rangee', { projet: m.vers }));
       if (vue?.retour) ouvrirDiscussions(filtre.projet);

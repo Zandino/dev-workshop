@@ -37,6 +37,11 @@ async function recopier(de, vers, ancien, nouveau) {
   await once(sortie, 'finish');
 }
 
+// Discussions en cours de rangement : un second ordre pour la même (double clic sur une grosse discussion) est
+// refusé, et elle ne peut pas être rouverte tant que la copie n'est pas terminée.
+const enCours = new Set();
+export const enDeplacement = (id) => enCours.has(id);
+
 /**
  * Déplace la discussion `id` du dossier de projet `de` vers `vers` (chemins réels, déjà vérifiés).
  * `bloquee(id)` : vrai si la discussion est ouverte, interrompue ou à la corbeille (refus).
@@ -44,7 +49,16 @@ async function recopier(de, vers, ancien, nouveau) {
 export async function deplacerSession({ id, de, vers, bloquee }) {
   if (!ID.test(String(id || ''))) throw new Error('session_inconnue');
   if (de === vers) throw new Error('meme_projet');
-  if (bloquee(id)) throw new Error('discussion_occupee');
+  if (enCours.has(id) || bloquee(id)) throw new Error('discussion_occupee');
+  enCours.add(id);
+  try {
+    await deplacer(id, de, vers);
+  } finally {
+    enCours.delete(id);
+  }
+}
+
+async function deplacer(id, de, vers) {
   if (encoder(de).length > 200 || encoder(vers).length > 200) throw new Error('deplacement_impossible');
   const source = path.join(racineClaude(), encoder(de));
   const cible = path.join(racineClaude(), encoder(vers));
@@ -55,23 +69,29 @@ export async function deplacerSession({ id, de, vers, bloquee }) {
     throw new Error('session_inconnue');
   }
   const arrivee = path.join(cible, `${id}.jsonl`);
-  if (existsSync(arrivee)) throw new Error('deplacement_impossible');
-
-  mkdirSync(cible, { recursive: true, mode: 0o700 });
-  const temporaire = `${arrivee}.deplacement`;
   const voisin = path.join(source, id);
   const voisinArrivee = path.join(cible, id);
+  // Rien ne doit déjà occuper la place : en cas d'échec, on ne retire ainsi que ce que cet appel a créé.
+  if (existsSync(arrivee) || existsSync(voisinArrivee)) throw new Error('deplacement_impossible');
+
+  mkdirSync(cible, { recursive: true, mode: 0o700 });
+  const temporaire = `${arrivee}.deplacement-${process.pid}`;
+  const cree = { arrivee: false, voisin: false };
   const annuler = () => {
     rmSync(temporaire, { force: true });
-    rmSync(arrivee, { force: true });
-    if (existsSync(voisin)) rmSync(voisinArrivee, { recursive: true, force: true });
+    if (cree.arrivee) rmSync(arrivee, { force: true });
+    if (cree.voisin) rmSync(voisinArrivee, { recursive: true, force: true });
   };
   try {
     await recopier(fichier, temporaire, de, vers);
     const { atime, mtime } = statSync(fichier);
     utimesSync(temporaire, atime, mtime); // la discussion garde sa date dans les listes
     renameSync(temporaire, arrivee);
-    if (existsSync(voisin)) cpSync(voisin, voisinArrivee, { recursive: true, preserveTimestamps: true });
+    cree.arrivee = true;
+    if (existsSync(voisin)) {
+      cree.voisin = true;
+      cpSync(voisin, voisinArrivee, { recursive: true, preserveTimestamps: true });
+    }
   } catch {
     annuler();
     throw new Error('deplacement_impossible');

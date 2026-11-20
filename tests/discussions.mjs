@@ -119,6 +119,18 @@ noter('date et sous-agent conservés', statSync(fichier).mtimeMs === avant.mtime
 noter('original retiré', !existsSync(path.join(CLAUDE, encoder(path.join(racine, 'alpha')), `${ids.grande}.jsonl`)) && !existsSync(path.join(CLAUDE, encoder(path.join(racine, 'alpha')), ids.grande)));
 noter('listes à jour', (await historique('gamma')).some((s) => s.id === ids.grande && s.titre === 'proxmox essai') && !(await historique('alpha')).some((s) => s.id === ids.grande));
 
+// Deux ordres coup sur coup pour la même discussion (double clic) : un seul passe, rien n'est perdu.
+recus.splice(0);
+dire({ t: 'deplacer_discussion', projet: 'gamma', id: ids.grande, vers: 'beta' });
+dire({ t: 'deplacer_discussion', projet: 'gamma', id: ids.grande, vers: 'alpha' });
+const reponses = [await attendre((m) => m.t === 'refus' || m.t === 'discussion_deplacee'), await attendre((m) => m.t === 'refus' || m.t === 'discussion_deplacee')];
+const fichierBeta = path.join(CLAUDE, encoder(path.join(racine, 'beta')), `${ids.grande}.jsonl`);
+noter('double ordre : un seul rangement, l’autre refusé', reponses.filter((r) => r?.t === 'discussion_deplacee').length === 1 && reponses.some((r) => r?.code === 'discussion_occupee'), reponses.map((r) => r?.code || r?.t).join(', '));
+noter('double ordre : la discussion existe toujours, une seule fois', existsSync(fichierBeta) && !existsSync(fichier) && !existsSync(path.join(CLAUDE, encoder(path.join(racine, 'alpha')), `${ids.grande}.jsonl`)));
+recus.splice(0);
+dire({ t: 'deplacer_discussion', projet: 'beta', id: ids.grande, vers: 'gamma' }); // la grande revient dans gamma
+await attendre((m) => m.t === 'discussion_deplacee');
+
 // Refus.
 noter('refus : déjà dans ce projet', await refus({ t: 'deplacer_discussion', projet: 'gamma', id: ids.grande, vers: 'gamma' }) === 'meme_projet');
 noter('refus : n’est plus là', await refus({ t: 'deplacer_discussion', projet: 'alpha', id: ids.grande, vers: 'beta' }) === 'session_inconnue');
@@ -128,6 +140,7 @@ recus.splice(0);
 dire({ t: 'session_corbeille', projet: 'beta', id: ids.autre, titre: 'beta essai' });
 await attendre((m) => m.t === 'historique' && m.projet === 'beta');
 noter('refus : discussion à la corbeille', await refus({ t: 'deplacer_discussion', projet: 'beta', id: ids.autre, vers: 'alpha' }) === 'discussion_occupee');
+noter('refus : pas de projet vide créé pour rien', await refus({ t: 'deplacer_discussion', projet: 'beta', id: ids.autre, vers: 'epsilon', creer: true }) === 'discussion_occupee' && !existsSync(path.join(RACINE, 'epsilon')));
 
 // Une discussion rangée se rouvre dans son nouveau projet, avec son historique ; ouverte, elle ne se range pas.
 recus.splice(0);

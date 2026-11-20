@@ -13,6 +13,7 @@ import { ordresProjets } from './ordres-projets.mjs';
 import { messageAvecFichiers } from './fichiers.mjs';
 import { listerCorbeille } from './projets.mjs';
 import { listerSessionsCorbeille } from './corbeille-sessions.mjs';
+import { enDeplacement } from './deplacer-session.mjs';
 
 const NOM_PROJET = /^[A-Za-z0-9][A-Za-z0-9._-]{0,60}$/;
 const MAX_TEXTE = 200_000;
@@ -119,6 +120,7 @@ export function brancher(ws, jeton) {
       } else {
         const c = compte(String(m.compte || 'defaut'));
         const reprise = c.defaut && typeof m.reprise === 'string' && /^[0-9a-f-]{36}$/.test(m.reprise) ? m.reprise : undefined;
+        if (reprise && enDeplacement(reprise)) throw new Error('discussion_occupee'); // copie en cours (« Ranger »)
         s = await ouvrirSession({ ...commun, compte: c, modele: modeleDe(m.modele), mode: MODES.includes(m.mode) ? m.mode : 'default', reprise, orchestre: m.orchestre === true, effort: EFFORTS.includes(m.effort) ? m.effort : undefined });
       }
       ordres.attacher({ session: s.id });
