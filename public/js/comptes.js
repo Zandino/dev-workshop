@@ -33,7 +33,9 @@ function formulaireCleGemini(c) {
     if (!cle.value.trim()) return;
     dire({ t: 'cle_compte', id: c.id, cle: cle.value.trim() });
     cle.value = '';
-    etats.delete(c.id);
+    // Le serveur présente la clé (Gemini : à Google), puis renvoie l'état du compte : « Vérification… » d'ici là.
+    etats.set(c.id, { verification: true });
+    redessiner();
   } },
   h('span.badge.' + (c.cle ? 'oui' : 'non'), {}, c.cle ? t('cle_presente', { n: c.cle }) : t('cle_absente')),
   cle, h('button', { type: 'submit' }, t('enregistrer_cle')));

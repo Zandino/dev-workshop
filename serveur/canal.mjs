@@ -16,6 +16,7 @@ import { listerSessionsCorbeille } from './corbeille-sessions.mjs';
 import { enDeplacement } from './deplacer-session.mjs';
 import { veiller } from './veille.mjs';
 import { ordresDictee } from './dictee.mjs';
+import { verifierCleGemini } from './fournisseurs/gemini.mjs';
 
 const NOM_PROJET = /^[A-Za-z0-9][A-Za-z0-9._-]{0,60}$/;
 const MAX_TEXTE = 200_000;
@@ -84,9 +85,21 @@ export function brancher(ws, jeton) {
       envoyer(etatGeneral());
     },
 
-    cle_compte(m) {
-      definirCle(String(m.id), m.cle);
+    // Une clé Gemini est d'abord présentée à Google : refusée, elle n'est pas enregistrée et l'écran dit pourquoi.
+    // Enregistrée, l'état du compte suit tout de suite (sans attendre « Vérifier »).
+    async cle_compte(m) {
+      const c = compte(String(m.id));
+      const cle = String(m.cle || '').trim();
+      if (c.type === 'gemini' && cle) {
+        const v = await verifierCleGemini(cle);
+        if (v.refusee) {
+          envoyer({ t: 'etat_compte', id: c.id, connecte: false, echec: true, motif: v.message });
+          throw new Error('cle_gemini_refusee');
+        }
+      }
+      definirCle(c.id, m.cle);
       envoyer(etatGeneral());
+      envoyer({ t: 'etat_compte', id: c.id, ...(await etatDuCompte(c)) });
     },
 
     supprimer_compte(m) {
