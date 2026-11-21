@@ -162,6 +162,7 @@ export function brancher(ws, jeton) {
       const texte = String(m.texte || '');
       if (!texte.trim() || texte.length > MAX_TEXTE) throw new Error('texte_invalide');
       const s = session(m.session);
+      if (s.demenagement) throw new Error('discussion_en_rangement'); // son IA redémarre ailleurs (demenager-session.mjs)
       s.pilote.envoyer(messageAvecFichiers(texte, s.dossier, m.fichiers, s.avecOutils));
     },
 

@@ -70,8 +70,13 @@ function resume(s) {
 
 const rejouer = (s, absentDepuis) => ({ t: 'rejouer', session: s.id, resume: resume(s), etat: s.etat, evenements: s.journal, absentDepuis });
 
+/** Les écrans qui suivent `s` la reçoivent de nouveau en entier (équipe ou projet changé). */
+export function rejouerAuxAbonnes(s) {
+  for (const envoyer of s.abonnes) envoyer(rejouer(s, null));
+}
+
 /** L'émetteur de l'équipe en place : quand l'équipe change (changerEquipe), l'ancienne ne parle plus ici. */
-function emetteurDe(s) {
+export function emetteurDe(s) {
   const g = s.generation;
   return (e) => {
     if (s.generation === g) s.emettre(e);
@@ -198,8 +203,10 @@ const equipeDe = (s) => (s.participants ? s.participants.join(', ') : nomDe(s.co
  * (`{ participants, echanges }`, comptes déjà résolus comme pour ouvrirSession) ou l'orchestre (`{ orchestre:
  * compte }`). La nouvelle équipe reçoit l'historique en consigne ; l'ancienne est fermée et ne parle plus ici. Les
  * écrans qui suivent la discussion la reçoivent rejouée : compte, participants et réglages y changent.
+ * `ailleurs` : la même équipe repart dans un autre dossier de projet (discussion rangée, demenager-session.mjs) ;
+ * `note`, l'information mise dans le fil.
  */
-export function changerEquipe(id, equipe) {
+export function changerEquipe(id, equipe, { ailleurs = null, note = null } = {}) {
   const s = session(id);
   if (s.etat.occupe) throw new Error('changement_occupe');
   const salon = Array.isArray(equipe.participants) && equipe.participants.length > 1;
@@ -211,12 +218,14 @@ export function changerEquipe(id, equipe) {
   // La cheffe est toujours un compte Claude : l'outil « deleguer » est propre à Claude Code.
   if (equipe.orchestre && c.type !== 'claude') throw new Error('orchestre_claude');
 
-  const { dossier } = s;
+  const dossier = ailleurs || s.dossier;
   const { mode, effort, sessionId } = s.etat;
   // Le Claude du serveur, seul, qui devient cheffe d'orchestre reprend sa propre session Claude Code : il garde
   // tout le contexte, au lieu de l'historique borné que reçoit une nouvelle équipe.
-  const memeClaude = Boolean(equipe.orchestre) && !s.participants && !s.orchestre && s.compte === c.id && Boolean(sessionId);
-  const histoire = memeClaude ? null : consigneRelais(equipeDe(s), s.journal, 'equipe');
+  const memeClaude = !ailleurs && Boolean(equipe.orchestre) && !s.participants && !s.orchestre && s.compte === c.id && Boolean(sessionId);
+  const histoire = memeClaude ? null : ailleurs
+    ? consigneRelais(`${projetDe(s)} → ${path.relative(RACINE_PROJETS, ailleurs)}`, s.journal, 'dossier')
+    : consigneRelais(equipeDe(s), s.journal, 'equipe');
 
   // La nouvelle équipe parle dès sa création (« pret »…) : ses événements attendent qu'elle soit en place, et
   // ceux de l'ancienne (sa fermeture comprise) ne passent plus une fois la génération changée.
@@ -253,6 +262,7 @@ export function changerEquipe(id, equipe) {
   }
 
   s.pilote = pilote;
+  s.dossier = dossier;
   Object.assign(s.etat, { sessionId: memeClaude ? sessionId : null, modele: 'default' });
   if (salon) {
     Object.assign(s, {
@@ -264,7 +274,7 @@ export function changerEquipe(id, equipe) {
     Object.assign(s, { compte: c.id, orchestre: Boolean(equipe.orchestre), avecOutils: c.type !== 'api', participants: null, participantsComplets: null, echanges: null });
   }
   s.attente.clear(); // les demandes d'accord de l'ancienne équipe ne valent plus
-  s.emettre({ t: 'info', code: s.orchestre ? 'equipe_orchestre' : 'equipe', qui: s.participants ? s.participants.join(', ') : nomDe(s.compte) });
+  s.emettre(note || { t: 'info', code: s.orchestre ? 'equipe_orchestre' : 'equipe', qui: s.participants ? s.participants.join(', ') : nomDe(s.compte) });
   enPlace = true;
   for (const e of enAttente.splice(0)) emettre(e);
   for (const envoyer of s.abonnes) envoyer(rejouer(s, null));

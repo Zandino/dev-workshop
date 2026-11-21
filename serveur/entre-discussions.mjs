@@ -221,7 +221,7 @@ function enTete(x) {
 
 /** Remet le prochain message en attente si la discussion est libre ; rend true s'il est parti. */
 function distribuer(s) {
-  if (!s.fileDiscussions?.length || s.etat.ferme || s.livraison || s.etat.occupe || s.attente.size) return false;
+  if (!s.fileDiscussions?.length || s.etat.ferme || s.livraison || s.etat.occupe || s.attente.size || s.demenagement) return false;
   if (!assezPour(1)) return false; // réessayé plus tard (voir plus haut)
   const x = s.fileDiscussions.shift();
   s.livraison = { depuis: s.journal.length, x };

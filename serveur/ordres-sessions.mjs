@@ -5,6 +5,7 @@ import { resoudreProjet, RACINE_PROJETS } from './securite.mjs';
 import { mkdirSync, existsSync } from 'node:fs';
 import { session, fermerSession, ouvrirSession, listerVivantes, interrompues, changerEquipe, renommerSession } from './sessions.mjs';
 import { renameSession } from '@anthropic-ai/claude-agent-sdk';
+import { demenagerSession, verifierDemenageable } from './demenager-session.mjs';
 import { preparerParticipants } from './salon.mjs';
 import { deplacerSession, enDeplacement } from './deplacer-session.mjs';
 import { NOM_PROJET } from './projets.mjs';
@@ -138,8 +139,24 @@ export function ordresSessions(envoyer, general, corbeille, attacher) {
     // Range une discussion dans un autre projet (créé au passage si `creer`). Refus si elle est ouverte,
     // interrompue ou à la corbeille. Voir deplacer-session.mjs.
     async deplacer_discussion(m) {
-      const projet = String(m.projet || '');
       const vers = String(m.vers || '');
+      if (m.session) {
+        // Discussion ouverte (m.session) : son IA redémarre dans le nouveau projet (demenager-session.mjs).
+        if (!NOM_PROJET.test(vers)) throw new Error('nom_invalide');
+        const s = session(String(m.session));
+        const de = nomProjet(s.dossier);
+        // Vérifié avant de créer le projet d'arrivée : un refus ne laisse pas de dossier vide.
+        if (de === vers) throw new Error('meme_projet');
+        verifierDemenageable(s, null);
+        if (m.creer === true && !existsSync(path.join(RACINE_PROJETS, vers))) mkdirSync(path.join(RACINE_PROJETS, vers));
+        await demenagerSession(s.id, resoudreProjet(vers));
+        envoyer({ t: 'discussion_deplacee', id: s.id, de, vers, session: s.id });
+        general();
+        await historique(de);
+        await historique(vers);
+        return;
+      }
+      const projet = String(m.projet || '');
       if (!NOM_PROJET.test(projet) || !NOM_PROJET.test(vers)) throw new Error('nom_invalide');
       const id = String(m.id || '');
       const de = resoudreProjet(projet);

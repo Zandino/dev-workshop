@@ -218,10 +218,17 @@ accord ou une question t'attend, puis un échec pas encore lu, puis une IA au tr
 - Chaque projet liste ses discussions, les plus récentes en haut. « Toutes les discussions » les montre tous projets
   confondus, avec une recherche dans les titres.
 - « Ranger » déplace une discussion dans un autre projet, créé au passage si besoin : elle y reprend avec la fiche de
-  ce projet. Refusé si elle est ouverte, interrompue ou à la corbeille. Le SDK de Claude Code ne sait pas déplacer une
-  session : Dev Workshop recopie lui-même son fichier dans le dossier de Claude du nouveau projet (dossier de travail
-  réécrit, date et sous-agents conservés), puis ne retire l'original, par le SDK, qu'une fois la copie reconnue.
-  C'est le seul endroit où il écrit dans les fichiers de Claude Code.
+  ce projet. Le SDK de Claude Code ne sait pas déplacer une session : Dev Workshop recopie lui-même son fichier dans
+  le dossier de Claude du nouveau projet (dossier de travail réécrit, date et sous-agents conservés), puis ne retire
+  l'original, par le SDK, qu'une fois la copie reconnue. C'est le seul endroit où il écrit dans les fichiers de Claude
+  Code. Refusé si elle est interrompue ou à la corbeille.
+- Une discussion **ouverte** se range aussi (⇄ ou glisser sur le projet), sauf pendant qu'elle travaille, attend ton
+  accord ou traite un message d'une autre discussion. Le Claude du serveur s'arrête, sa session est déplacée, et il
+  la reprend dans le nouveau dossier avec tout son contexte (si le déplacement échoue, il la reprend là où elle
+  était). Les autres (plusieurs IA, autre compte, équipe changée en route) repartent dans le nouveau dossier avec
+  l'historique en consigne. Le fil dit où elle a été rangée.
+- Une discussion se renomme depuis la barre (✎ au survol, ou F2) ; celle du Claude du serveur l'est aussi chez
+  Claude Code.
 - La fiche du projet (réglages ⚙) est donnée à toutes les IA au début de chaque discussion du projet. Dans une
   discussion, « Retenir pour le projet » demande à l'IA ce qu'il faut garder ; tu relis et corriges, et rien n'est
   ajouté à la fiche sans ton clic.

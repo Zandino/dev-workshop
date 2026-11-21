@@ -25,7 +25,9 @@ Free software, built by the Deltinfo Studio team and published under the Apache 
   approval requests are signed with the agent's name.
 - **Token usage**: context gauge and per-model, per-agent counters, exactly as reported by each tool.
 - **Conversations** keep running if the tab closes. Each project lists its conversations; "All conversations"
-  searches them across projects, and "Move" puts one in another project, where it resumes with that project's notes.
+  searches them across projects, and "Move" puts one in another project, where it resumes with that project's notes;
+  an open conversation can be moved too (its AI restarts in the new folder: the server's Claude resumes its own
+  session there). Conversations can be renamed from the sidebar (pencil on hover, or F2).
 - **Project notes**, given to every AI at the start of each conversation in the project. "Remember for the project"
   asks the AI what is worth keeping; you review it, and nothing is added without your click.
 - **Alerts**: every open conversation is followed live in the sidebar, even while you look at another one: a raised

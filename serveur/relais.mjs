@@ -44,7 +44,8 @@ function histoire(journal) {
 /**
  * `motif` : 'limite' (l'IA précédente a atteint sa limite ; la demande est renvoyée), 'demande' (changement
  * d'IA voulu par l'utilisateur), 'redemarrage' (session reprise après un redémarrage du serveur), 'equipe'
- * (l'utilisateur change l'équipe de la conversation : une IA, plusieurs, ou l'orchestre ; voir sessions.mjs).
+ * (l'utilisateur change l'équipe de la conversation : une IA, plusieurs, ou l'orchestre ; voir sessions.mjs), 'dossier'
+ * (la conversation est rangée dans un autre projet ; `ancien` dit « projet d'avant → projet d'arrivée »).
  */
 export function consigneRelais(ancien, journal, motif = 'limite') {
   const debut = {
@@ -52,6 +53,7 @@ export function consigneRelais(ancien, journal, motif = 'limite') {
     demande: `Tu prends le relais d'une autre IA (« ${ancien} »), à la demande de l'utilisateur, au milieu de cette conversation.`,
     equipe: `L'utilisateur vient de changer l'équipe d'IA de cette conversation (jusqu'ici : ${ancien}). Tu la rejoins en cours de route.`,
     redemarrage: "Tu reprends une conversation interrompue par un redémarrage du serveur (ce qui était en cours s'est arrêté).",
+    dossier: `L'utilisateur vient de ranger cette conversation dans un autre projet (${ancien}) : tu travailles maintenant dans le dossier de ce projet, plus dans l'ancien.`,
   }[motif];
   return [
     debut,

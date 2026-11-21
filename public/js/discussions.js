@@ -11,9 +11,11 @@ ajouterTextes({
     tous_les_projets: 'Tous les projets', chargement: 'Chargement…', aucune_discussion_trouvee: 'Aucune discussion ne correspond.',
     n_discussions: '{n} discussion(s)', ranger: 'Ranger…', ranger_titre: 'Ranger la discussion dans un projet',
     actuellement_dans: 'actuellement dans « {projet} »', creer_et_ranger: 'Créer et ranger', retour_liste: '← Retour à la liste',
-    ranger_aide: 'Choisis le projet où la ranger, ou crée-en un. Elle y reprendra avec la fiche de ce projet. Une discussion ouverte doit d’abord être fermée.',
+    ranger_aide: 'Choisis le projet où la ranger, ou crée-en un. Elle y reprendra avec la fiche de ce projet. Ouverte, son IA y redémarre avec son historique (refusé pendant qu’elle travaille ou attend ton accord).',
     discussion_rangee: 'Discussion rangée dans « {projet} ».', discussions_limite: 'Seules les discussions de Claude (compte du serveur) sont enregistrées ici.',
-    refus_discussion_occupee: 'Cette discussion est ouverte (ou interrompue, ou à la corbeille) : ferme-la avant de la ranger.',
+    refus_discussion_occupee: 'Cette discussion travaille, attend ton accord, est interrompue ou à la corbeille : attends qu’elle ait fini (ou reprends-la) pour la ranger.',
+    refus_discussion_en_rangement: 'Cette discussion est en train d’être rangée : renvoie ton message dans un instant.',
+    info_discussion_rangee_ici: 'Discussion rangée : « {de} » → « {vers} ». L’IA travaille maintenant dans ce projet, avec la fiche de ce projet.',
     refus_deplacement_impossible: 'La discussion n’a pas pu être rangée : elle est restée où elle était.',
     refus_meme_projet: 'Elle est déjà dans ce projet.',
     rangement_en_cours: 'Rangement en cours… (une longue discussion peut prendre quelques secondes)',
@@ -23,9 +25,11 @@ ajouterTextes({
     tous_les_projets: 'All projects', chargement: 'Loading…', aucune_discussion_trouvee: 'No conversation matches.',
     n_discussions: '{n} conversation(s)', ranger: 'Move…', ranger_titre: 'Move the conversation to a project',
     actuellement_dans: 'currently in “{projet}”', creer_et_ranger: 'Create and move', retour_liste: '← Back to the list',
-    ranger_aide: 'Pick the project to move it to, or create one. It will resume there, with that project’s notes. An open conversation must be closed first.',
+    ranger_aide: 'Pick the project to move it to, or create one. It will resume there, with that project’s notes. If it is open, its AI restarts there with its history (refused while it works or waits for your approval).',
     discussion_rangee: 'Conversation moved to “{projet}”.', discussions_limite: 'Only Claude conversations (server account) are saved here.',
-    refus_discussion_occupee: 'This conversation is open (or interrupted, or in the trash): close it before moving it.',
+    refus_discussion_occupee: 'This conversation is working, waiting for your approval, interrupted or in the trash: wait until it is done (or resume it) to move it.',
+    refus_discussion_en_rangement: 'This conversation is being moved: send your message again in a moment.',
+    info_discussion_rangee_ici: 'Conversation moved: “{de}” → “{vers}”. The AI now works in this project, with its notes.',
     refus_deplacement_impossible: 'The conversation could not be moved: it stayed where it was.',
     refus_meme_projet: 'It is already in this project.',
     rangement_en_cours: 'Moving… (a long conversation can take a few seconds)',
@@ -97,7 +101,7 @@ export function ouvrirRanger(d, retour = vue === 'toutes') {
     vue.enCours = true;
     for (const el of panneau().querySelectorAll('.choix-projets button, form input, form button')) el.disabled = true;
     etat.hidden = false;
-    dire({ t: 'deplacer_discussion', projet: d.projet, id: d.id, vers, creer });
+    dire({ t: 'deplacer_discussion', projet: d.projet, id: d.id, vers, creer, session: d.session });
   };
   panneau().replaceChildren(h('div.boite', {},
     entete(t('ranger_titre')),

@@ -57,7 +57,7 @@ function rendreCible(ligne, projet) {
     const d = glissee;
     glissee = null;
     notifier(t('rangement_vers', { projet }));
-    dire({ t: 'deplacer_discussion', projet: d.projet, id: d.id, vers: projet });
+    dire({ t: 'deplacer_discussion', projet: d.projet, id: d.id, vers: projet, session: d.session });
   });
 }
 
@@ -124,6 +124,9 @@ function resumeDossier(vivantes, projet) {
   return pire ? marque(pire) : null;
 }
 
+/** ⇄ : ranger la discussion `d` ({ projet, id, titre, session si elle est ouverte }) dans un autre projet. */
+const boutonRanger = (d) => h('button.ranger', { type: 'button', title: t('ranger_titre_court'), 'aria-label': t('ranger_titre_court'), onclick: (e) => { e.stopPropagation(); actions.ranger(d); } }, '⇄');
+
 /** Clé d'une discussion pour son ordre : la discussion Claude Code dont elle vient, sinon son id. */
 const cleOuverte = (s) => s.origine || s.sessionId || s.id;
 
@@ -153,6 +156,11 @@ function dessiner() {
       nonLu: Boolean(s.nonLu) && !s.attente && !s.occupe,
       onclick: () => actions.rejoindre(s),
     }), { session: s.id, titre: s.titre });
+    // Ouverte, elle se range aussi dans un autre projet (⇄ ou glisser) : son IA y reprend avec son historique.
+    const d = { projet: s.projet, id: s.id, titre: s.titre, session: s.id };
+    ligne.classList.add('avec-ranger');
+    ligne.append(boutonRanger(d));
+    rendreGlissable(ligne, d);
     rendreRenommable(ligne, s.titre, (titre) => dire({ t: 'renommer_discussion', session: s.id, titre }));
     return ligne;
   };
@@ -216,7 +224,7 @@ function dessiner() {
 function sousListe(projet, ici, ouverte) {
   const dejaOuvertes = new Set(ici.flatMap((s) => [s.sessionId, s.origine]).filter(Boolean));
   const enregistrees = vue.historique.filter((s) => !dejaOuvertes.has(s.id));
-  const ranger = (d) => h('button.ranger', { type: 'button', title: t('ranger_titre_court'), 'aria-label': t('ranger_titre_court'), onclick: (e) => { e.stopPropagation(); actions.ranger(d); } }, '⇄');
+  const ranger = boutonRanger;
   const elements = [
     ...ici.map((s) => ({ cle: cleOuverte(s), ouverte: s })),
     ...enregistrees.slice(0, MAX_LISTE).map((s) => ({ cle: s.id, enregistree: s })),
