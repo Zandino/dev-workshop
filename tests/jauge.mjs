@@ -39,6 +39,17 @@ razJauge();
 majJauge({ t: 'tour', ok: true, coutSession: 0.42, modeles: [opus(1000, 0, 0.42)] });
 noter('discussion neuve : le 1er tour a son coût', /0[,.]42/.test(pastille()) && /0[,.]42/.test(coutDe(rangee('Dernier tour'))) && !rangee('Cumul de la discussion'));
 
+// Reprise, puis changement d'équipe (ou relais) : le compteur d'une nouvelle session repart de zéro.
+razJauge();
+majJauge({ t: 'tour', ok: true, anterieur: true, coutSession: 323.9, modeles: [opus(1, 1, 323.9)] });
+majJauge({ t: 'tour', ok: true, coutSession: 325.4, modeles: [opus(2, 2, 325.4)] });
+majJauge({ t: 'tour', ok: true, coutSession: 0.3, modeles: [opus(3, 3, 0.3)] });
+noter('compteur reparti de zéro : jamais négatif, 1,50 + 0,30 = 1,80 $', /1[,.]80/.test(pastille()) && !pastille().includes('-'), pastille());
+noter('« Dernier tour » de la nouvelle session : 0,30 $', /0[,.]30/.test(coutDe(rangee('Dernier tour'))), coutDe(rangee('Dernier tour')));
+// … puis l'orchestre reprend la même session Claude Code : nouveau cumul « antérieur ».
+majJauge({ t: 'tour', ok: true, anterieur: true, coutSession: 330, modeles: [opus(4, 4, 330)] });
+noter('reprise en route : ce qui était dépensé reste compté, rien d’inventé', /1[,.]80/.test(pastille()), pastille());
+
 const echecs = bilan.filter((x) => !x).length;
 console.log(`\n${bilan.length - echecs}/${bilan.length} vérifications réussies.`);
 process.exit(echecs ? 1 : 0);

@@ -110,7 +110,9 @@ function finirRetenir(tour) {
 
 function ouvrir(extra = {}) {
   const orchestre = $('compte').value === 'orchestre'; // Claude (compte du serveur) en cheffe d'orchestre
-  dire({ t: 'ouvrir', compte: orchestre ? 'defaut' : $('compte').value, orchestre, projet: ecran.projet, modele: $('modele').value, mode: $('mode').value, effort: $('effort').value, ...extra });
+  // « Plusieurs IA » (discussion à plusieurs refermée) n'est pas un compte : on repart du Claude du serveur.
+  const choisi = orchestre || $('compte').value === 'salon' ? 'defaut' : $('compte').value;
+  dire({ t: 'ouvrir', compte: choisi, orchestre, projet: ecran.projet, modele: $('modele').value, mode: $('mode').value, effort: $('effort').value, ...extra });
 }
 
 /** Rend faux si le message ne part pas encore (fichiers joints en cours d'envoi) : la saisie le garde. */

@@ -104,17 +104,24 @@ export function ouvrirSalon({ participants, dossier, mode, echanges, histoire },
       }
       if (e.t === 'tour') m.attente?.(e);
     };
-    m.pilote = fournisseurDe(p.compte).ouvrir(
-      {
-        compte: p.compte,
-        modele: p.modele,
-        dossier,
-        mode,
-        consigne: [consigneDeProjet(dossier), consigne(m, membres), histoire].filter(Boolean).join('\n\n'),
-        connecteurs: connecteursPour(p.compte),
-      },
-      recevoir,
-    );
+    try {
+      m.pilote = fournisseurDe(p.compte).ouvrir(
+        {
+          compte: p.compte,
+          modele: p.modele,
+          dossier,
+          mode,
+          consigne: [consigneDeProjet(dossier), consigne(m, membres), histoire].filter(Boolean).join('\n\n'),
+          connecteurs: connecteursPour(p.compte),
+        },
+        recevoir,
+      );
+    } catch (e) {
+      // Un participant qui ne démarre pas : ceux déjà ouverts ne doivent pas rester derrière.
+      ferme = true;
+      for (const x of membres) x.pilote?.fermer();
+      throw e;
+    }
   });
 
   emettre({ t: 'pret', sessionId: null, modele: null, mode: mode || 'default', dossier });

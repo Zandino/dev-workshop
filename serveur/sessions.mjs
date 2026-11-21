@@ -66,7 +66,7 @@ export function listerVivantes() {
  * Ouvre une session : un seul compte, ou un salon quand `participants` en nomme plusieurs
  * ([{ compte, modele, nom, externe }], comptes déjà résolus par l'appelant).
  */
-export async function ouvrirSession({ compte, participants, dossier, modele, mode, reprise, titre, echanges, orchestre, effort, journalInitial, consigneReprise }) {
+export async function ouvrirSession({ compte, participants, dossier, modele, mode, reprise, titre, echanges, orchestre, effort, journalInitial, consigneReprise, equipeChangee }) {
   if (listerVivantes().length >= MAX_SESSIONS) throw new Error('trop_de_sessions');
   const salon = Array.isArray(participants) && participants.length > 1;
   const pilotes = listerVivantes().reduce((n, x) => n + (x.participants?.length || 1), 0);
@@ -88,6 +88,7 @@ export async function ouvrirSession({ compte, participants, dossier, modele, mod
     abonnes: new Set(),
     attente: new Set(),
     etat: { occupe: false, ferme: false, modele: modele || 'default', mode: mode || 'default', effort: effort || 'default', sessionId: reprise || null },
+    equipeChangee: Boolean(equipeChangee), // voir changerEquipe : la session Claude Code ne porte pas tout
   };
 
   s.emettre = (e) => {
@@ -112,12 +113,13 @@ export async function ouvrirSession({ compte, participants, dossier, modele, mod
   // Session reprise après un redémarrage : son historique s'affiche comme avant.
   if (Array.isArray(journalInitial)) s.journal.push(...journalInitial);
   if (salon) {
-    s.pilote = ouvrirSalon({ participants, dossier, mode, echanges }, emettre);
+    s.pilote = ouvrirSalon({ participants, dossier, mode, echanges, histoire: consigneReprise }, emettre);
   } else if (orchestre) {
     // La cheffe est toujours un compte Claude : l'outil « deleguer » est propre à Claude Code.
     if (compte.type !== 'claude') throw new Error('orchestre_claude');
     s.orchestre = true;
-    s.pilote = ouvrirOrchestre({ compte, dossier, modele, mode, effort }, emettre);
+    // Reprise : la cheffe reprend sa session Claude Code ; sinon l'historique éventuel lui est donné en consigne.
+    s.pilote = ouvrirOrchestre({ compte, dossier, modele, mode, effort, reprise, histoire: reprise ? null : consigneReprise }, emettre);
   } else {
     if (reprise && f.lireHistorique) {
       try {
@@ -181,30 +183,62 @@ export function changerEquipe(id, equipe) {
   // La cheffe est toujours un compte Claude : l'outil « deleguer » est propre à Claude Code.
   if (equipe.orchestre && c.type !== 'claude') throw new Error('orchestre_claude');
 
-  const histoire = consigneRelais(equipeDe(s), s.journal, 'equipe');
-  const ancien = s.pilote;
-  s.generation += 1;
-  const emettre = emetteurDe(s);
   const { dossier } = s;
-  const { mode, effort } = s.etat;
-  // Plus de discussion Claude Code unique derrière : la nouvelle équipe annonce la sienne, s'il y en a une.
-  Object.assign(s.etat, { sessionId: null, modele: 'default' });
+  const { mode, effort, sessionId } = s.etat;
+  // Le Claude du serveur, seul, qui devient cheffe d'orchestre reprend sa propre session Claude Code : il garde
+  // tout le contexte, au lieu de l'historique borné que reçoit une nouvelle équipe.
+  const memeClaude = Boolean(equipe.orchestre) && !s.participants && !s.orchestre && s.compte === c.id && Boolean(sessionId);
+  const histoire = memeClaude ? null : consigneRelais(equipeDe(s), s.journal, 'equipe');
+
+  // La nouvelle équipe parle dès sa création (« pret »…) : ses événements attendent qu'elle soit en place, et
+  // ceux de l'ancienne (sa fermeture comprise) ne passent plus une fois la génération changée.
+  const g = s.generation + 1;
+  const enAttente = [];
+  let enPlace = false;
+  const emettre = (e) => {
+    if (!enPlace) enAttente.push(e);
+    else if (s.generation === g) s.emettre(e);
+  };
+  const ancien = s.pilote;
+  const ouvrir = () => {
+    if (salon) return ouvrirSalon({ participants: equipe.participants, dossier, mode, echanges: equipe.echanges, histoire }, emettre);
+    if (equipe.orchestre) return ouvrirOrchestre({ compte: c, dossier, mode, effort, histoire, reprise: memeClaude ? sessionId : undefined }, emettre);
+    return piloteAvecRelais({ s, compte: c, dossier, mode, effort, consigneReprise: histoire }, emettre);
+  };
+  let pilote;
+  if (memeClaude) {
+    // Une session Claude Code ne se reprend pas à deux : l'ancien pilote part avant ; en cas d'échec, il revient.
+    s.generation = g;
+    ancien.fermer();
+    try {
+      pilote = ouvrir();
+    } catch (e) {
+      s.pilote = piloteAvecRelais({ s, compte: c, dossier, mode, effort, reprise: sessionId }, emetteurDe(s));
+      throw e;
+    }
+  } else {
+    pilote = ouvrir(); // en cas d'échec, l'équipe en place continue, intacte
+    s.generation = g;
+    ancien.fermer();
+    // La session Claude Code d'avant ne contient pas la suite : au redémarrage, on repartira du journal.
+    s.equipeChangee = true;
+  }
+
+  s.pilote = pilote;
+  Object.assign(s.etat, { sessionId: memeClaude ? sessionId : null, modele: 'default' });
   if (salon) {
     Object.assign(s, {
       compte: null, orchestre: false, avecOutils: true, echanges: equipe.echanges,
       participants: equipe.participants.map((p) => p.nom),
       participantsComplets: equipe.participants.map((p) => ({ compte: p.compte.id, modele: p.modele || null, nom: p.nom })),
     });
-    s.pilote = ouvrirSalon({ participants: equipe.participants, dossier, mode, echanges: equipe.echanges, histoire }, emettre);
   } else {
     Object.assign(s, { compte: c.id, orchestre: Boolean(equipe.orchestre), avecOutils: c.type !== 'api', participants: null, participantsComplets: null, echanges: null });
-    s.pilote = equipe.orchestre
-      ? ouvrirOrchestre({ compte: c, dossier, mode, effort, histoire }, emettre)
-      : piloteAvecRelais({ s, compte: c, dossier, mode, effort, consigneReprise: histoire }, emettre);
   }
-  ancien.fermer();
   s.attente.clear(); // les demandes d'accord de l'ancienne équipe ne valent plus
   s.emettre({ t: 'info', code: 'equipe', qui: equipeDe(s) });
+  enPlace = true;
+  for (const e of enAttente.splice(0)) emettre(e);
   for (const envoyer of s.abonnes) envoyer(rejouer(s, null));
   signaler();
   return s;

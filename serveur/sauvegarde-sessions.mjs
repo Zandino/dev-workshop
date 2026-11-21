@@ -17,6 +17,7 @@ export function ecrireSession(s) {
   const donnees = {
     id: s.id, compte: s.compte, participants: s.participantsComplets || null, orchestre: Boolean(s.orchestre),
     dossier: s.dossier, titre: s.titre, creeLe: s.creeLe, etat: { modele, mode, effort, sessionId },
+    echanges: s.echanges || null, equipeChangee: Boolean(s.equipeChangee),
     journal: s.journal.filter((e) => e.t !== 'delta').slice(-MAX_EVENEMENTS),
   };
   writeFileSync(fichier(s.id), JSON.stringify(donnees), { mode: 0o600 });

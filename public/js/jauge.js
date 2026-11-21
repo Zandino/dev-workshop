@@ -35,7 +35,14 @@ export function majJauge(e) {
     const ancien = conso.tours.get(qui);
     // Discussion reprise : son premier tour porte le cumul de toute la discussion, depuis son tout début
     // (« anterieur », voir claude.mjs). Ce cumul devient le point de départ ; le coût de ce tour-là reste inconnu.
-    conso.tours.set(qui, { tour: e, precedent: ancien?.tour || null, base: e.anterieur ? e : ancien?.base || null });
+    // Compteur reparti de zéro (relais, changement d'équipe : une autre session derrière) ou session reprise
+    // en route : ce qui avait été dépensé jusque-là est mis de côté (« acquis »), sans quoi le total deviendrait
+    // négatif.
+    const neuf = ancien && (e.anterieur || (e.coutSession != null && ancien.tour.coutSession != null && e.coutSession < ancien.tour.coutSession));
+    const acquis = (ancien?.acquis || 0) + (neuf ? depense(ancien) : 0);
+    conso.tours.set(qui, neuf
+      ? { tour: e, precedent: null, base: e.anterieur ? e : null, acquis }
+      : { tour: e, precedent: ancien?.tour || null, base: e.anterieur ? e : ancien?.base || null, acquis });
     conso.dernier = qui;
   }
   dessiner();
@@ -61,9 +68,14 @@ function depuisBase(m, base) {
  */
 function coutTotal() {
   const connus = [...conso.tours.values()]
-    .filter((x) => x.tour.coutSession != null && !x.tour.anterieur)
-    .map((x) => x.tour.coutSession - (x.base?.coutSession || 0));
+    .filter((x) => (x.tour.coutSession != null && !x.tour.anterieur) || x.acquis)
+    .map((x) => x.acquis + depense(x));
   return connus.length ? connus.reduce((a, b) => a + b, 0) : null;
+}
+
+/** Ce qu'une IA a dépensé depuis son point de départ, avec son compteur actuel (0 si encore inconnu). */
+function depense(x) {
+  return x.tour.anterieur || x.tour.coutSession == null ? 0 : x.tour.coutSession - (x.base?.coutSession || 0);
 }
 
 function ligne(libelle, valeurs) {

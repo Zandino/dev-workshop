@@ -107,6 +107,19 @@ dire({ t: 'envoyer', session: s, texte: 'Troisième message.' });
 await tourFini(s);
 noter('elle reçoit l’historique, réponses signées', recu[0]?.consigne.includes('cormoran') && recu[0].consigne.includes('[Alpha]') && recu[0].consigne.includes('[Bravo]'));
 
+// La sauvegarde (toutes les 5 s) retient que l'équipe a changé : au redémarrage, on repartira du journal.
+await pause(6000);
+const sauvee = JSON.parse(readFileSync(path.join(process.env.DEVWORKSHOP_CONFIG, 'sessions', `${s}.json`), 'utf8'));
+noter('sauvegarde : « équipe changée » retenu', sauvee.equipeChangee === true && sauvee.compte === B);
+
+// Un salon ouvert directement (vérification des participants partagée avec le changement d'équipe).
+recus.splice(0);
+dire({ t: 'ouvrir', projet, participants: [{ compte: A, nom: 'Un' }, { compte: B, nom: 'Deux' }], echanges: 2 });
+const direct = await attendre((m) => m.t === 'rejouer');
+noter('salon ouvert directement', direct?.session !== s && direct?.resume.participants?.join() === 'Un,Deux');
+dire({ t: 'fermer', session: direct?.session });
+await attendre((m) => m.t === 'general');
+
 // 5. Refus : IA au travail, trop d'IA, noms en double.
 recus.splice(0);
 dire({ t: 'envoyer', session: s, texte: 'lent' });

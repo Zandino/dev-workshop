@@ -26,23 +26,26 @@ export function ordresSessions(envoyer, general, corbeille, attacher) {
 
   return {
     // Session interrompue par un redémarrage : on la rouvre avec son historique (Claude du serveur : reprise
-    // native de sa session ; autres IA : l'historique leur est donné en consigne).
+    // native de sa session ; autres IA, salon, ou équipe changée en route : l'historique leur est donné en consigne).
     async reprendre_interrompue(m) {
       const d = chargerInterrompue(String(m.id || ''));
       resoudreProjet(nomProjet(d.dossier));
       const vues = listerComptes();
-      const commun = { dossier: d.dossier, titre: d.titre, mode: d.etat?.mode || 'default', effort: d.etat?.effort };
+      const commun = { dossier: d.dossier, titre: d.titre, mode: d.etat?.mode || 'default', effort: d.etat?.effort, equipeChangee: d.equipeChangee };
+      const histoire = consigneRelais('', d.journal, 'redemarrage');
       let s;
       if (d.participants) {
         const participants = d.participants.map((p) => ({ compte: compte(p.compte), modele: p.modele || undefined, nom: p.nom, externe: Boolean(vues.find((v) => v.id === p.compte)?.externe) }));
-        s = await ouvrirSession({ ...commun, participants, journalInitial: d.journal });
+        s = await ouvrirSession({ ...commun, participants, echanges: d.echanges || undefined, journalInitial: d.journal, consigneReprise: histoire });
       } else {
         const c = compte(d.compte);
-        const reprise = c.defaut && d.etat?.sessionId ? d.etat.sessionId : undefined;
+        // Après un changement d'équipe, la session Claude Code ne porte que la suite : on repart du journal.
+        const reprise = c.defaut && d.etat?.sessionId && !d.equipeChangee ? d.etat.sessionId : undefined;
         s = await ouvrirSession({
           ...commun, compte: c, modele: d.etat?.modele, orchestre: d.orchestre, reprise,
-          journalInitial: reprise ? undefined : d.journal,
-          consigneReprise: reprise || d.orchestre ? undefined : consigneRelais('', d.journal, 'redemarrage'),
+          // Claude seul repris : son historique se relit dans sa session ; l'orchestre garde le journal à l'écran.
+          journalInitial: reprise && !d.orchestre ? undefined : d.journal,
+          consigneReprise: reprise ? undefined : histoire,
         });
       }
       oublierSession(d.id);
