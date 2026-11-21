@@ -58,7 +58,7 @@ noter('… et le panneau dit pourquoi', etatRefus?.connecte === false && /Google
 dire({ t: 'general' });
 noter('… et elle n’est pas enregistrée', (await attendre((m) => m.t === 'general'))?.comptes.find((c) => c.id === id)?.cle === 0);
 
-dire({ t: 'cle_compte', id, cle: '  AIza-bonne-cle-essai  ' });
+dire({ t: 'cle_compte', id, cle: '  AIza-bonne-cle-\nessai  ' }); // copiée avec un retour à la ligne
 const apres = await attendre((m) => m.t === 'general' && m.comptes.find((c) => c.id === id)?.cle);
 noter('clé acceptée : enregistrée (espaces retirés)', apres?.comptes.find((c) => c.id === id)?.cle === 'AIza-bonne-cle-essai'.length);
 const etatOk = await attendre((m) => m.t === 'etat_compte' && m.id === id, 90000);

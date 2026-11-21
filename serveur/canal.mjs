@@ -89,7 +89,8 @@ export function brancher(ws, jeton) {
     // Enregistrée, l'état du compte suit tout de suite (sans attendre « Vérifier »).
     async cle_compte(m) {
       const c = compte(String(m.id));
-      const cle = String(m.cle || '').trim();
+      // Une clé d'API ne contient jamais d'espace : ceux collés avec elle (retour à la ligne compris) partent.
+      const cle = String(m.cle || '').replace(/\s+/g, '');
       if (c.type === 'gemini' && cle) {
         const v = await verifierCleGemini(cle);
         if (v.refusee) {
@@ -97,7 +98,7 @@ export function brancher(ws, jeton) {
           throw new Error('cle_gemini_refusee');
         }
       }
-      definirCle(c.id, m.cle);
+      definirCle(c.id, cle);
       envoyer(etatGeneral());
       envoyer({ t: 'etat_compte', id: c.id, ...(await etatDuCompte(c)) });
     },
