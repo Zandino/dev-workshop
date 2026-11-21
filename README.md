@@ -27,6 +27,10 @@ Free software, built by the Deltinfo Studio team and published under the Apache 
   searches them across projects, and "Move" puts one in another project, where it resumes with that project's notes.
 - **Project notes**, given to every AI at the start of each conversation in the project. "Remember for the project"
   asks the AI what is worth keeping; you review it, and nothing is added without your click.
+- **Alerts**: every open conversation is followed live in the sidebar, even while you look at another one: a raised
+  hand ✋ when it needs your approval, a pulsing dot while it works, a bold title when it finished unseen (red if it
+  failed). A clickable bubble (window in front) or a system notification (in the background) opens it, and the
+  desktop app puts a raised hand on its taskbar icon.
 - **French and English** interface, including the searchable `/` command palette.
 
 ## Run it
@@ -132,6 +136,7 @@ serveur/index.mjs        HTTP (static files) and WebSocket server
 serveur/securite.mjs     token, origin, confined folders, headers
 serveur/canal.mjs        orders received from the screen
 serveur/sessions.mjs     live sessions, journal replayed on reconnect
+serveur/veille.mjs       alerts: every connection follows all open conversations
 serveur/comptes.mjs      accounts and API keys
 serveur/connexion.mjs    account sign-in (link relayed to the screen)
 serveur/salon.mjs        group discussion (turns, relay)
@@ -156,7 +161,8 @@ DEVWORKSHOP_PORT=5331 node tests/ecran.mjs <project> en    # the real page in a 
 
 `tests/discussions.mjs` and `tests/ecran-discussions.mjs` cover conversations (list, move, notes) without any model
 call, but they write into Claude Code's folder: run the server and the tests with a scratch `HOME` under `/tmp` (see
-README.fr.md, "Essais").
+README.fr.md, "Essais"). `tests/alertes.mjs <project>` covers alerts (rule table, channel with a fake local API, the
+real page) without any model call either.
 
 ## Licence and third-party tools
 

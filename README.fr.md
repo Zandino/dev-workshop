@@ -191,6 +191,13 @@ reste reprenable depuis la liste de son projet.
 - La fiche du projet (réglages ⚙) est donnée à toutes les IA au début de chaque discussion du projet. Dans une
   discussion, « Retenir pour le projet » demande à l'IA ce qu'il faut garder ; tu relis et corriges, et rien n'est
   ajouté à la fiche sans ton clic.
+- Toutes les discussions ouvertes se suivent en direct dans la barre, même quand tu en regardes une autre : ✋ elle a
+  besoin de toi (un accord à donner), pastille qui pulse elle travaille, titre en gras elle a fini sans que tu l'aies
+  vue (rouge : en échec), verte elle attend ton message. Un projet replié montre la ✋ de ses discussions. Fenêtre au
+  premier plan, une bulle cliquable ouvre la discussion qui t'appelle ; en arrière-plan, c'est une notification du
+  système. Le logiciel de bureau pose une main levée sur son icône de la barre des tâches (l'icône clignote à chaque
+  nouvelle demande). La page n'ayant aucun accès au poste, elle l'annonce dans son titre (« ✋ 2 · Dev Workshop »),
+  que le logiciel lit.
 
 ## Essais
 
@@ -212,6 +219,7 @@ Code : sur un serveur lancé avec un `HOME` jetable sous `/tmp` (l'essai refuse 
 node tests/discussions.mjs prepare        # avant de lancer le serveur : fabrique des discussions factices
 node tests/discussions.mjs                # canal : liste, déplacement et ses refus, fiche
 node tests/ecran-discussions.mjs          # la vraie page (sur des discussions refabriquées)
+node tests/alertes.mjs <projet>           # alertes : règle, canal (fausse API locale), vraie page ; sans modèle
 ```
 
 Les essais créent des comptes : les lancer avec `DEVWORKSHOP_CONFIG` sur un dossier d'essai, côté serveur et côté
