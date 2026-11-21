@@ -19,9 +19,34 @@ export function lireMemoire() {
   try {
     const texte = readFileSync(process.env.DEVWORKSHOP_MEMINFO || '/proc/meminfo', 'utf8');
     const ko = (cle) => Number(new RegExp(`^${cle}:\\s+(\\d+) kB`, 'm').exec(texte)?.[1]);
-    const total = ko('MemTotal');
-    const disponible = ko('MemAvailable');
-    return total > 0 && disponible >= 0 ? { total: total * 1024, disponible: disponible * 1024 } : null;
+    let total = ko('MemTotal') * 1024;
+    let disponible = ko('MemAvailable') * 1024;
+    if (!(total > 0 && disponible >= 0)) return null;
+    // Service limité (systemd MemoryHigh/MemoryMax, posé sur le serveur de développement le 21/11/2026) : c'est cette limite qui
+    // compte, pas la mémoire du conteneur. Pas de limite, ou mémoire simulée pour les essais : rien à ajuster.
+    const limite = process.env.DEVWORKSHOP_MEMINFO ? null : limiteDuService();
+    if (limite) {
+      total = Math.min(total, limite.plafond);
+      disponible = Math.min(disponible, Math.max(0, limite.plafond - limite.utilise));
+    }
+    return { total, disponible };
+  } catch {
+    return null;
+  }
+}
+
+/** Le plafond mémoire du groupe de contrôle du serveur (cgroup v2) et ce qu'il utilise, ou null sans limite. */
+function limiteDuService() {
+  try {
+    const chemin = /^0::(.*)$/m.exec(readFileSync('/proc/self/cgroup', 'utf8'))?.[1];
+    if (!chemin) return null;
+    const lire = (f) => readFileSync(`/sys/fs/cgroup${chemin}/${f}`, 'utf8').trim();
+    const nombres = ['memory.high', 'memory.max'].map((f) => Number(lire(f))).filter((x) => Number.isFinite(x) && x > 0);
+    if (!nombres.length) return null; // « max » partout : pas de limite
+    // Le cache de fichiers inactif se libère à la demande : il ne compte pas (sans quoi, fausse alerte après un
+    // « npm ci » par exemple).
+    const inactif = Number(/^inactive_file (\d+)$/m.exec(lire('memory.stat'))?.[1]) || 0;
+    return { plafond: Math.min(...nombres), utilise: Math.max(0, Number(lire('memory.current')) - inactif) };
   } catch {
     return null;
   }
@@ -103,6 +128,8 @@ export const aLibererPour = (m) => Math.max(0, m.total * REARMEMENT - m.disponib
  */
 export function surveillerMemoire(agir, periodeMs = Number(process.env.DEVWORKSHOP_VEILLE_MEMOIRE_MS) || 5000) {
   let arme = true;
+  const depart = lireMemoire();
+  if (depart) console.log(`[dev-workshop] mémoire : ${enMo(depart.disponible)} Mo libres sur ${enMo(depart.total)} (veille active)`);
   const minuterie = setInterval(() => {
     const m = lireMemoire();
     if (!m) return;
