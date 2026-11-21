@@ -6,7 +6,7 @@ import { fournisseurDe } from './fournisseurs/index.mjs';
 import { consigneDeProjet } from './projets.mjs';
 import { connecteursPour } from './connecteurs.mjs';
 import { compte, listerComptes } from './comptes.mjs';
-import { assezPour } from './memoire.mjs';
+import { assezPour, REGLE_MEMOIRE } from './memoire.mjs';
 
 export const MAX_PARTICIPANTS = 4;
 export const MAX_ECHANGES = 10;
@@ -18,7 +18,11 @@ const MAX_RELAIS = 12_000;
 /** Ce qu'une IA relancée sans sa session reçoit de la discussion (les derniers caractères). */
 const MAX_DEJA_DIT = 20_000;
 /** En plus des IA à lancer : de quoi faire tourner ce qu'elles lancent en même temps (essais, compilations). */
-const MARGE_TRAVAIL = 1024 * 1024 * 1024;
+// Relevé le 21/11/2026 : deux vérifications TypeScript du même projet, lancées en même temps par deux IA, ont
+// dépassé à elles seules les 6 Go du serveur.
+const MARGE_TRAVAIL = 2.5 * 1024 * 1024 * 1024;
+/** Plus stricte que la règle de mémoire de tous (REGLE_MEMOIRE) : quand on travaille en même temps. */
+const EN_MEME_TEMPS = "Vous travaillez EN MÊME TEMPS : aucune commande lourde pendant ta part (pas d'installation de dépendances, pas de vérification de types ni de compilation de tout le projet, pas de suite complète de tests). Vérifie seulement tes fichiers ; dis dans ton compte rendu quelle vérification complète reste à faire, elle se fera après.";
 /** Sans aucun signe d'un participant pendant ce temps (hors demande d'accord), on le met à l'écart. */
 const SILENCE_MAX = 3 * 60 * 1000;
 
@@ -48,6 +52,7 @@ function consigne(moi, tous) {
       ? `Attention : ${externes} est hébergé hors du serveur, chez un tiers. Tout ce que tu écris dans cette discussion lui est envoyé : n'y mets aucun secret, aucune donnée personnelle, aucun détail d'infrastructure ni extrait de fichier sensible.`
       : '',
     "Il n'y a pas de chef : vous réfléchissez ensemble, vous vous répartissez le travail selon ce que chacun fait le mieux, puis chacun fait sa part. Personne ne refait le travail d'un autre ni ne modifie les fichiers qu'un autre traite.",
+    REGLE_MEMOIRE,
     `Réponds de façon courte et utile, sans répéter ce qui a déjà été dit. Si tu n'as rien à ajouter, réponds exactement ${RIEN}.`,
   ].filter(Boolean).join('\n');
 }
@@ -241,19 +246,19 @@ export function ouvrirSalon({ participants, dossier, mode, echanges, histoire },
 
   const fini = () => arret || ferme || !actifs().length;
 
-  /** Exécution : chacun fait sa part ; en même temps si la mémoire le permet, sinon chacun son tour. */
-  async function executer() {
+  /** En même temps ? Place pour les IA à lancer, plus de quoi faire tourner ce qu'elles lancent (compilations…). */
+  const ensembleSiPossible = (prets) => prets.length > 1 && assezPour(prets.filter((m) => !m.pilote).length, MARGE_TRAVAIL);
+
+  /**
+   * Exécution : chacun fait sa part ; en même temps si la mémoire le permet (décidé une fois, `ensemble`), sinon
+   * chacun son tour.
+   */
+  async function executer(ensemble) {
     let prises = 0;
-    let annonce = false;
+    if (actifs().length > 1) emettre({ t: 'info', code: ensemble ? 'salon_parallele' : 'salon_chacun_son_tour' });
     for (let passe = 0; passe < limite && !fini(); passe += 1) {
       const prets = membres.filter((m) => !m.ecarte && m.nonVus.length);
       if (!prets.length) break;
-      // Place pour les IA à lancer, plus de quoi faire tourner ce qu'elles lancent (essais, compilations).
-      const ensemble = prets.length > 1 && assezPour(prets.filter((m) => !m.pilote).length, MARGE_TRAVAIL);
-      if (!annonce && prets.length > 1) {
-        annonce = true;
-        emettre({ t: 'info', code: ensemble ? 'salon_parallele' : 'salon_chacun_son_tour' });
-      }
       let dits = [];
       if (ensemble) {
         dits = await Promise.all(prets.map((m) => tourDe(m)));
@@ -303,8 +308,10 @@ export function ouvrirSalon({ participants, dossier, mode, echanges, histoire },
     if (!fini() && !actifs().every((m) => m.sansTravail)) {
       const accord = actifs().every((m) => m.accord);
       emettre({ t: 'info', code: accord ? 'salon_accord' : 'salon_sans_accord' });
-      for (const m of actifs()) m.nonVus.push(consigneAnimateur(accord ? EXECUTION : EXECUTION_SANS_ACCORD));
-      prises += await executer();
+      const ensemble = ensembleSiPossible(actifs());
+      const phase = (accord ? EXECUTION : EXECUTION_SANS_ACCORD) + (ensemble ? `\n${EN_MEME_TEMPS}` : '');
+      for (const m of actifs()) m.nonVus.push(consigneAnimateur(phase));
+      prises += await executer(ensemble);
     }
     // Ce qui reste non lu sera joint au prochain message de l'utilisateur.
     if (!ferme) emettre({ t: 'salon_pause', prises, restant: membres.some((m) => m.nonVus.length) });

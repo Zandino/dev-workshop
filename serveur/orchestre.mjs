@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { fournisseurDe } from './fournisseurs/index.mjs';
 import * as claude from './fournisseurs/claude.mjs';
 import { listerComptes, compte as compteDe } from './comptes.mjs';
-import { assezPour } from './memoire.mjs';
+import { assezPour, REGLE_MEMOIRE } from './memoire.mjs';
 import { consigneDeProjet } from './projets.mjs';
 import { connecteursPour } from './connecteurs.mjs';
 
@@ -47,6 +47,7 @@ function consigneCheffe() {
 const consigneSousAgent = (role) => [
   `Tu es un sous-agent, chargé par une IA cheffe d’une tâche précise${role ? ` (rôle : ${role})` : ''}.`,
   'Fais seulement cette tâche, puis termine par un compte rendu clair et court de ce que tu as fait ou trouvé : c’est lui qui sera transmis à la cheffe.',
+  REGLE_MEMOIRE,
 ].join('\n');
 
 /**

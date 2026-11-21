@@ -16,6 +16,7 @@ ajouterTextes({
     info_salon_chacun_son_tour: 'Mémoire du serveur trop juste pour travailler toutes en même temps : chacune son tour.',
     info_memoire_pleine: 'Mémoire du serveur presque pleine ({libre} Mo libres sur {total}) : le travail en cours est arrêté pour que le serveur ne se fige pas. Relance quand tu veux, avec moins d’IA si ça recommence.',
     refus_memoire_insuffisante: 'Pas assez de mémoire libre sur le serveur pour lancer ces IA : ferme une discussion, ou choisis moins d’IA.',
+    info_memoire_pleine_programmes: 'Mémoire du serveur presque pleine ({libre} Mo libres sur {total}) : le travail en cours est arrêté, ainsi que les programmes les plus gourmands lancés par les IA : {programmes}. Relance quand tu veux ; demande-leur une seule commande lourde à la fois.',
     refus_orchestre_claude: 'La cheffe d’orchestre est toujours un compte Claude.',
   },
   en: {
@@ -28,6 +29,7 @@ ajouterTextes({
     info_salon_chacun_son_tour: 'Not enough server memory for all of them to work at once: one at a time.',
     info_memoire_pleine: 'Server memory almost full ({libre} MB free of {total}): the work in progress was stopped so the server does not freeze. Start again when you like, with fewer AIs if it happens again.',
     refus_memoire_insuffisante: 'Not enough free memory on the server to start these AIs: close a conversation, or choose fewer AIs.',
+    info_memoire_pleine_programmes: 'Server memory almost full ({libre} MB free of {total}): the work in progress was stopped, along with the most memory-hungry programs the AIs had started: {programmes}. Start again when you like; ask them for one heavy command at a time.',
     refus_orchestre_claude: 'The orchestra lead is always a Claude account.',
   },
 });

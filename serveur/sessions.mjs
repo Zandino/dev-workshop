@@ -9,7 +9,7 @@ import { piloteAvecRelais, consigneRelais, nomCompte } from './relais.mjs';
 import { compte } from './comptes.mjs';
 import { ecrireSession, oublierSession, listerInterrompues } from './sauvegarde-sessions.mjs';
 import { alerteDe, changeLaBarre, signaler } from './veille.mjs';
-import { verifierPlace, surveillerMemoire, enMo } from './memoire.mjs';
+import { verifierPlace, surveillerMemoire, enMo, tuerLesPlusGros, aLibererPour } from './memoire.mjs';
 import { libererDictee } from './dictee.mjs';
 
 const MAX_JOURNAL = 4000;
@@ -31,10 +31,14 @@ setInterval(sauver, 5000).unref();
 // fige ; chaque discussion touchée le dit dans son fil et prévient l'écran (voir memoire.mjs).
 surveillerMemoire((m) => {
   libererDictee();
+  // Arrêter le tour des IA ne suffit pas : ce qu'elles ont lancé (compilations, essais) continuerait.
+  const tues = tuerLesPlusGros(aLibererPour(m));
+  if (tues.length) console.error('[dev-workshop] programmes arrêtés :', tues.map((x) => `${x.nom} (${x.mo} Mo)`).join(', '));
+  const programmes = tues.map((x) => `${x.nom} (${x.mo} Mo)`).join(', ');
   for (const s of sessions.values()) {
     if (!s.etat.occupe || s.etat.ferme) continue;
     s.pilote.interrompre().catch(() => {});
-    s.emettre({ t: 'info', code: 'memoire_pleine', libre: enMo(m.disponible), total: enMo(m.total) });
+    s.emettre({ t: 'info', code: programmes ? 'memoire_pleine_programmes' : 'memoire_pleine', libre: enMo(m.disponible), total: enMo(m.total), programmes });
     signaler({ id: s.id, projet: projetDe(s), titre: s.titre, compte: s.compte, genre: 'memoire', auteur: null, outil: null, message: `${enMo(m.disponible)} Mo libres sur ${enMo(m.total)}` });
   }
 });

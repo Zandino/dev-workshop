@@ -122,6 +122,22 @@ noter('la discussion est libérée', await attendre((m) => m.session === seule &
 memoire(5000);
 dire({ t: 'fermer', session: seule });
 
+// 5. Ce que les IA ont lancé : les plus gros programmes sont tués, jamais les IA elles-mêmes (enfants directs).
+// Ici, le rôle du serveur est tenu par cet essai : un enfant direct (« l'IA ») et, sous un shell, un petit-enfant
+// gourmand (« la compilation »).
+const { spawn } = await import('node:child_process');
+const { tuerLesPlusGros } = await import('../serveur/memoire.mjs');
+const gourmand = 'const b = Buffer.alloc(200 * 1024 * 1024, 1); setInterval(() => b[0]++, 1000);';
+const ia = spawn(process.execPath, ['-e', gourmand], { stdio: 'ignore' });
+const shell = spawn('sh', ['-c', `${process.execPath} -e '${gourmand}'; sleep 60`], { stdio: 'ignore' });
+await pause(2500);
+const tues = tuerLesPlusGros(100 * 1024 * 1024);
+const vivant = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };
+noter('le programme lancé (petit-enfant) est tué, le plus gros d’abord', tues.length >= 1 && tues[0].nom === 'node' && tues[0].mo >= 150, JSON.stringify(tues));
+noter('l’IA elle-même (enfant direct) n’est pas touchée', vivant(ia.pid) && vivant(shell.pid));
+ia.kill('SIGKILL');
+shell.kill('SIGKILL');
+
 for (const id of [A, B]) dire({ t: 'supprimer_compte', id });
 await pause(500);
 const echecs = bilan.filter((x) => !x).length;
