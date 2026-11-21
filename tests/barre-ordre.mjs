@@ -89,6 +89,28 @@ noter('glisser une enregistrée au-dessus d’une ouverte', ordreDiscussions() =
 glisser(dossier('beta'), lignesDiscussions()[0]);
 noter('un projet ne se lâche pas parmi les discussions', ordreDiscussions() === 'Ancienne 1,o1,Ancienne 2');
 
+// 3 bis. Renommer : ✎ (ou F2), Entrée enregistre, Échap annule ; la barre ne bouge pas pendant la saisie.
+const ligneDe = (titre) => lignesDiscussions().find((l) => l.querySelector('.titre').textContent === titre);
+ligneDe('o1').querySelector('.renommer-bouton').click();
+const champ = ligneDe('o1').querySelector('input.renommer');
+noter('✎ ouvre la saisie du titre', champ && champ.value === 'o1');
+majBarre({ general });
+noter('la barre ne se redessine pas pendant la saisie', document.contains(champ));
+champ.value = 'Titre neuf';
+champ.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+noter('Entrée : discussion ouverte renommée', envois.at(-1)?.t === 'renommer_discussion' && envois.at(-1).session === 'o1' && envois.at(-1).titre === 'Titre neuf', JSON.stringify(envois.at(-1)));
+const n = envois.length;
+ligneDe('Ancienne 2').dispatchEvent(new window.KeyboardEvent('keydown', { key: 'F2', bubbles: true }));
+const champ2 = ligneDe('Ancienne 2').querySelector('input.renommer');
+champ2.value = 'Ne pas garder';
+champ2.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+noter('F2 puis Échap : rien n’est envoyé', champ2 && envois.length === n && !ligneDe('Ancienne 2').querySelector('input.renommer'));
+ligneDe('Ancienne 2').querySelector('.renommer-bouton').click();
+const champ3 = ligneDe('Ancienne 2').querySelector('input.renommer');
+champ3.value = 'Archive';
+champ3.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+noter('discussion enregistrée renommée (projet + id)', envois.at(-1)?.t === 'renommer_discussion' && envois.at(-1).projet === 'alpha' && envois.at(-1).id === 'h2' && envois.at(-1).titre === 'Archive');
+
 // 4. Pendant un glisser, la barre ne se redessine pas (la ligne tenue resterait sinon orpheline).
 const tenue = dossier('alpha');
 const lacher = glisser(tenue, null, 'pendant');

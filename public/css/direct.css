@@ -181,5 +181,16 @@ textarea.retenu { width: 100%; min-height: 200px; resize: vertical; }
 .fleches button:hover:not(:disabled) { color: var(--accent); background: var(--accent-doux); }
 .fleches button:disabled { opacity: 0.35; }
 .projet-ligne:hover .fleches, .avec-poubelle:hover .fleches, .fleches:focus-within { opacity: 1; }
+/* Renommer : ✎ au survol, à gauche des autres boutons ; le titre devient un champ. */
+.renommer-bouton {
+  position: absolute; right: 34px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; padding: 0;
+  border: 0; border-radius: 7px; background: transparent; box-shadow: none; font-size: 13px; color: var(--accent); opacity: 0; transition: opacity 0.15s, background 0.15s;
+}
+.avec-ranger .renommer-bouton { right: 64px; }
+.avec-poubelle:hover .renommer-bouton, .renommer-bouton:focus-visible { opacity: 0.8; }
+.renommer-bouton:hover:not(:disabled) { opacity: 1; background: var(--accent-doux); }
+.avec-renommer:hover .ligne { padding-right: 66px; }
+.avec-renommer.avec-ranger:hover .ligne { padding-right: 96px; }
+input.renommer { position: absolute; left: 22px; right: 4px; top: 50%; transform: translateY(-50%); z-index: 2; min-width: 0; padding: 3px 6px; font: inherit; font-size: 13px; }
 .inserer-avant { box-shadow: inset 0 2px 0 var(--accent) !important; }
 .inserer-apres { box-shadow: inset 0 -2px 0 var(--accent) !important; }

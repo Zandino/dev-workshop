@@ -26,6 +26,8 @@ export function differer(redessiner) {
 export function debutGlisse() {
   enCours = true;
 }
+// Même besoin pendant qu'on renomme une ligne (renommer.js) : le champ de saisie ne doit pas disparaître.
+export { debutGlisse as figer, finGlisse as liberer };
 export function finGlisse() {
   enCours = false;
   const f = enRetard;

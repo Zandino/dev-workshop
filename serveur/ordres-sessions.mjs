@@ -3,7 +3,8 @@
 import path from 'node:path';
 import { resoudreProjet, RACINE_PROJETS } from './securite.mjs';
 import { mkdirSync, existsSync } from 'node:fs';
-import { session, fermerSession, ouvrirSession, listerVivantes, interrompues, changerEquipe } from './sessions.mjs';
+import { session, fermerSession, ouvrirSession, listerVivantes, interrompues, changerEquipe, renommerSession } from './sessions.mjs';
+import { renameSession } from '@anthropic-ai/claude-agent-sdk';
 import { preparerParticipants } from './salon.mjs';
 import { deplacerSession, enDeplacement } from './deplacer-session.mjs';
 import { NOM_PROJET } from './projets.mjs';
@@ -61,6 +62,25 @@ export function ordresSessions(envoyer, general, corbeille, attacher) {
       oublierSession(d.id);
       attacher(s.id);
       general();
+    },
+
+    // Renommer une discussion : ouverte (m.session) ou enregistrée (m.projet + m.id). Le titre va aussi à Claude Code
+    // quand la discussion est la sienne (compte du serveur), pour que sa liste dise la même chose.
+    async renommer_discussion(m) {
+      const titre = String(m.titre || '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 80);
+      if (!titre) throw new Error('titre_invalide');
+      if (m.session) {
+        const s = renommerSession(String(m.session), titre);
+        const id = s.origine || s.etat.sessionId;
+        if (id) await renameSession(id, titre, { dir: s.dossier }).catch(() => {}); // pas une discussion Claude Code
+        general();
+        return;
+      }
+      const projet = String(m.projet || '');
+      const id = String(m.id || '');
+      if (!/^[0-9a-f-]{36}$/.test(id)) throw new Error('session_inconnue');
+      await renameSession(id, titre, { dir: resoudreProjet(projet) });
+      await historique(projet);
     },
 
     oublier_interrompue(m) {

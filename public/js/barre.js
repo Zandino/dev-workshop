@@ -6,6 +6,7 @@ import { dire } from './canal.js';
 import './projet.js'; // ses textes (corbeille) servent aussi ici
 import { ajouterTextes } from './i18n.js';
 import { differer, fleches, rendreOrdonnable } from './ordre-barre.js';
+import { rendreRenommable } from './renommer.js';
 
 ajouterTextes({
   fr: { etat_main: 'Elle a besoin de toi : un accord t’attend', etat_occupe: 'L’IA travaille', etat_libre: 'Prête, elle attend ton message', etat_non_lu: 'Terminée, pas encore lue', etat_echec: 'Tour interrompu, pas encore lu', etat_attente: 'Interrompue par un redémarrage', glisser_aide: 'Glisse-la sur un autre projet pour l’y ranger', rangement_vers: 'Rangement dans « {projet} »…', ranger_titre_court: 'Ranger dans un autre projet', voir_toutes: 'Voir les {n} discussions du projet', interrompues: 'Discussions interrompues', oublier_interrompue: 'Oublier cette discussion', confirmer_oublier: 'Oublier la discussion interrompue « {titre} » ? Elle ne pourra plus être reprise d’ici.' },
@@ -143,14 +144,18 @@ function dessiner() {
   if (!g || differer(dessiner)) return;
 
   // Discussions ouvertes : celles du projet choisi vont sous lui, les autres restent visibles plus bas.
-  const ouverte = (s, sous) => avecPoubelle(element('ligne', {
-    actif: s.id === vue.active,
-    titre: s.titre || t('sans_titre'),
-    sous,
-    pastille: etatDe(s),
-    nonLu: Boolean(s.nonLu) && !s.attente && !s.occupe,
-    onclick: () => actions.rejoindre(s),
-  }), { session: s.id, titre: s.titre });
+  const ouverte = (s, sous) => {
+    const ligne = avecPoubelle(element('ligne', {
+      actif: s.id === vue.active,
+      titre: s.titre || t('sans_titre'),
+      sous,
+      pastille: etatDe(s),
+      nonLu: Boolean(s.nonLu) && !s.attente && !s.occupe,
+      onclick: () => actions.rejoindre(s),
+    }), { session: s.id, titre: s.titre });
+    rendreRenommable(ligne, s.titre, (titre) => dire({ t: 'renommer_discussion', session: s.id, titre }));
+    return ligne;
+  };
   const ici = vue.projet ? g.vivantes.filter((s) => s.projet === vue.projet) : [];
   const ailleurs = g.vivantes.filter((s) => !ici.includes(s));
 
@@ -233,6 +238,7 @@ function sousListe(projet, ici, ouverte) {
         ligne.classList.add('avec-ranger');
         ligne.append(ranger(d));
         rendreGlissable(ligne, d);
+        rendreRenommable(ligne, enregistree.titre, (titre) => dire({ t: 'renommer_discussion', projet, id: enregistree.id, titre }));
       }
       rendreOrdonnable(ligne, { groupe: 'discussions:' + projet, cle, liste: cles, changer });
       ligne.append(fleches(cles, cle, changer));

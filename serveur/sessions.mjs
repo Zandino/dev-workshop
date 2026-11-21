@@ -275,6 +275,15 @@ export function changerEquipe(id, equipe) {
 // Les outils des IA entre discussions voient les sessions ouvertes par ici.
 brancherDiscussions({ session: (id) => sessions.get(id) || null, toutes: () => [...sessions.values()], projetDe, equipeDe });
 
+/** Nouveau titre d'une discussion ouverte (déjà vérifié par l'appelant) : barre, alertes et sauvegarde suivent. */
+export function renommerSession(id, titre) {
+  const s = session(id);
+  s.titre = titre;
+  s.aSauver = true;
+  signaler();
+  return s;
+}
+
 /** `oublier` : la personne ferme la session (sa sauvegarde est effacée) ; sinon, arrêt du serveur (gardée). */
 export function fermerSession(id, { oublier = true } = {}) {
   const s = sessions.get(id);
