@@ -88,8 +88,13 @@ function choisirProjet(projet) {
 
 /** Rouvre une discussion enregistrée (compte Claude du serveur) ; si elle est déjà ouverte, on la rejoint. */
 function reprendreDiscussion(d, projet = ecran.projet) {
-  const ouverte = ecran.general?.vivantes.find((v) => v.sessionId && v.sessionId === d.id);
+  const issue = (v) => (v.sessionId && v.sessionId === d.id) || v.origine === d.id;
+  const ouverte = ecran.general?.vivantes.find(issue);
   if (ouverte) return ouverte.id !== ecran.session && dire({ t: 'attacher', session: ouverte.id });
+  // Une copie interrompue (redémarrage) en est partie : on la reprend, avec tout ce qui s'y est fait depuis,
+  // au lieu d'en créer une nouvelle à partir de la seule version de Claude Code (liste triée, la plus récente d'abord).
+  const copie = (ecran.general?.interrompues || []).find(issue);
+  if (copie) return dire({ t: 'reprendre_interrompue', id: copie.id });
   if (projet !== ecran.projet) choisirProjet(projet);
   else quitterSession();
   ouvrir({ reprise: d.id, titre: d.titre, compte: 'defaut' });

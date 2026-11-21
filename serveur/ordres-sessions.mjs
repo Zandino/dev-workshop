@@ -31,7 +31,7 @@ export function ordresSessions(envoyer, general, corbeille, attacher) {
       const d = chargerInterrompue(String(m.id || ''));
       resoudreProjet(nomProjet(d.dossier));
       const vues = listerComptes();
-      const commun = { dossier: d.dossier, titre: d.titre, mode: d.etat?.mode || 'default', effort: d.etat?.effort, equipeChangee: d.equipeChangee };
+      const commun = { dossier: d.dossier, titre: d.titre, mode: d.etat?.mode || 'default', effort: d.etat?.effort, equipeChangee: d.equipeChangee, origine: d.origine || d.etat?.sessionId || undefined };
       const histoire = consigneRelais('', d.journal, 'redemarrage');
       let s;
       if (d.participants) {

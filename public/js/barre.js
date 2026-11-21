@@ -166,7 +166,14 @@ function dessiner() {
   document.getElementById('liste-vivantes').replaceChildren(...ailleurs.map((s) => ouverte(s, s.projet)));
 
   // Sessions interrompues par un redémarrage du serveur : un clic les reprend avec leur historique.
-  const coupees = g.interrompues || [];
+  // Une seule copie par conversation : la plus récente (la liste arrive triée), qui porte tout son historique.
+  const vues = new Set();
+  const coupees = (g.interrompues || []).filter((s) => {
+    const cle = s.origine || s.sessionId || s.id;
+    if (vues.has(cle)) return false;
+    vues.add(cle);
+    return true;
+  });
   document.getElementById('bloc-interrompues').hidden = !coupees.length;
   document.getElementById('liste-interrompues').replaceChildren(
     ...coupees.map((s) => h('div.avec-poubelle', {},
@@ -177,7 +184,7 @@ function dessiner() {
 
 /** Discussions du projet ouvert, en retrait sous lui : nouvelle discussion, les ouvertes (pastille), puis les autres. */
 function sousListe(projet, ici, ouverte) {
-  const dejaOuvertes = new Set(ici.map((s) => s.sessionId).filter(Boolean));
+  const dejaOuvertes = new Set(ici.flatMap((s) => [s.sessionId, s.origine]).filter(Boolean));
   const enregistrees = vue.historique.filter((s) => !dejaOuvertes.has(s.id));
   const ranger = (d) => h('button.ranger', { type: 'button', title: t('ranger_titre_court'), 'aria-label': t('ranger_titre_court'), onclick: (e) => { e.stopPropagation(); actions.ranger(d); } }, '⇄');
   const lignes = [

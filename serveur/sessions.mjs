@@ -60,6 +60,7 @@ function resume(s) {
     sessionId: s.etat.sessionId || null, // discussion enregistrée par Claude Code (compte du serveur)
     attente: s.attente.size > 0,
     nonLu: s.nonLu || null, // 'fini' ou 'echec' : tour terminé pendant que personne ne regardait (veille.mjs)
+    origine: s.origine || null,
     equipe: s.participantsComplets, // à plusieurs : comptes, modèles et noms, pour modifier l'équipe à l'écran
     echanges: s.echanges || null,
     creeLe: s.creeLe,
@@ -84,7 +85,7 @@ export function listerVivantes() {
  * Ouvre une session : un seul compte, ou un salon quand `participants` en nomme plusieurs
  * ([{ compte, modele, nom, externe }], comptes déjà résolus par l'appelant).
  */
-export async function ouvrirSession({ compte, participants, dossier, modele, mode, reprise, titre, echanges, orchestre, effort, journalInitial, consigneReprise, equipeChangee }) {
+export async function ouvrirSession({ compte, participants, dossier, modele, mode, reprise, titre, echanges, orchestre, effort, journalInitial, consigneReprise, equipeChangee, origine }) {
   if (listerVivantes().length >= MAX_SESSIONS) throw new Error('trop_de_sessions');
   const salon = Array.isArray(participants) && participants.length > 1;
   const pilotes = listerVivantes().reduce((n, x) => n + (x.participants?.length || 1), 0);
@@ -108,6 +109,9 @@ export async function ouvrirSession({ compte, participants, dossier, modele, mod
     attente: new Set(),
     etat: { occupe: false, ferme: false, modele: modele || 'default', mode: mode || 'default', effort: effort || 'default', sessionId: reprise || null },
     equipeChangee: Boolean(equipeChangee), // voir changerEquipe : la session Claude Code ne porte pas tout
+    // La discussion Claude Code dont celle-ci est partie : elle la suit à travers les changements d'équipe et les
+    // redémarrages, pour que la rouvrir depuis la liste du projet reprenne cette copie au lieu d'en créer une autre.
+    origine: origine || reprise || null,
   };
 
   s.emettre = (e) => {
