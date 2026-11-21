@@ -147,8 +147,17 @@ function carte(c) {
     const seConnecter = c.connectable && !connexions.has(c.id) && e && !e.verification && !e.connecte
       ? h('button.principal', { type: 'button', onclick: () => dire({ t: 'connecter_compte', id: c.id }) }, t('se_connecter'))
       : null;
-    detail.push(h('div.rangee', {}, etatConnexion(c), ['gemini', 'copilot'].includes(c.type) && c.cle ? null : seConnecter), blocConnexion(c));
-    if (c.type === 'gemini') detail.push(h('p.aide', {}, t('gemini_cle_aide')), formulaireCleGemini(c));
+    // Gemini : pas de « Se connecter ». La connexion Google aboutit, mais Google refuse ensuite Gemini CLI pour un
+    // compte personnel (« This client is no longer supported for Gemini Code Assist », relevé le 21/11/2026) :
+    // le bouton menait à une impasse. Seule la clé d'API marche ; le lien mène à la page qui la crée.
+    const sansBouton = c.type === 'gemini' || (c.type === 'copilot' && c.cle);
+    detail.push(h('div.rangee', {}, etatConnexion(c), sansBouton ? null : seConnecter), blocConnexion(c));
+    if (c.type === 'gemini') {
+      detail.push(
+        h('p.aide', {}, t('gemini_cle_aide'), ' ', h('a', { href: 'https://aistudio.google.com/apikey', target: '_blank', rel: 'noopener noreferrer' }, t('gemini_creer_cle'))),
+        formulaireCleGemini(c),
+      );
+    }
     if (c.type === 'copilot') detail.push(h('p.aide', {}, t('copilot_cle_aide')), formulaireCleGemini(c));
     if (c.type !== 'claude') detail.push(h('p.aide', {}, t('jamais_essaye')));
   }
