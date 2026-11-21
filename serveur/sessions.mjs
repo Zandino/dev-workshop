@@ -209,6 +209,7 @@ const equipeDe = (s) => (s.participants ? s.participants.join(', ') : nomDe(s.co
 export function changerEquipe(id, equipe, { ailleurs = null, note = null } = {}) {
   const s = session(id);
   if (s.etat.occupe) throw new Error('changement_occupe');
+  if (s.demenagement && !ailleurs) throw new Error('discussion_en_rangement'); // demenager-session.mjs
   const salon = Array.isArray(equipe.participants) && equipe.participants.length > 1;
   const autres = listerVivantes().filter((x) => x.id !== s.id).reduce((n, x) => n + (x.participants?.length || 1), 0);
   if (autres + (salon ? equipe.participants.length : 1) > MAX_PILOTES) throw new Error('trop_de_sessions');

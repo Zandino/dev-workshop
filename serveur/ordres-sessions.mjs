@@ -94,6 +94,7 @@ export function ordresSessions(envoyer, general, corbeille, attacher) {
       const s = session(String(m.session || ''));
       if (!s.pilote.changerIa || s.orchestre) throw new Error('changement_impossible');
       if (s.etat.occupe) throw new Error('changement_occupe');
+      if (s.demenagement) throw new Error('discussion_en_rangement');
       s.pilote.changerIa(compte(String(m.compte || '')));
       general();
     },

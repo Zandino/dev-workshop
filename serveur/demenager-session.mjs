@@ -41,6 +41,7 @@ async function fichierStable(fichier) {
 async function natif(s, c, sessionId, vers, note) {
   const de = s.dossier;
   const { mode, effort } = s.etat;
+  const modele = s.etat.modele && s.etat.modele !== 'default' ? s.etat.modele : undefined; // il garde son modèle
   s.generation += 1; // l'ancien pilote ne parle plus ici, sa fermeture comprise
   s.pilote.fermer();
   await fichierStable(path.join(dossierDeClaude(de), `${sessionId}.jsonl`));
@@ -50,12 +51,16 @@ async function natif(s, c, sessionId, vers, note) {
     ici = vers;
   } finally {
     // Rangée ou non, Claude reprend sa session : dans le nouveau dossier, ou dans l'ancien si le déplacement a échoué.
+    // Fermée entre-temps (par la personne) : rien à relancer.
     s.dossier = ici;
-    const emettre = emetteurDe(s);
-    s.pilote = s.orchestre
-      ? ouvrirOrchestre({ session: s.id, compte: c, dossier: ici, mode, effort, reprise: sessionId }, emettre)
-      : piloteAvecRelais({ s, compte: c, dossier: ici, mode, effort, reprise: sessionId }, emettre);
+    if (!s.etat.ferme) {
+      const emettre = emetteurDe(s);
+      s.pilote = s.orchestre
+        ? ouvrirOrchestre({ session: s.id, compte: c, dossier: ici, modele, mode, effort, reprise: sessionId }, emettre)
+        : piloteAvecRelais({ s, compte: c, dossier: ici, modele, mode, effort, reprise: sessionId }, emettre);
+    }
   }
+  if (s.etat.ferme) return;
   s.emettre(note);
   s.aSauver = true;
   rejouerAuxAbonnes(s);

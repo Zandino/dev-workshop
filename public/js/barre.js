@@ -5,7 +5,7 @@ import { t } from './i18n.js';
 import { dire } from './canal.js';
 import './projet.js'; // ses textes (corbeille) servent aussi ici
 import { ajouterTextes } from './i18n.js';
-import { differer, fleches, rendreOrdonnable } from './ordre-barre.js';
+import { differer, fleches, rendreOrdonnable, figer, liberer } from './ordre-barre.js';
 import { rendreRenommable } from './renommer.js';
 
 ajouterTextes({
@@ -20,7 +20,8 @@ let replie = false; // un second clic sur le projet ouvert replie ses discussion
 // Au-delà, la liste du projet renvoie vers « Toutes les discussions » (recherche, filtre).
 const MAX_LISTE = 30;
 
-// Glisser-déposer : une discussion enregistrée se lâche sur un autre projet de l'arborescence pour l'y ranger.
+// Glisser-déposer : une discussion (enregistrée ou ouverte) se lâche sur un autre projet de l'arborescence pour l'y
+// ranger. La barre ne se redessine pas tant qu'on la tient (ordre-barre.js).
 const TYPE_GLISSE = 'application/x-devworkshop-discussion';
 let glissee = null; // la discussion en cours de glisser (dataTransfer n'est pas lisible pendant le survol)
 
@@ -32,11 +33,13 @@ function rendreGlissable(ligne, d) {
     e.dataTransfer.setData(TYPE_GLISSE, d.id);
     e.dataTransfer.effectAllowed = 'move';
     ligne.classList.add('en-glisse');
+    figer();
   });
   ligne.addEventListener('dragend', () => {
     glissee = null;
     ligne.classList.remove('en-glisse');
     for (const c of document.querySelectorAll('.ligne.dossier.cible')) c.classList.remove('cible');
+    liberer();
   });
 }
 

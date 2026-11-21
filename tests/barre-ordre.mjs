@@ -118,6 +118,14 @@ majBarre({ general: { ...general, projets: ['gamma', 'beta', 'alpha', 'delta'], 
 noter('barre figée pendant le glisser', dossier('alpha') === tenue);
 lacher();
 noter('… et redessinée au lâcher', dossier('alpha') !== tenue && $$('.sous-liste .titre').some((x) => x.textContent === 'a2'));
+// Une discussion ouverte dans un autre projet (liste du bas) : elle aussi se range en la glissant.
+const autre = $$('#liste-vivantes .avec-poubelle')[0];
+const lacher2 = glisser(autre, null, 'pendant');
+majBarre({ general: { ...general, projets: ['gamma', 'beta', 'alpha', 'delta'] } });
+noter('ouverte ailleurs : barre figée pendant qu’on la glisse', document.contains(autre) && autre.querySelector('.ranger'));
+lacher2();
+glisser($$('#liste-vivantes .avec-poubelle').find((l) => l.querySelector('.titre').textContent === 'b1'), dossier('alpha'));
+noter('ouverte ailleurs : lâchée sur un projet, elle y est rangée', envois.at(-1)?.t === 'deplacer_discussion' && envois.at(-1).session === 'b1' && envois.at(-1).vers === 'alpha', JSON.stringify(envois.at(-1)));
 
 const echecs = bilan.filter((x) => !x).length;
 console.log(`\n${bilan.length - echecs}/${bilan.length} vérifications réussies.`);
