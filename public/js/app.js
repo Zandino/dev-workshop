@@ -65,7 +65,7 @@ function majEntete() {
 
 function quitterSession() {
   if (ecran.session) dire({ t: 'detacher', session: ecran.session });
-  Object.assign(ecran, { session: null, salon: false, etat: {}, journal: [], titre: '', retenir: null });
+  Object.assign(ecran, { session: null, salon: false, etat: {}, journal: [], titre: '', retenir: null, resume: null });
   if ($('compte').value === 'salon') $('compte').value = 'defaut'; // « Plusieurs IA » ne s'ouvre que par 👥
   definirSignature(null);
   nouvelAppel(null);
@@ -138,6 +138,7 @@ function surRejouer(m) {
   $('compte').value = m.resume.participants ? 'salon' : m.resume.orchestre ? 'orchestre' : m.resume.compte || 'defaut';
   ecran.etat = { ...m.etat };
   ecran.titre = m.resume.titre || '';
+  ecran.resume = m.resume; // l'équipe de la discussion affichée, à jour dès le rejeu (la barre suit 0,2 s après)
   ecran.journal = [...m.evenements];
   // Session à une seule IA : son logo et son nom signent ses réponses, dans le fil comme en direct.
   const c = ecran.general?.comptes.find((x) => x.id === m.resume.compte);
@@ -189,8 +190,8 @@ function surGeneral(m) {
   ecran.general = m;
   $('version').textContent = m.version || '';
   const choisi = m.comptes.some((c) => c.id === $('compte').value) || ['orchestre', 'salon'].includes($('compte').value) ? $('compte').value : 'defaut';
-  // « Plusieurs IA » se choisit par 👥 (participants) : dans la liste, il dit seulement ce qu'est la discussion.
-  options($('compte'), [...m.comptes.map((c) => [c.id, libelleCompte(c)]), ['orchestre', t('compte_orchestre')], ['salon', t('compte_salon'), true]], choisi);
+  // « Plusieurs IA » ouvre le panneau 👥 (choix des participants) ; une fois appliqué, il dit ce qu'est la discussion.
+  options($('compte'), [...m.comptes.map((c) => [c.id, libelleCompte(c)]), ['orchestre', t('compte_orchestre')], ['salon', t('compte_salon')]], choisi);
   majComptes(m.comptes);
   majComptesSalon(m.comptes);
   majCorbeille(m.corbeille);
@@ -266,9 +267,18 @@ function demarrer() {
   });
   $('jauge').addEventListener('click', () => $('conso').toggleAttribute('hidden')); $('ouvrir-comptes').addEventListener('click', ouvrirComptes);
   // Depuis une discussion ouverte, le panneau part de son équipe et peut l'appliquer à cette discussion.
-  $('ouvrir-salon').addEventListener('click', () => ecran.projet && ouvrirSalon(ecran.session && !ecran.etat.ferme ? ecran.general?.vivantes.find((v) => v.id === ecran.session) || null : null));
-  // Changer de compte hors session remet le choix du modèle à zéro (chaque compte a les siens).
+  const discussionOuverte = () => (ecran.session && !ecran.etat.ferme ? ecran.resume || null : null);
+  $('ouvrir-salon').addEventListener('click', () => ecran.projet && ouvrirSalon(discussionOuverte()));
   $('compte').addEventListener('change', () => {
+    // « Plusieurs IA » dans la liste : le panneau 👥 s'ouvre ; la liste garde ce qu'est la discussion tant que rien
+    // n'est appliqué.
+    if ($('compte').value === 'salon') {
+      const d = discussionOuverte();
+      $('compte').value = !d ? 'defaut' : d.participants ? 'salon' : d.orchestre ? 'orchestre' : d.compte;
+      if (ecran.projet) ouvrirSalon(d);
+      return;
+    }
+    // Changer de compte hors session remet le choix du modèle à zéro (chaque compte a les siens).
     options($('modele'), [['default', t('modele_defaut')]], 'default');
     majEntete();
   });

@@ -9,13 +9,17 @@ ajouterTextes({
   fr: {
     salon_appliquer: 'Appliquer à cette discussion', salon_nouvelle: 'Démarrer une nouvelle discussion',
     salon_aide_courante: 'Les IA choisies reprennent cette discussion avec tout son historique. Pour revenir à une seule IA ou passer à l’orchestre, choisis-la dans la liste des IA en haut.',
-    info_equipe: 'Nouvelle équipe : {qui}. Elle reprend la discussion avec son historique.', compte_salon: 'Plusieurs IA (👥)',
+    info_equipe: 'Nouvelle équipe : {qui}. Elle reprend la discussion avec son historique.',
+    info_equipe_orchestre: 'Orchestre : {qui} répond seul et confie des tâches aux autres IA. Pour que toutes les IA discutent ensemble, choisis « 👥 Plusieurs IA ».',
+    compte_salon: '👥 Plusieurs IA : elles réfléchissent ensemble et se répartissent le travail', toutes_mes_ia: 'Toutes mes IA',
     refus_orchestre_claude: 'La cheffe d’orchestre est toujours un compte Claude.',
   },
   en: {
     salon_appliquer: 'Apply to this conversation', salon_nouvelle: 'Start a new conversation',
     salon_aide_courante: 'The chosen AIs take over this conversation with its whole history. To go back to one AI or switch to the orchestra, pick it in the AI list at the top.',
-    info_equipe: 'New team: {qui}. It takes over the conversation with its history.', compte_salon: 'Several AIs (👥)',
+    info_equipe: 'New team: {qui}. It takes over the conversation with its history.',
+    info_equipe_orchestre: 'Orchestra: {qui} answers alone and hands tasks to the other AIs. For all the AIs to talk together, choose “👥 Several AIs”.',
+    compte_salon: '👥 Several AIs: they think together and share out the work', toutes_mes_ia: 'All my AIs',
     refus_orchestre_claude: 'The orchestra lead is always a Claude account.',
   },
 });
@@ -76,6 +80,18 @@ function ligne(p, i) {
   );
 }
 
+/** Une ligne par IA déclarée (4 au plus), chacune sous son nom, rendu unique au besoin. */
+function toutesMesIa() {
+  const vus = new Set();
+  lignes = comptes.slice(0, MAX).map((c) => {
+    let nom = String(c.nom || c.id).slice(0, 30);
+    for (let i = 2; vus.has(nom); i += 1) nom = `${String(c.nom || c.id).slice(0, 27)} ${i}`;
+    vus.add(nom);
+    return { compte: c.id, modele: '', nom };
+  });
+  dessiner();
+}
+
 function dessiner() {
   const echanges = h('input', { type: 'number', min: 1, max: 10, value: nombreEchanges, oninput: (e) => (nombreEchanges = Number(e.target.value) || 4) });
   const externe = lignes.some((p) => comptes.find((c) => c.id === p.compte)?.externe);
@@ -94,10 +110,12 @@ function dessiner() {
       h('header', {}, h('h2', {}, t('salon_titre')), h('button', { type: 'button', onclick: fermer }, t('fermer'))),
       h('p.aide', {}, t(courante ? 'salon_aide_courante' : 'salon_aide')),
       lignes.map(ligne),
-      lignes.length < MAX ? h('button', { type: 'button', onclick: () => {
-        lignes.push({ compte: 'defaut', modele: '', nom: `IA ${lignes.length + 1}` });
-        dessiner();
-      } }, t('ajouter_participant')) : null,
+      h('div.ajouts', {},
+        lignes.length < MAX ? h('button', { type: 'button', onclick: () => {
+          lignes.push({ compte: 'defaut', modele: '', nom: `IA ${lignes.length + 1}` });
+          dessiner();
+        } }, t('ajouter_participant')) : null,
+        comptes.length > 1 ? h('button', { type: 'button', onclick: toutesMesIa }, t('toutes_mes_ia')) : null),
       h('label.echanges', {}, t('salon_echanges'), echanges),
       externe ? h('p.alerte', {}, t('salon_externe')) : null,
       h('div.actions', {},

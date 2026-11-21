@@ -165,7 +165,8 @@ const nomDe = (id) => {
     return String(id); // compte supprimé depuis
   }
 };
-const equipeDe = (s) => (s.participants ? s.participants.join(', ') : nomDe(s.compte) + (s.orchestre ? ' (cheffe d’orchestre)' : ''));
+// Pour l'historique donné à la nouvelle équipe ; l'écran, lui, compose sa note (« equipe » ou « equipe_orchestre »).
+const equipeDe = (s) => (s.participants ? s.participants.join(', ') : nomDe(s.compte) + (s.orchestre ? ' (chef d’orchestre : il répond seul et confie des tâches aux autres IA)' : ''));
 
 /**
  * Change l'équipe d'une discussion ouverte, sans en ouvrir une autre : une IA (`{ compte }`), plusieurs
@@ -236,7 +237,7 @@ export function changerEquipe(id, equipe) {
     Object.assign(s, { compte: c.id, orchestre: Boolean(equipe.orchestre), avecOutils: c.type !== 'api', participants: null, participantsComplets: null, echanges: null });
   }
   s.attente.clear(); // les demandes d'accord de l'ancienne équipe ne valent plus
-  s.emettre({ t: 'info', code: 'equipe', qui: equipeDe(s) });
+  s.emettre({ t: 'info', code: s.orchestre ? 'equipe_orchestre' : 'equipe', qui: s.participants ? s.participants.join(', ') : nomDe(s.compte) });
   enPlace = true;
   for (const e of enAttente.splice(0)) emettre(e);
   for (const envoyer of s.abonnes) envoyer(rejouer(s, null));

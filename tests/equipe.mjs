@@ -90,6 +90,8 @@ dire({ t: 'envoyer', session: s, texte: 'Deuxième message.' });
 await tourFini(s);
 const consignes = recu.map((r) => r.consigne);
 noter('chacune des deux reçoit l’historique', consignes.length >= 2 && consignes.every((c) => c.includes('cormoran') && c.includes("changer l'équipe")), `${consignes.length} appel(s)`);
+noter('consigne : ce qu’est chacune, répartition selon les points forts', consignes.every((c) => c.includes('sans outils') && c.includes('ce que chacun fait le mieux')));
+noter('concertation : chacune prend ce qu’elle fait le mieux', recu.some((r) => r.dernier.includes('points forts')));
 
 // 3. Une troisième la rejoint.
 recus.splice(0);
@@ -151,8 +153,16 @@ for (const nom of ['document', 'location', 'history', 'localStorage', 'Node', 'E
   Object.defineProperty(globalThis, nom, { value: window[nom], configurable: true });
 }
 globalThis.window = window;
+const rejeux = [];
 globalThis.WebSocket = class extends WS {
-  constructor(u) { super(u, { origin: origine }); }
+  constructor(u) {
+    super(u, { origin: origine });
+    this.on('message', (d) => {
+      const m = JSON.parse(d.toString());
+      if (m.t === 'rejouer') rejeux.push(m.resume);
+      if (m.t === 'refus') rejeux.push({ refus: m.ordre + ':' + m.code });
+    });
+  }
 };
 register('./crochets.mjs', import.meta.url);
 const erreurs = [];
@@ -180,14 +190,27 @@ const boutons = $$('#panneau-salon .actions button').map((b) => b.textContent);
 noter('page : 👥 propose d’appliquer à cette discussion', boutons.includes('Appliquer à cette discussion') && boutons.includes('Démarrer une nouvelle discussion'), boutons.join(' | '));
 noter('page : l’IA en place est dans l’équipe proposée', panneau && $$('#panneau-salon .participant select')[0]?.value === A);
 cliquer($$('#panneau-salon .actions button').find((b) => b.textContent === 'Appliquer à cette discussion'));
-noter('page : à deux, même discussion', await voir(() => $('#compte').value === 'salon' && $$('.fil .fin-tour').some((n) => n.textContent.includes('Nouvelle équipe'))));
+// Chaque étape attend la réponse du serveur (le rejeu) : les notes des étapes précédentes sont déjà dans le fil.
+const dernier = () => rejeux.filter((r) => !r.refus).at(-1);
+noter('page : à deux, même discussion', await voir(() => dernier()?.participants?.length === 2 && $('#compte').value === 'salon'));
 noter('page : la liste des IA dit « Plusieurs IA »', $('#compte').selectedOptions[0]?.textContent.includes('Plusieurs IA'));
 $('#compte').value = B;
 $('#compte').dispatchEvent(new window.Event('change'));
-noter('page : choisir une IA dans la liste revient à une seule IA', await voir(() => $('#compte').value === B && $$('.fil .fin-tour').filter((n) => n.textContent.includes('Nouvelle équipe')).length >= 2));
+noter('page : choisir une IA dans la liste revient à une seule IA', await voir(() => dernier()?.compte === B && !dernier().participants && $('#compte').value === B));
 $('#compte').value = 'orchestre';
 $('#compte').dispatchEvent(new window.Event('change'));
-noter('page : « Orchestre » dans la liste passe la discussion en orchestre', await voir(() => $('#compte').value === 'orchestre' && $$('.fil .fin-tour').some((n) => n.textContent.includes('cheffe d’orchestre'))));
+noter('page : « Orchestre » dans la liste passe la discussion en orchestre, dit clairement', await voir(() => dernier()?.orchestre === true && $('#compte').value === 'orchestre' && $$('.fil .fin-tour').at(-1)?.textContent.includes('répond seul et confie des tâches aux autres IA')));
+// « Plusieurs IA » dans la liste ouvre 👥 ; « Toutes mes IA » met une ligne par IA déclarée.
+$('#panneau-salon').hidden = true;
+$('#compte').value = 'salon';
+$('#compte').dispatchEvent(new window.Event('change'));
+noter('page : « Plusieurs IA » dans la liste ouvre le panneau 👥, la liste ne change pas encore', await voir(() => !$('#panneau-salon').hidden) && $('#compte').value === 'orchestre', `panneau ${$('#panneau-salon').hidden ? 'caché' : 'ouvert'}, liste « ${$('#compte').value} »`);
+cliquer($$('#panneau-salon button').find((b) => b.textContent === 'Toutes mes IA'));
+const choisis = $$('#panneau-salon .participant select').map((x) => x.value);
+noter('page : « Toutes mes IA » : une ligne par IA déclarée', choisis.length === 3 && choisis.includes(A) && choisis.includes(B) && choisis.includes('defaut'), choisis.join(', '));
+cliquer($$('#panneau-salon .actions button').find((b) => b.textContent === 'Appliquer à cette discussion'));
+noter('page : appliqué, toutes ensemble', await voir(() => dernier()?.participants?.length === 3 && $('#compte').value === 'salon' && $$('.fil .fin-tour').at(-1)?.textContent.includes('Alpha API')));
+noter('page : aucun refus du serveur', !rejeux.some((r) => r.refus), rejeux.filter((r) => r.refus).map((r) => r.refus).join(', '));
 const g = await voir(() => recus.findLast((m) => m.t === 'vivantes')); // la veille du serveur, vue par la 1re connexion
 noter('page : toujours une seule discussion ouverte', g?.vivantes.length === 1);
 noter('aucune erreur de script', !erreurs.length, erreurs.map(String).join(' | ').slice(0, 300));
