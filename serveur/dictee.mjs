@@ -80,6 +80,11 @@ function liberer(qualite, c) {
   c.promesse.then((asr) => asr.dispose?.()).catch(() => {});
 }
 
+/** Mémoire presque pleine (memoire.mjs) : le modèle chargé est libéré ; il se rechargera à la prochaine dictée. */
+export function libererDictee() {
+  for (const [q, c] of charges) liberer(q, c);
+}
+
 function transcrireIci(pcm, langue, qualite) {
   const audio = Float32Array.from(pcm, (v) => v / 32768);
   const tache = file.then(async () => {

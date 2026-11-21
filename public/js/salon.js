@@ -12,6 +12,10 @@ ajouterTextes({
     info_equipe: 'Nouvelle équipe : {qui}. Elle reprend la discussion avec son historique.',
     info_equipe_orchestre: 'Orchestre : {qui} répond seul et confie des tâches aux autres IA. Pour que toutes les IA discutent ensemble, choisis « 👥 Plusieurs IA ».',
     compte_salon: '👥 Plusieurs IA : elles réfléchissent ensemble et se répartissent le travail', toutes_mes_ia: 'Toutes mes IA',
+    info_salon_parallele: 'Chacune fait sa part en même temps.',
+    info_salon_chacun_son_tour: 'Mémoire du serveur trop juste pour travailler toutes en même temps : chacune son tour.',
+    info_memoire_pleine: 'Mémoire du serveur presque pleine ({libre} Mo libres sur {total}) : le travail en cours est arrêté pour que le serveur ne se fige pas. Relance quand tu veux, avec moins d’IA si ça recommence.',
+    refus_memoire_insuffisante: 'Pas assez de mémoire libre sur le serveur pour lancer ces IA : ferme une discussion, ou choisis moins d’IA.',
     refus_orchestre_claude: 'La cheffe d’orchestre est toujours un compte Claude.',
   },
   en: {
@@ -20,6 +24,10 @@ ajouterTextes({
     info_equipe: 'New team: {qui}. It takes over the conversation with its history.',
     info_equipe_orchestre: 'Orchestra: {qui} answers alone and hands tasks to the other AIs. For all the AIs to talk together, choose “👥 Several AIs”.',
     compte_salon: '👥 Several AIs: they think together and share out the work', toutes_mes_ia: 'All my AIs',
+    info_salon_parallele: 'Each one does its part at the same time.',
+    info_salon_chacun_son_tour: 'Not enough server memory for all of them to work at once: one at a time.',
+    info_memoire_pleine: 'Server memory almost full ({libre} MB free of {total}): the work in progress was stopped so the server does not freeze. Start again when you like, with fewer AIs if it happens again.',
+    refus_memoire_insuffisante: 'Not enough free memory on the server to start these AIs: close a conversation, or choose fewer AIs.',
     refus_orchestre_claude: 'The orchestra lead is always a Claude account.',
   },
 });

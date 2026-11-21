@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { fournisseurDe } from './fournisseurs/index.mjs';
 import * as claude from './fournisseurs/claude.mjs';
 import { listerComptes, compte as compteDe } from './comptes.mjs';
+import { assezPour } from './memoire.mjs';
 import { consigneDeProjet } from './projets.mjs';
 import { connecteursPour } from './connecteurs.mjs';
 
@@ -66,6 +67,8 @@ export function ouvrirOrchestre({ compte, dossier, modele, mode, effort, histoir
       return Promise.resolve(`IA inconnue : « ${ia} ». IA disponibles :\n${equipe()}`);
     }
     if (sousAgents.size >= MAX_EN_PARALLELE) return Promise.resolve('Déjà 3 sous-agents au travail : attends qu’un d’eux ait fini.');
+    // Chaque IA appelée démarre pour sa tâche puis s'arrête ; encore faut-il que le serveur ait la place (memoire.mjs).
+    if (!assezPour(1)) return Promise.resolve('Mémoire du serveur trop juste pour lancer une IA de plus : attends qu’un sous-agent ait fini, ou fais cette tâche toi-même.');
     rang = (rang % 3) + 1; // le rang 0 reste à la cheffe
     const auteur = { nom: String(role || c.nom || c.id).slice(0, 30), rang, externe: c.type !== 'claude', compte: { id: c.id, type: c.type, url: c.url || null } };
     return new Promise((resoudre) => {

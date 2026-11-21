@@ -6,6 +6,7 @@ import { fournisseurDe } from './fournisseurs/index.mjs';
 import { consigneDeProjet } from './projets.mjs';
 import { connecteursPour } from './connecteurs.mjs';
 import { compte, listerComptes } from './comptes.mjs';
+import { assezPour } from './memoire.mjs';
 
 export const MAX_PARTICIPANTS = 4;
 export const MAX_ECHANGES = 10;
@@ -14,6 +15,10 @@ const ACCORD = 'ACCORD_VALIDE';
 const SANS_TRAVAIL = 'SANS_TRAVAIL';
 const MAX_CONCERTATION = 3;
 const MAX_RELAIS = 12_000;
+/** Ce qu'une IA relancée sans sa session reçoit de la discussion (les derniers caractères). */
+const MAX_DEJA_DIT = 20_000;
+/** En plus des IA à lancer : de quoi faire tourner ce qu'elles lancent en même temps (essais, compilations). */
+const MARGE_TRAVAIL = 1024 * 1024 * 1024;
 /** Sans aucun signe d'un participant pendant ce temps (hors demande d'accord), on le met à l'écart. */
 const SILENCE_MAX = 3 * 60 * 1000;
 
@@ -67,32 +72,46 @@ export function preparerParticipants(liste) {
   return participants;
 }
 
-/** `histoire` : la conversation déjà tenue, quand une discussion existante devient un salon (sessions.mjs). */
+/**
+ * `histoire` : la conversation déjà tenue, quand une discussion existante devient un salon (sessions.mjs).
+ * Les IA ne tournent que lorsqu'on a besoin d'elles : chacune démarre à son premier tour de parole et s'arrête
+ * quand la mémoire du serveur se resserre ; relancée, elle retrouve la discussion (Claude reprend sa propre session,
+ * les autres la reçoivent en consigne). Pendant l'exécution, elles travaillent en même temps si la mémoire le permet.
+ */
 export function ouvrirSalon({ participants, dossier, mode, echanges, histoire }, emettre) {
   const limite = Math.min(MAX_ECHANGES, Math.max(1, Number(echanges) || 4));
   const proprietaires = new Map(); // demande d'accord -> participant
+  const fil = []; // ce qui a été dit (utilisateur et participants), pour une IA relancée sans sa session
+  let numero = 0;
   let arret = false;
   let ferme = false;
   let file = Promise.resolve();
+  let modeCourant = mode;
+  let effortCourant;
 
   // L'auteur porte le type et l'adresse du compte (jamais une clé) : l'écran y reconnaît le logo de l'IA.
   const membres = participants.map((p, i) => ({
+    p,
     nom: p.nom,
     auteur: { nom: p.nom, rang: i, externe: p.externe, compte: { id: p.compte.id, type: p.compte.type, url: p.compte.url || null } },
     nonVus: [],
     attente: null,
     texte: '',
+    pilote: null, // l'IA en cours d'exécution, ou null tant qu'on n'a pas besoin d'elle
+    generation: 0, // une IA arrêtée exprès ne parle plus dans le salon
+    session: null, // session Claude Code, pour la reprendre à la relance
   }));
 
-  membres.forEach((m, i) => {
-    const p = participants[i];
-    const recevoir = (e) => {
-      if (ferme) return;
+  function recevoirPour(m, g) {
+    return (e) => {
+      if (ferme || m.generation !== g) return;
       m.dernierSigne = Date.now();
+      if (e.t === 'pret') m.session = e.sessionId || m.session;
       if (e.t === 'utilisateur' || e.t === 'pret' || e.t === 'capacites') return;
       if (e.t === 'etat') {
         if (e.ferme) {
-          m.parti = true; // son outil s'est arrêté : il ne reprendra pas la parole
+          // Son outil s'est arrêté de lui-même : il sera relancé au prochain message de l'utilisateur.
+          m.pilote = null;
           emettre({ t: 'info', code: 'participant_parti', auteur: m.auteur });
           m.attente?.({ ok: false, motif: 'parti' }); // un participant qui s'arrête ne doit pas bloquer la discussion
         }
@@ -115,25 +134,41 @@ export function ouvrirSalon({ participants, dossier, mode, echanges, histoire },
       }
       if (e.t === 'tour') m.attente?.(e);
     };
-    try {
-      m.pilote = fournisseurDe(p.compte).ouvrir(
-        {
-          compte: p.compte,
-          modele: p.modele,
-          dossier,
-          mode,
-          consigne: [consigneDeProjet(dossier), consigne(m, membres), histoire].filter(Boolean).join('\n\n'),
-          connecteurs: connecteursPour(p.compte),
-        },
-        recevoir,
-      );
-    } catch (e) {
-      // Un participant qui ne démarre pas : ceux déjà ouverts ne doivent pas rester derrière.
-      ferme = true;
-      for (const x of membres) x.pilote?.fermer();
-      throw e;
-    }
-  });
+  }
+
+  /** Ce qui a été dit avant ce que le participant n'a pas encore lu : sa mémoire, s'il est relancé sans sa session. */
+  function dejaDit(m) {
+    const avant = m.nonVus[0]?.numero ?? Infinity;
+    const texte = fil.filter((x) => x.numero < avant).map((x) => `[${x.de}]\n${x.texte}`).join('\n\n');
+    if (!texte) return '';
+    const borne = texte.length > MAX_DEJA_DIT ? '…\n' + texte.slice(-MAX_DEJA_DIT) : texte;
+    return `Tu rejoins cette discussion à plusieurs en cours (ton outil a été relancé). Voici ce qui s'y est dit jusqu'ici, toi compris :\n--- Discussion ---\n${borne}\n--- Fin ---`;
+  }
+
+  function demarrer(m) {
+    if (m.pilote) return;
+    const g = ++m.generation;
+    const reprise = m.p.compte.type === 'claude' && m.session ? m.session : undefined;
+    m.pilote = fournisseurDe(m.p.compte).ouvrir({
+      compte: m.p.compte,
+      modele: m.p.modele,
+      dossier,
+      mode: modeCourant,
+      effort: effortCourant,
+      reprise,
+      consigne: [consigneDeProjet(dossier), consigne(m, membres), histoire, reprise ? '' : dejaDit(m)].filter(Boolean).join('\n\n'),
+      connecteurs: connecteursPour(m.p.compte),
+    }, recevoirPour(m, g));
+  }
+
+  /** Arrête l'IA d'un participant (mémoire) ; elle sera relancée à son prochain tour. */
+  function liberer(m) {
+    if (!m.pilote) return;
+    m.generation += 1;
+    const pilote = m.pilote;
+    m.pilote = null;
+    pilote.fermer();
+  }
 
   emettre({ t: 'pret', sessionId: null, modele: null, mode: mode || 'default', dossier });
   emettre({ t: 'capacites', modeles: [], commandes: [] });
@@ -143,17 +178,22 @@ export function ouvrirSalon({ participants, dossier, mode, echanges, histoire },
   const actifs = () => membres.filter((m) => !m.ecarte);
 
   /**
-   * Donne la parole à un participant et attend la fin de son tour. Sans aucun signe de lui pendant
-   * SILENCE_MAX (hors demande d'accord), on l'interrompt : son tour compte comme un échec.
+   * Donne la parole à un participant (son IA démarre au besoin) et attend la fin de son tour. Sans aucun signe de
+   * lui pendant SILENCE_MAX (hors demande d'accord), on l'interrompt : son tour compte comme un échec.
    */
   function parler(m) {
+    try {
+      demarrer(m);
+    } catch (e) {
+      return Promise.resolve({ ok: false, motif: 'erreur', message: e.message });
+    }
     const lot = m.nonVus.splice(0).map((x) => `[${x.de}]\n${x.texte}`).join('\n\n');
     m.texte = '';
     m.dernierSigne = Date.now();
     return new Promise((resoudre) => {
       const veille = setInterval(() => {
         if (attendAccord(m) || Date.now() - m.dernierSigne < SILENCE_MAX) return;
-        m.pilote.interrompre().catch(() => {});
+        m.pilote?.interrompre().catch(() => {});
         m.attente?.({ ok: false, motif: 'silence' });
       }, 10_000);
       m.attente = (tour) => {
@@ -165,14 +205,23 @@ export function ouvrirSalon({ participants, dossier, mode, echanges, histoire },
     });
   }
 
+  /** Ce qui est dit dans le salon : gardé (pour une IA relancée) et relayé à ceux qui ne l'ont pas lu. */
+  function dire(de, texte, sauf = null) {
+    const x = { numero: ++numero, de, texte };
+    fil.push(x);
+    for (const autre of membres) if (autre !== sauf && !autre.ecarte) autre.nonVus.push(x);
+  }
+  const consigneAnimateur = (texte) => ({ numero: ++numero, de: 'Animateur', texte });
+
   /**
    * Un tour de parole : rend ce que le participant a dit (texte brut), ou null s'il a été mis à l'écart.
-   * Ce qu'il dit est relayé aux autres (sans les mots-clés).
+   * Ce qu'il dit est relayé aux autres (sans les mots-clés). Mémoire juste : son IA s'arrête ensuite.
    */
   async function tourDe(m) {
     m.courant = true;
     const tour = await parler(m);
     m.courant = false;
+    if (!assezPour(2)) liberer(m);
     if (!tour.ok) {
       if (arret || ferme) return null;
       // Un participant qui ne répond pas (erreur, limite atteinte, silence) est mis à l'écart :
@@ -185,28 +234,56 @@ export function ouvrirSalon({ participants, dossier, mode, echanges, histoire },
     const dit = m.texte.trim();
     if (dit && !dit.includes(RIEN)) {
       const propre = lisible(dit);
-      const relais = propre.length > MAX_RELAIS ? propre.slice(0, MAX_RELAIS) + '\n… (message raccourci)' : propre;
-      for (const autre of membres) if (autre !== m && !autre.ecarte) autre.nonVus.push({ de: m.nom, texte: relais });
+      dire(m.nom, propre.length > MAX_RELAIS ? propre.slice(0, MAX_RELAIS) + '\n… (message raccourci)' : propre, m);
     }
     return dit;
   }
 
   const fini = () => arret || ferme || !actifs().length;
 
+  /** Exécution : chacun fait sa part ; en même temps si la mémoire le permet, sinon chacun son tour. */
+  async function executer() {
+    let prises = 0;
+    let annonce = false;
+    for (let passe = 0; passe < limite && !fini(); passe += 1) {
+      const prets = membres.filter((m) => !m.ecarte && m.nonVus.length);
+      if (!prets.length) break;
+      // Place pour les IA à lancer, plus de quoi faire tourner ce qu'elles lancent (essais, compilations).
+      const ensemble = prets.length > 1 && assezPour(prets.filter((m) => !m.pilote).length, MARGE_TRAVAIL);
+      if (!annonce && prets.length > 1) {
+        annonce = true;
+        emettre({ t: 'info', code: ensemble ? 'salon_parallele' : 'salon_chacun_son_tour' });
+      }
+      let dits = [];
+      if (ensemble) {
+        dits = await Promise.all(prets.map((m) => tourDe(m)));
+      } else {
+        for (const m of prets) {
+          if (fini()) break;
+          dits.push(await tourDe(m));
+        }
+      }
+      prises += dits.length;
+      if (!dits.some((d) => d && !d.includes(RIEN))) break;
+    }
+    return prises;
+  }
+
   async function derouler(texte) {
     arret = false;
     emettre({ t: 'etat', occupe: true });
-    // Chaque nouveau message de la personne redonne sa chance à un participant mis à l'écart
-    // (une limite d'abonnement a pu être remise à zéro) ; seul un participant parti ne revient pas.
+    // Chaque nouveau message de la personne redonne sa chance à chacun (une limite d'abonnement a pu être remise
+    // à zéro, un outil arrêté est relancé).
     for (const m of membres) {
-      m.ecarte = m.parti;
+      m.ecarte = false;
       m.accord = false;
       m.sansTravail = false;
-      m.nonVus.push({ de: 'Utilisateur', texte }, { de: 'Animateur', texte: CONCERTATION });
     }
+    dire('Utilisateur', texte);
+    for (const m of membres) m.nonVus.push(consigneAnimateur(CONCERTATION));
     let prises = 0;
 
-    // 1. Concertation : jusqu'à ce que tous soient d'accord sur la même répartition (au plus 3 tours).
+    // 1. Concertation, chacun son tour : jusqu'à ce que tous soient d'accord sur la même répartition (3 tours au plus).
     for (let manche = 0; manche < MAX_CONCERTATION && !fini(); manche += 1) {
       for (const m of membres) {
         if (fini()) break;
@@ -226,18 +303,8 @@ export function ouvrirSalon({ participants, dossier, mode, echanges, histoire },
     if (!fini() && !actifs().every((m) => m.sansTravail)) {
       const accord = actifs().every((m) => m.accord);
       emettre({ t: 'info', code: accord ? 'salon_accord' : 'salon_sans_accord' });
-      for (const m of actifs()) m.nonVus.push({ de: 'Animateur', texte: accord ? EXECUTION : EXECUTION_SANS_ACCORD });
-      boucle: for (let passe = 0; passe < limite; passe += 1) {
-        let parle = false;
-        for (const m of membres) {
-          if (fini()) break boucle;
-          if (m.ecarte || !m.nonVus.length) continue;
-          const dit = await tourDe(m);
-          prises += 1;
-          if (dit && !dit.includes(RIEN)) parle = true;
-        }
-        if (!parle) break;
-      }
+      for (const m of actifs()) m.nonVus.push(consigneAnimateur(accord ? EXECUTION : EXECUTION_SANS_ACCORD));
+      prises += await executer();
     }
     // Ce qui reste non lu sera joint au prochain message de l'utilisateur.
     if (!ferme) emettre({ t: 'salon_pause', prises, restant: membres.some((m) => m.nonVus.length) });
@@ -251,32 +318,34 @@ export function ouvrirSalon({ participants, dossier, mode, echanges, histoire },
     },
     async interrompre() {
       arret = true;
-      await Promise.all(membres.filter((m) => m.courant).map((m) => m.pilote.interrompre()));
+      await Promise.all(membres.filter((m) => m.courant && m.pilote).map((m) => m.pilote.interrompre()));
     },
     async reglerModele() {
       throw new Error('salon_modele_fixe');
     },
-    async reglerMode(m) {
-      // Appliqué aux participants qui ont des modes (ceux qui agissent sur les fichiers).
-      await Promise.all(membres.map((x) => x.pilote.reglerMode(m).catch((e) => {
+    async reglerMode(nouveau) {
+      // Appliqué aux participants en cours qui ont des modes (ceux qui agissent sur les fichiers), et aux suivants.
+      await Promise.all(membres.filter((x) => x.pilote).map((x) => x.pilote.reglerMode(nouveau).catch((e) => {
         if (e.message !== 'mode_sans_objet') throw e;
       })));
-      emettre({ t: 'etat', mode: m });
+      modeCourant = nouveau;
+      emettre({ t: 'etat', mode: nouveau });
     },
     async reglerEffort(e) {
       // Seuls les participants Claude ont une puissance réglable : les autres gardent la leur.
-      await Promise.all(membres.map((x) => x.pilote.reglerEffort?.(e).catch(() => {})));
+      await Promise.all(membres.filter((x) => x.pilote).map((x) => x.pilote.reglerEffort?.(e).catch(() => {})));
+      effortCourant = e;
       emettre({ t: 'etat', effort: e });
     },
     repondrePermission(id, reponse) {
-      return proprietaires.get(id)?.pilote.repondrePermission(id, reponse) || false;
+      return proprietaires.get(id)?.pilote?.repondrePermission(id, reponse) || false;
     },
     fermer() {
       ferme = true;
       arret = true;
       for (const m of membres) {
         m.attente?.({ ok: false });
-        m.pilote.fermer();
+        liberer(m);
       }
     },
   };

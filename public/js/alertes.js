@@ -9,11 +9,11 @@ import { ecouter } from './canal.js';
 ajouterTextes({
   fr: {
     notif_accord: '✋ {nom} a besoin de ton accord', notif_fini: 'Discussion terminée · {projet}', notif_echec: 'Tour interrompu · {projet}',
-    notif_ouvrir: 'clique pour l’ouvrir',
+    notif_ouvrir: 'clique pour l’ouvrir', notif_memoire: '⚠ Mémoire du serveur presque pleine · travail arrêté · {projet}',
   },
   en: {
     notif_accord: '✋ {nom} needs your approval', notif_fini: 'Conversation finished · {projet}', notif_echec: 'Turn interrupted · {projet}',
-    notif_ouvrir: 'click to open it',
+    notif_ouvrir: 'click to open it', notif_memoire: '⚠ Server memory almost full · work stopped · {projet}',
   },
 });
 
@@ -27,6 +27,7 @@ function textes(a) {
     return [t('notif_accord', { nom }), [a.projet, titre, a.outil].filter(Boolean).join(' · ')];
   }
   if (a.genre === 'fini') return [t('notif_fini', { projet: a.projet }), titre];
+  if (a.genre === 'memoire') return [t('notif_memoire', { projet: a.projet }), `${titre} · ${a.message}`];
   return [t('notif_echec', { projet: a.projet }), a.message ? `${titre} · ${a.message}` : titre];
 }
 

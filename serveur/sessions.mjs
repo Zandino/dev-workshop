@@ -9,6 +9,8 @@ import { piloteAvecRelais, consigneRelais, nomCompte } from './relais.mjs';
 import { compte } from './comptes.mjs';
 import { ecrireSession, oublierSession, listerInterrompues } from './sauvegarde-sessions.mjs';
 import { alerteDe, changeLaBarre, signaler } from './veille.mjs';
+import { verifierPlace, surveillerMemoire, enMo } from './memoire.mjs';
+import { libererDictee } from './dictee.mjs';
 
 const MAX_JOURNAL = 4000;
 const MAX_SESSIONS = 8;
@@ -24,6 +26,18 @@ function sauver() {
   }
 }
 setInterval(sauver, 5000).unref();
+
+// Mémoire presque pleine : on arrête ce qui travaille (et la dictée libère son modèle) avant que le serveur ne se
+// fige ; chaque discussion touchée le dit dans son fil et prévient l'écran (voir memoire.mjs).
+surveillerMemoire((m) => {
+  libererDictee();
+  for (const s of sessions.values()) {
+    if (!s.etat.occupe || s.etat.ferme) continue;
+    s.pilote.interrompre().catch(() => {});
+    s.emettre({ t: 'info', code: 'memoire_pleine', libre: enMo(m.disponible), total: enMo(m.total) });
+    signaler({ id: s.id, projet: projetDe(s), titre: s.titre, compte: s.compte, genre: 'memoire', auteur: null, outil: null, message: `${enMo(m.disponible)} Mo libres sur ${enMo(m.total)}` });
+  }
+});
 
 /** Sessions sauvegardées qui ne tournent plus (serveur redémarré entre-temps). */
 export const interrompues = () => listerInterrompues(new Set(sessions.keys()));
@@ -71,6 +85,7 @@ export async function ouvrirSession({ compte, participants, dossier, modele, mod
   const salon = Array.isArray(participants) && participants.length > 1;
   const pilotes = listerVivantes().reduce((n, x) => n + (x.participants?.length || 1), 0);
   if (pilotes + (salon ? participants.length : 1) > MAX_PILOTES) throw new Error('trop_de_sessions');
+  verifierPlace(salon ? participants.length : 1);
   const f = salon ? null : fournisseurDe(compte);
   const s = {
     id: randomUUID(),
@@ -180,6 +195,8 @@ export function changerEquipe(id, equipe) {
   const salon = Array.isArray(equipe.participants) && equipe.participants.length > 1;
   const autres = listerVivantes().filter((x) => x.id !== s.id).reduce((n, x) => n + (x.participants?.length || 1), 0);
   if (autres + (salon ? equipe.participants.length : 1) > MAX_PILOTES) throw new Error('trop_de_sessions');
+  // L'ancienne équipe libère sa place : seules les IA en plus doivent tenir en mémoire.
+  verifierPlace((salon ? equipe.participants.length : 1) - (s.participants?.length || 1));
   const c = salon ? null : equipe.orchestre || equipe.compte;
   // La cheffe est toujours un compte Claude : l'outil « deleguer » est propre à Claude Code.
   if (equipe.orchestre && c.type !== 'claude') throw new Error('orchestre_claude');
