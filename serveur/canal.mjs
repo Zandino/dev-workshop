@@ -15,6 +15,7 @@ import { listerCorbeille } from './projets.mjs';
 import { listerSessionsCorbeille } from './corbeille-sessions.mjs';
 import { enDeplacement } from './deplacer-session.mjs';
 import { veiller } from './veille.mjs';
+import { ordresDictee } from './dictee.mjs';
 
 const NOM_PROJET = /^[A-Za-z0-9][A-Za-z0-9._-]{0,60}$/;
 const MAX_TEXTE = 200_000;
@@ -182,7 +183,10 @@ export function brancher(ws, jeton) {
   };
 
   const projetsEtFichiers = ordresProjets(envoyer, () => envoyer(etatGeneral()), (id) => ordres.attacher({ session: id }));
-  for (const [nom, f] of Object.entries(projetsEtFichiers.ordres)) if (!Object.hasOwn(ordres, nom)) ordres[nom] = f;
+  const dictee = ordresDictee(envoyer);
+  for (const lot of [projetsEtFichiers, dictee]) {
+    for (const [nom, f] of Object.entries(lot.ordres)) if (!Object.hasOwn(ordres, nom)) ordres[nom] = f;
+  }
 
   ws.on('message', async (donnees) => {
     let m;
@@ -215,6 +219,7 @@ export function brancher(ws, jeton) {
     quitterVeille();
     clearTimeout(regroupement);
     projetsEtFichiers.fermer();
+    dictee.fermer();
     for (const quitter of abonnements.values()) quitter();
     abonnements.clear();
   });

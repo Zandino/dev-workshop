@@ -51,11 +51,14 @@ function creerAccueil() {
  */
 function sessionDuServeur(id) {
   const s = session.fromPartition(`serveur-${id}`);
-  // Copier dans le presse-papiers (bouton « Copier ») et notifications (session finie, accord attendu) ;
-  // tout le reste (micro, caméra, position…) est refusé.
+  // Copier dans le presse-papiers (bouton « Copier »), notifications (discussion finie, accord attendu) et le micro
+  // pour la dictée (🎤, le son seul) ; tout le reste (caméra, écran, position…) est refusé.
   const permis = new Set(['clipboard-sanitized-write', 'notifications']);
-  s.setPermissionRequestHandler((_wc, permission, repondre) => repondre(permis.has(permission)));
-  s.setPermissionCheckHandler((_wc, permission) => permis.has(permission));
+  const micro = (types) => Array.isArray(types) && types.length > 0 && types.every((t) => t === 'audio');
+  s.setPermissionRequestHandler((_wc, permission, repondre, details) => {
+    repondre(permis.has(permission) || (permission === 'media' && micro(details?.mediaTypes)));
+  });
+  s.setPermissionCheckHandler((_wc, permission, _origine, details) => permis.has(permission) || (permission === 'media' && details?.mediaType === 'audio'));
   return s;
 }
 

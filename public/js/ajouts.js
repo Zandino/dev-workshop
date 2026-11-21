@@ -1,5 +1,5 @@
 // Branchement des modules ajoutés à l'atelier : fichiers joints, réglages du projet et corbeille,
-// connecteurs partagés, export de la session, vue « En direct ».
+// connecteurs partagés, export de la session, vue « En direct », dictée.
 import { initPieces } from './pieces.js';
 import { initProjet } from './projet.js';
 import { initConnecteurs } from './connecteurs.js';
@@ -10,6 +10,7 @@ import { definirCommandes } from './commandes.js';
 import { initApercu } from './apercu.js';
 import { initTravail } from './travail.js';
 import { initAbsence } from './absence.js';
+import { initDictee } from './dictee.js';
 
 /**
  * `ecran` : l'état de l'écran (app.js) ; `compte()` : le compte choisi ; `libelle(compte)` : son nom affiché ;
@@ -48,4 +49,5 @@ export function brancherAjouts({ ecran, compte, libelle, projetSupprime }) {
   initApercu({ projet: () => ecran.projet, session: () => ecran.session });
   initTravail({ ecran, compte, libelle, comptes: () => ecran.general?.comptes || [] });
   initAbsence();
+  initDictee();
 }

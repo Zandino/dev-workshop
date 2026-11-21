@@ -31,6 +31,10 @@ Free software, built by the Deltinfo Studio team and published under the Apache 
   hand ✋ when it needs your approval, a pulsing dot while it works, a bold title when it finished unseen (red if it
   failed). A clickable bubble (window in front) or a system notification (in the background) opens it, and the
   desktop app puts a raised hand on its taskbar icon.
+- **Dictation** (🎤): click to talk, click to stop; the text lands in the message box for you to review. Engine:
+  Whisper on your server (open source, free, the voice stays on the server; installed on demand, ~750 MB plus the
+  model) or an API account you added (OpenAI, Groq, Mistral… via `/audio/transcriptions`). See README.fr.md,
+  "Dictée".
 - **French and English** interface, including the searchable `/` command palette.
 
 ## Run it
@@ -137,6 +141,7 @@ serveur/securite.mjs     token, origin, confined folders, headers
 serveur/canal.mjs        orders received from the screen
 serveur/sessions.mjs     live sessions, journal replayed on reconnect
 serveur/veille.mjs       alerts: every connection follows all open conversations
+serveur/dictee.mjs       dictation: Whisper on the server, or an API account
 serveur/comptes.mjs      accounts and API keys
 serveur/connexion.mjs    account sign-in (link relayed to the screen)
 serveur/salon.mjs        group discussion (turns, relay)
@@ -162,7 +167,8 @@ DEVWORKSHOP_PORT=5331 node tests/ecran.mjs <project> en    # the real page in a 
 `tests/discussions.mjs` and `tests/ecran-discussions.mjs` cover conversations (list, move, notes) without any model
 call, but they write into Claude Code's folder: run the server and the tests with a scratch `HOME` under `/tmp` (see
 README.fr.md, "Essais"). `tests/alertes.mjs <project>` covers alerts (rule table, channel with a fake local API, the
-real page) without any model call either.
+real page) without any model call either. `tests/dictee.mjs <project> voice.wav "expected words"` covers dictation
+(Whisper, installed if missing; a fake API; the real page with a fake microphone).
 
 ## Licence and third-party tools
 
@@ -177,6 +183,7 @@ It drives tools that keep their own licence and terms, and each needs an account
 | Gemini CLI (Google) | Apache 2.0 |
 | ws, marked, jsdom | MIT |
 | DOMPurify | MPL 2.0 or Apache 2.0 |
+| Dictation, installed on demand: Transformers.js / ONNX Runtime / Whisper models | Apache 2.0 / MIT / MIT |
 
 Dev Workshop is not affiliated with Anthropic, OpenAI or Google. Their product names belong to them.
 

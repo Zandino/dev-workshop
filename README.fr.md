@@ -199,6 +199,21 @@ reste reprenable depuis la liste de son projet.
   nouvelle demande). La page n'ayant aucun accès au poste, elle l'annonce dans son titre (« ✋ 2 · Dev Workshop »),
   que le logiciel lit.
 
+## Dictée
+
+- 🎤 à côté de « Envoyer » : un clic écoute, un second clic arrête, Échap annule. Le texte s'ajoute dans la zone de
+  saisie, là où est le curseur ; tu le relis, rien ne part sans ton clic. 3 minutes au plus par dictée.
+- Moteur, en bas de la barre latérale : **Whisper sur le serveur** (open source, gratuit, la voix ne quitte pas le
+  serveur), « rapide » (whisper-small) ou « précis » (whisper-large-v3-turbo), ou **un compte API** déjà déclaré
+  (OpenAI, Groq, Mistral… par leur route `/audio/transcriptions` ; la voix part chez eux).
+- Whisper ne fait pas partie de l'installation de base : au premier 🎤, Dev Workshop propose de l'installer dans le
+  dossier des réglages (Transformers.js et ONNX Runtime, ~750 Mo, sans sudo), puis télécharge le modèle à son premier
+  usage (~250 Mo pour « rapide », ~1,1 Go pour « précis »). Relevé sur 4 cœurs de Ryzen 7700X, pour 10 s de voix :
+  « rapide » 2,3 s et ~1,2 Go de mémoire, « précis » 4,5 s et ~2,8 Go. Le modèle est libéré après 10 minutes sans
+  dictée.
+- Il faut une adresse sûre (le logiciel de bureau, ou `localhost` par le tunnel) ; dans un navigateur, il demande
+  l'accès au micro.
+
 ## Essais
 
 Le serveur doit tourner. Chaque essai fait un tour réel sur le petit modèle :
@@ -220,6 +235,7 @@ node tests/discussions.mjs prepare        # avant de lancer le serveur : fabriqu
 node tests/discussions.mjs                # canal : liste, déplacement et ses refus, fiche
 node tests/ecran-discussions.mjs          # la vraie page (sur des discussions refabriquées)
 node tests/alertes.mjs <projet>           # alertes : règle, canal (fausse API locale), vraie page ; sans modèle
+node tests/dictee.mjs <projet> voix.wav "mots attendus"   # dictée : Whisper (installé si besoin), API factice, page
 ```
 
 Les essais créent des comptes : les lancer avec `DEVWORKSHOP_CONFIG` sur un dossier d'essai, côté serveur et côté
@@ -268,7 +284,11 @@ leurs protocoles, une montée de version se fait donc avec un essai.
 - pas d'images ni de pièces jointes dans la saisie ;
 - pas d'explorateur de fichiers ni d'éditeur ; les modifications se lisent dans les cartes d'outils ;
 - quelques commandes « / » propres au terminal (couleur, vue épurée…) n'ont pas d'effet ici ;
-- les commandes des compétences et des plugins gardent leur description d'origine, signalée comme telle.
+- les commandes des compétences et des plugins gardent leur description d'origine, signalée comme telle ;
+- dictée : essayée avec une voix de synthèse (Windows) et le faux micro de Chromium, pas encore avec une vraie voix
+  au micro ; « précis » n'a été mesuré qu'en dehors du serveur ;
+- onnxruntime écrit dans le journal du serveur des lignes « pthread_setaffinity_np failed » au chargement du modèle :
+  sans conséquence (le conteneur limite les cœurs).
 
 ## Licence et dépendances
 
@@ -284,6 +304,7 @@ chez leur éditeur :
 | Gemini CLI (Google) | Apache 2.0 |
 | ws, marked, jsdom | MIT |
 | DOMPurify | MPL 2.0 ou Apache 2.0 |
+| Dictée, installée à la demande : Transformers.js / ONNX Runtime / modèles Whisper | Apache 2.0 / MIT / MIT |
 
 Dev Workshop n'est affilié ni à Anthropic, ni à OpenAI, ni à Google. Les noms de leurs produits leur appartiennent.
 

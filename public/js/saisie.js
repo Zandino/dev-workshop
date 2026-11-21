@@ -27,6 +27,7 @@ export function initSaisie({ envoyer, arreter }) {
 export function etatSaisie({ active, occupe }) {
   champ.disabled = !active;
   boutonEnvoyer.disabled = !active;
+  document.getElementById('dicter').disabled = !active; // la dictée remplit la saisie (dictee.js)
   boutonArreter.hidden = !occupe;
   if (active && document.activeElement === document.body) champ.focus();
 }

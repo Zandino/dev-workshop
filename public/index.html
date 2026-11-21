@@ -46,6 +46,7 @@
           <button id="ouvrir-corbeille" class="discret" type="button"><span data-i18n="corbeille"></span> <span id="compte-corbeille" class="nombre"></span></button>
         </div>
         <label><span data-i18n="langue"></span><select id="langue"></select></label>
+        <label><span data-i18n="dictee"></span><select id="dictee-moteur"></select></label>
       </footer>
     </aside>
 
@@ -81,6 +82,7 @@
         <label class="pastille-reglage"><span data-i18n="mode"></span><select id="mode"></select></label>
         <label class="pastille-reglage"><span data-i18n="puissance"></span><select id="effort"></select></label>
         <span class="ressort"></span>
+        <button id="dicter" class="dicter" type="button" disabled data-i18n-attr="title:dicter"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></svg><span id="dicter-temps" class="temps"></span></button>
         <button id="arreter" class="danger" type="button" hidden data-i18n="arreter"></button>
         <button id="envoyer" class="principal" type="button" disabled data-i18n="envoyer"></button>
       </footer>
