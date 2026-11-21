@@ -5,6 +5,7 @@ import { t } from './i18n.js';
 import { dire } from './canal.js';
 import './projet.js'; // ses textes (corbeille) servent aussi ici
 import { ajouterTextes } from './i18n.js';
+import { differer, fleches, rendreOrdonnable } from './ordre-barre.js';
 
 ajouterTextes({
   fr: { etat_main: 'Elle a besoin de toi : un accord t’attend', etat_occupe: 'L’IA travaille', etat_libre: 'Prête, elle attend ton message', etat_non_lu: 'Terminée, pas encore lue', etat_echec: 'Tour interrompu, pas encore lu', etat_attente: 'Interrompue par un redémarrage', glisser_aide: 'Glisse-la sur un autre projet pour l’y ranger', rangement_vers: 'Rangement dans « {projet} »…', ranger_titre_court: 'Ranger dans un autre projet', voir_toutes: 'Voir les {n} discussions du projet', interrompues: 'Discussions interrompues', oublier_interrompue: 'Oublier cette discussion', confirmer_oublier: 'Oublier la discussion interrompue « {titre} » ? Elle ne pourra plus être reprise d’ici.' },
@@ -111,17 +112,35 @@ function avecPoubelle(ligne, quoi) {
   }));
 }
 
-/** Projet replié : ce qui t'y attend se voit sur le dossier (✋ un accord, ou une pastille « pas encore lue »). */
+/**
+ * Projet replié : l'état le plus pressant de ses discussions ouvertes se voit sur le dossier : ✋ un accord ou une
+ * question t'attend, puis un échec pas encore lu, puis une IA au travail, puis une fin pas encore lue.
+ */
+const URGENCE = ['main', 'echec', 'occupe', 'non-lu'];
 function resumeDossier(vivantes, projet) {
-  const siennes = vivantes.filter((s) => s.projet === projet);
-  if (siennes.some((s) => s.attente)) return marque('main');
-  const nonLue = siennes.find((s) => s.nonLu && !s.occupe);
-  return nonLue ? marque(nonLue.nonLu === 'echec' ? 'echec' : 'non-lu') : null;
+  const etats = new Set(vivantes.filter((s) => s.projet === projet).map(etatDe));
+  const pire = URGENCE.find((e) => etats.has(e));
+  return pire ? marque(pire) : null;
+}
+
+/** Clé d'une discussion pour son ordre : la discussion Claude Code dont elle vient, sinon son id. */
+const cleOuverte = (s) => s.origine || s.sessionId || s.id;
+
+function changerOrdreProjets(liste) {
+  vue.general.projets = liste; // tout de suite à l'écran ; le serveur confirme par l'état général
+  dessiner();
+  dire({ t: 'ordre_projets', liste });
+}
+
+function changerOrdreDiscussions(projet, liste) {
+  vue.general.ordreDiscussions = { ...(vue.general.ordreDiscussions || {}), [projet]: liste };
+  dessiner();
+  dire({ t: 'ordre_discussions', projet, liste });
 }
 
 function dessiner() {
   const g = vue.general;
-  if (!g) return;
+  if (!g || differer(dessiner)) return;
 
   // Discussions ouvertes : celles du projet choisi vont sous lui, les autres restent visibles plus bas.
   const ouverte = (s, sous) => avecPoubelle(element('ligne', {
@@ -153,9 +172,12 @@ function dessiner() {
         },
       }, h('span.chevron', { 'aria-hidden': 'true' }, deplie ? '▾' : '▸'), h('span.titre', {}, p), deplie ? null : resumeDossier(g.vivantes, p));
       rendreCible(ligne, p);
-      if (!actif) return [ligne];
+      // Ordre des projets : glisser le dossier avant ou après un autre, ou ▲ ▼ au survol.
+      rendreOrdonnable(ligne, { groupe: 'projets', cle: p, liste: g.projets, changer: changerOrdreProjets });
+      const ordre = fleches(g.projets, p, changerOrdreProjets);
+      if (!actif) return [h('div.projet-ligne', {}, ligne, ordre)];
       // Le projet ouvert garde ses réglages à portée : fiche, règles, export, et sa corbeille.
-      const tete = h('div.projet-actif', {}, ligne,
+      const tete = h('div.projet-actif.projet-ligne', {}, ligne, ordre,
         h('button.reglages-projet', { type: 'button', title: t('reglages_projet'), 'aria-label': t('reglages_projet'), onclick: () => actions.ouvrirProjet(p) }, '⚙'),
         poubelle(t('projet_corbeille_titre'), () => actions.ouvrirProjet(p, { corbeille: true })));
       return deplie ? [tete, sousListe(p, ici, ouverte)] : [tete];
@@ -182,20 +204,38 @@ function dessiner() {
   );
 }
 
-/** Discussions du projet ouvert, en retrait sous lui : nouvelle discussion, les ouvertes (pastille), puis les autres. */
+/**
+ * Discussions du projet ouvert, en retrait sous lui : nouvelle discussion, puis ses discussions (ouvertes, avec leur
+ * pastille, et enregistrées) dans l'ordre choisi ; sans ordre choisi, les ouvertes d'abord, puis les plus récentes.
+ */
 function sousListe(projet, ici, ouverte) {
   const dejaOuvertes = new Set(ici.flatMap((s) => [s.sessionId, s.origine]).filter(Boolean));
   const enregistrees = vue.historique.filter((s) => !dejaOuvertes.has(s.id));
   const ranger = (d) => h('button.ranger', { type: 'button', title: t('ranger_titre_court'), 'aria-label': t('ranger_titre_court'), onclick: (e) => { e.stopPropagation(); actions.ranger(d); } }, '⇄');
+  const elements = [
+    ...ici.map((s) => ({ cle: cleOuverte(s), ouverte: s })),
+    ...enregistrees.slice(0, MAX_LISTE).map((s) => ({ cle: s.id, enregistree: s })),
+  ];
+  const ordre = vue.general.ordreDiscussions?.[projet] || [];
+  const rang = new Map(ordre.map((c, i) => [c, i]));
+  elements.sort((a, b) => (rang.get(a.cle) ?? Infinity) - (rang.get(b.cle) ?? Infinity)); // tri stable
+  const cles = elements.map((x) => x.cle);
+  const changer = (liste) => changerOrdreDiscussions(projet, liste);
   const lignes = [
     h('button.ligne.nouvelle-discussion', { type: 'button', onclick: () => actions.nouvelle() }, h('span.titre', {}, `＋ ${t('nouvelle_session')}`)),
-    ...ici.map((s) => ouverte(s, null)),
-    ...enregistrees.slice(0, MAX_LISTE).map((s) => {
-      const d = { projet, id: s.id, titre: s.titre, modifieLe: s.modifieLe };
-      const ligne = avecPoubelle(element('ligne', { titre: s.titre || t('sans_titre'), sous: dateCourte(s.modifieLe), onclick: () => actions.reprendre(s) }), d);
-      ligne.classList.add('avec-ranger');
-      ligne.append(ranger(d));
-      rendreGlissable(ligne, d);
+    ...elements.map(({ cle, ouverte: s, enregistree }) => {
+      let ligne;
+      if (s) {
+        ligne = ouverte(s, null);
+      } else {
+        const d = { projet, id: enregistree.id, titre: enregistree.titre, modifieLe: enregistree.modifieLe };
+        ligne = avecPoubelle(element('ligne', { titre: enregistree.titre || t('sans_titre'), sous: dateCourte(enregistree.modifieLe), onclick: () => actions.reprendre(enregistree) }), d);
+        ligne.classList.add('avec-ranger');
+        ligne.append(ranger(d));
+        rendreGlissable(ligne, d);
+      }
+      rendreOrdonnable(ligne, { groupe: 'discussions:' + projet, cle, liste: cles, changer });
+      ligne.append(fleches(cles, cle, changer));
       return ligne;
     }),
   ];

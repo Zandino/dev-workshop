@@ -31,7 +31,9 @@ Free software, built by the Deltinfo Studio team and published under the Apache 
 - **Alerts**: every open conversation is followed live in the sidebar, even while you look at another one: a raised
   hand ✋ when it needs your approval, a pulsing dot while it works, a bold title when it finished unseen (red if it
   failed). A clickable bubble (window in front) or a system notification (in the background) opens it, and the
-  desktop app puts a raised hand on its taskbar icon.
+  desktop app puts a raised hand on its taskbar icon. A collapsed project shows the most pressing state of its open
+  conversations (✋, then failed, then working, then finished unseen). Projects, and the conversations of a project,
+  can be put in any order (drag and drop, or ▲ ▼ on hover, Alt+↑/↓); the order is kept on the server.
 - **Conversations talk to each other**: every AI with tools (Claude, Codex, Gemini, Copilot) can list the other open
   conversations of all projects, read them and send them a message. A free conversation handles it on its own (a
   busy one as soon as it is free), and its answer comes back to the sender as a new message; nothing waits, so two

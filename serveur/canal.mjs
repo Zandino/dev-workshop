@@ -18,6 +18,7 @@ import { veiller } from './veille.mjs';
 import { ordresDictee } from './dictee.mjs';
 import { verifierCleGemini } from './fournisseurs/gemini.mjs';
 import { repondreQuestion } from './entre-discussions.mjs';
+import { lireOrdre, trier } from './ordre.mjs';
 
 const NOM_PROJET = /^[A-Za-z0-9][A-Za-z0-9._-]{0,60}$/;
 const MAX_TEXTE = 200_000;
@@ -33,7 +34,8 @@ function projets() {
 const VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 
 function etatGeneral() {
-  return { t: 'general', version: VERSION, comptes: listerComptes(), projets: projets(), vivantes: listerVivantes(), modes: MODES, corbeille: listerCorbeille().length + listerSessionsCorbeille().length, interrompues: interrompues() };
+  const ordre = lireOrdre(); // ordre choisi dans la barre (ordre.mjs)
+  return { t: 'general', version: VERSION, comptes: listerComptes(), projets: trier(projets(), ordre.projets), ordreDiscussions: ordre.discussions, vivantes: listerVivantes(), modes: MODES, corbeille: listerCorbeille().length + listerSessionsCorbeille().length, interrompues: interrompues() };
 }
 
 export function brancher(ws, jeton) {

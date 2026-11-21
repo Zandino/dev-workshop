@@ -208,6 +208,11 @@ Une discussion continue de tourner si l'onglet se ferme ; elle apparaît en têt
 projet (ou dans « Ouvertes dans d'autres projets ») et se rejoue à la reconnexion. Elle s'arrête avec le serveur et
 reste reprenable depuis la liste de son projet.
 
+Dans la barre, les projets et les discussions d'un projet se rangent dans l'ordre voulu : glisser une ligne avant ou
+après une autre, ou ▲ ▼ au survol (Alt+↑ / Alt+↓ au clavier). L'ordre est gardé sur le serveur (`ordre.json` des
+réglages), pour tous les écrans. Un projet replié montre l'état le plus pressant de ses discussions ouvertes : ✋ un
+accord ou une question t'attend, puis un échec pas encore lu, puis une IA au travail, puis une fin pas encore lue.
+
 ## Discussions et fiche du projet
 
 - Chaque projet liste ses discussions, les plus récentes en haut. « Toutes les discussions » les montre tous projets

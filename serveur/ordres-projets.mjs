@@ -14,6 +14,7 @@ import { vueConnecteurs, definirConnecteur, supprimerConnecteur, reglerAcces, im
 import { listerSessionsCorbeille } from './corbeille-sessions.mjs';
 import { ordresSessions } from './ordres-sessions.mjs';
 import { reglesDu, enregistrerRegles } from './regles-accord.mjs';
+import { definirOrdreProjets, definirOrdreDiscussions } from './ordre.mjs';
 
 const dansProjet = (s, nom) => s.projet === nom || s.projet.startsWith(nom + '/');
 
@@ -24,6 +25,17 @@ export function ordresProjets(envoyer, general, attacher) {
   const connecteurs = () => envoyer({ t: 'connecteurs', ...vueConnecteurs(listerComptes()) });
 
   const ordres = {
+    // Ordre choisi dans la barre (glisser-déposer, flèches) : voir ordre.mjs.
+    ordre_projets(m) {
+      definirOrdreProjets(m.liste);
+      general();
+    },
+
+    ordre_discussions(m) {
+      definirOrdreDiscussions(String(m.projet || ''), m.liste);
+      general();
+    },
+
     projet_lire(m) {
       const nom = String(m.nom || '');
       resoudreProjet(nom);

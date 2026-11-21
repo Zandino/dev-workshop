@@ -172,3 +172,14 @@ textarea.retenu { width: 100%; min-height: 200px; resize: vertical; }
 .sous-liste .avec-poubelle[draggable="true"] { cursor: grab; }
 .sous-liste .en-glisse { opacity: 0.5; }
 .ligne.dossier.cible { background: var(--accent-doux); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+
+/* Ordre choisi à la main : ▲ ▼ au survol (à gauche, sur la pastille ou le chevron), trait d'insertion en glissant. */
+.projet-ligne { position: relative; }
+.projet-ligne > .ligne.dossier { cursor: grab; }
+.fleches { position: absolute; left: -3px; top: 50%; transform: translateY(-50%); display: grid; gap: 1px; opacity: 0; transition: opacity 0.15s; z-index: 1; }
+.fleches button { width: 15px; height: 13px; min-height: 0; padding: 0; border: 0; border-radius: 3px; background: var(--surface); box-shadow: 0 0 0 1px var(--trait); color: var(--texte-doux); font-size: 8px; line-height: 1; }
+.fleches button:hover:not(:disabled) { color: var(--accent); background: var(--accent-doux); }
+.fleches button:disabled { opacity: 0.35; }
+.projet-ligne:hover .fleches, .avec-poubelle:hover .fleches, .fleches:focus-within { opacity: 1; }
+.inserer-avant { box-shadow: inset 0 2px 0 var(--accent) !important; }
+.inserer-apres { box-shadow: inset 0 -2px 0 var(--accent) !important; }
