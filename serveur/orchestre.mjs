@@ -48,8 +48,11 @@ const consigneSousAgent = (role) => [
   'Fais seulement cette tâche, puis termine par un compte rendu clair et court de ce que tu as fait ou trouvé : c’est lui qui sera transmis à la cheffe.',
 ].join('\n');
 
-/** Ouvre une session orchestrée ; même interface qu'un pilote ordinaire. */
-export function ouvrirOrchestre({ compte, dossier, modele, mode, effort }, emettre) {
+/**
+ * Ouvre une session orchestrée ; même interface qu'un pilote ordinaire. `histoire` : la conversation déjà tenue,
+ * quand une discussion existante passe en orchestre (sessions.mjs).
+ */
+export function ouvrirOrchestre({ compte, dossier, modele, mode, effort, histoire }, emettre) {
   const proprietaires = new Map(); // demande d'accord -> pilote qui l'a faite
   const sousAgents = new Set();
   let ferme = false;
@@ -131,7 +134,7 @@ export function ouvrirOrchestre({ compte, dossier, modele, mode, effort }, emett
     dossier,
     modele,
     mode,
-    consigne: [consigneDeProjet(dossier), consigneCheffe()].filter(Boolean).join('\n\n'),
+    consigne: [consigneDeProjet(dossier), consigneCheffe(), histoire].filter(Boolean).join('\n\n'),
     connecteurs: connecteursPour(compte),
     serveursMcp: { orchestre: outils },
     outilsPermis: ['mcp__orchestre__deleguer'],

@@ -3,7 +3,8 @@
 import path from 'node:path';
 import { resoudreProjet, RACINE_PROJETS } from './securite.mjs';
 import { mkdirSync, existsSync } from 'node:fs';
-import { session, fermerSession, ouvrirSession, listerVivantes, interrompues } from './sessions.mjs';
+import { session, fermerSession, ouvrirSession, listerVivantes, interrompues, changerEquipe } from './sessions.mjs';
+import { preparerParticipants } from './salon.mjs';
 import { deplacerSession, enDeplacement } from './deplacer-session.mjs';
 import { NOM_PROJET } from './projets.mjs';
 import { chargerInterrompue, oublierSession } from './sauvegarde-sessions.mjs';
@@ -60,6 +61,20 @@ export function ordresSessions(envoyer, general, corbeille, attacher) {
       if (!s.pilote.changerIa || s.orchestre) throw new Error('changement_impossible');
       if (s.etat.occupe) throw new Error('changement_occupe');
       s.pilote.changerIa(compte(String(m.compte || '')));
+      general();
+    },
+
+    // Changer l'équipe d'une discussion ouverte, sans en ouvrir une autre : plusieurs IA (m.participants),
+    // l'orchestre (m.orchestre) ou une seule (m.compte). L'historique suit ; voir changerEquipe (sessions.mjs).
+    changer_equipe(m) {
+      const s = session(String(m.session || ''));
+      if (Array.isArray(m.participants) && m.participants.length > 1) {
+        changerEquipe(s.id, { participants: preparerParticipants(m.participants), echanges: m.echanges });
+      } else if (m.orchestre === true) {
+        changerEquipe(s.id, { orchestre: compte('defaut') });
+      } else {
+        changerEquipe(s.id, { compte: compte(String(m.compte || '')) });
+      }
       general();
     },
 

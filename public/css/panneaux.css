@@ -49,6 +49,8 @@ button.discret:hover:not(:disabled) { color: var(--rouge); background: var(--rou
 .participant { display: grid; grid-template-columns: 1fr 1.3fr 1fr auto auto; gap: 8px; align-items: center; }
 .echanges { display: flex; align-items: center; gap: 10px; color: var(--texte-doux); }
 .echanges input { width: 70px; }
+/* Bas du panneau : depuis une discussion ouverte, « Démarrer une nouvelle » à côté de « Appliquer ». */
+.boite > .actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
 
 /* Signature d'un participant : une teinte par rang. */
 .auteur { justify-self: start; padding: 1px 9px; border-radius: 99px; font-size: 12px; font-weight: 600; color: #fff; }

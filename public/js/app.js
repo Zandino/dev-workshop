@@ -54,8 +54,9 @@ function majEntete() {
   $('titre-session').textContent = ecran.projet || t('titre');
   $('fermer-session').hidden = !ecran.session;
   $('retenir').hidden = !ecran.session || ecran.salon || Boolean(ecran.etat.ferme);
-  // À plusieurs, compte et modèle sont fixés par participant.
-  for (const id of ['compte', 'modele']) $(id).disabled = ecran.salon; // en session, changer de compte passe la main
+  // À plusieurs, le modèle est fixé par participant. Choisir une IA dans la liste, en discussion, change son équipe
+  // en gardant l'historique (travail.js).
+  $('modele').disabled = ecran.salon;
   etatSaisie({ active: Boolean(ecran.projet) && !ecran.etat.ferme, occupe: Boolean(ecran.etat.occupe) });
   $('joindre').disabled = !ecran.projet || Boolean(ecran.etat.ferme);
   if (ecran.etat.mode) $('mode').value = ecran.etat.mode;
@@ -65,6 +66,7 @@ function majEntete() {
 function quitterSession() {
   if (ecran.session) dire({ t: 'detacher', session: ecran.session });
   Object.assign(ecran, { session: null, salon: false, etat: {}, journal: [], titre: '', retenir: null });
+  if ($('compte').value === 'salon') $('compte').value = 'defaut'; // « Plusieurs IA » ne s'ouvre que par 👥
   definirSignature(null);
   nouvelAppel(null);
   viderPermissions();
@@ -131,7 +133,7 @@ function surRejouer(m) {
   ecran.session = m.session;
   ecran.projet = m.resume.projet;
   ecran.salon = Boolean(m.resume.participants);
-  if (m.resume.compte) $('compte').value = m.resume.compte;
+  $('compte').value = m.resume.participants ? 'salon' : m.resume.orchestre ? 'orchestre' : m.resume.compte || 'defaut';
   ecran.etat = { ...m.etat };
   ecran.titre = m.resume.titre || '';
   ecran.journal = [...m.evenements];
@@ -184,8 +186,9 @@ function surEvenement(m) {
 function surGeneral(m) {
   ecran.general = m;
   $('version').textContent = m.version || '';
-  const choisi = m.comptes.some((c) => c.id === $('compte').value) || $('compte').value === 'orchestre' ? $('compte').value : 'defaut';
-  options($('compte'), [...m.comptes.map((c) => [c.id, libelleCompte(c)]), ['orchestre', t('compte_orchestre')]], choisi);
+  const choisi = m.comptes.some((c) => c.id === $('compte').value) || ['orchestre', 'salon'].includes($('compte').value) ? $('compte').value : 'defaut';
+  // « Plusieurs IA » se choisit par 👥 (participants) : dans la liste, il dit seulement ce qu'est la discussion.
+  options($('compte'), [...m.comptes.map((c) => [c.id, libelleCompte(c)]), ['orchestre', t('compte_orchestre')], ['salon', t('compte_salon'), true]], choisi);
   majComptes(m.comptes);
   majComptesSalon(m.comptes);
   majCorbeille(m.corbeille);
@@ -260,7 +263,8 @@ function demarrer() {
     dire({ t: 'envoyer', session: ecran.session, texte: t('retenir_consigne') });
   });
   $('jauge').addEventListener('click', () => $('conso').toggleAttribute('hidden')); $('ouvrir-comptes').addEventListener('click', ouvrirComptes);
-  $('ouvrir-salon').addEventListener('click', () => ecran.projet && ouvrirSalon());
+  // Depuis une discussion ouverte, le panneau part de son équipe et peut l'appliquer à cette discussion.
+  $('ouvrir-salon').addEventListener('click', () => ecran.projet && ouvrirSalon(ecran.session && !ecran.etat.ferme ? ecran.general?.vivantes.find((v) => v.id === ecran.session) || null : null));
   // Changer de compte hors session remet le choix du modèle à zéro (chaque compte a les siens).
   $('compte').addEventListener('change', () => {
     options($('modele'), [['default', t('modele_defaut')]], 'default');
@@ -272,9 +276,12 @@ function demarrer() {
     majBarre({ projet: null, historique: [] });
     quitterSession();
   } });
-  initSalon((reglages) => {
-    quitterSession();
-    dire({ t: 'ouvrir', projet: ecran.projet, mode: $('mode').value, ...reglages });
+  initSalon({
+    demarrer: (reglages) => {
+      quitterSession();
+      dire({ t: 'ouvrir', projet: ecran.projet, mode: $('mode').value, ...reglages });
+    },
+    appliquer: (reglages) => dire({ t: 'changer_equipe', session: ecran.session, ...reglages }),
   });
   $('form-porte').addEventListener('submit', (e) => {
     e.preventDefault();

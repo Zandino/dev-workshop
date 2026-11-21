@@ -133,6 +133,13 @@ fois le même compte. Sur chaque demande, les IA parlent à tour de rôle, jamai
 - le mode reste « demander avant d'agir » (ou « plan ») : chaque demande d'accord revient à l'écran, signée ;
 - « Arrêter » coupe la discussion ; un tour en échec l'arrête aussi.
 
+L'équipe d'une discussion déjà ouverte se change sans en ouvrir une autre : 👥 part de l'équipe en place et
+« Appliquer à cette discussion » y met d'autres IA (ajouter, retirer, changer) ; la liste des IA, en haut, revient à
+une seule IA ou passe à l'orchestre. La nouvelle équipe reçoit l'historique en consigne (réponses signées), l'ancienne
+est fermée ; refusé pendant qu'une IA travaille. Les IA de la nouvelle équipe démarrent une nouvelle session de leur
+côté (Claude Code compris) : elles connaissent la conversation par cet historique, borné à ses 20 000 derniers
+caractères.
+
 ## Sécurité
 
 Cette page donne la main sur le serveur (commandes, fichiers). Les garde-fous sont côté serveur :

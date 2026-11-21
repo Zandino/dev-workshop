@@ -5,7 +5,7 @@ import * as claude from './fournisseurs/claude.mjs';
 import { etatDuCompte } from './fournisseurs/index.mjs';
 import { demarrerConnexion, saisirCode, annulerConnexion } from './connexion.mjs';
 import { compte, listerComptes, creerCompte, definirCle, supprimerCompte } from './comptes.mjs';
-import { MAX_PARTICIPANTS } from './salon.mjs';
+import { preparerParticipants } from './salon.mjs';
 import { MODES, EFFORTS } from './fournisseurs/claude.mjs';
 import { jetonValide, resoudreProjet, RACINE_PROJETS } from './securite.mjs';
 import { ouvrirSession, attacher, session, fermerSession, listerVivantes, interrompues } from './sessions.mjs';
@@ -121,15 +121,7 @@ export function brancher(ws, jeton) {
       const modeleDe = (v) => (typeof v === 'string' && v ? v.slice(0, 120) : undefined);
       let s;
       if (Array.isArray(m.participants) && m.participants.length > 1) {
-        if (m.participants.length > MAX_PARTICIPANTS) throw new Error('trop_de_participants');
-        const vues = listerComptes();
-        const participants = m.participants.map((p, i) => {
-          const c = compte(String(p.compte));
-          const nom = String(p.nom || '').trim().slice(0, 30) || `${c.nom} ${i + 1}`;
-          return { compte: c, modele: modeleDe(p.modele), nom, externe: Boolean(vues.find((v) => v.id === c.id)?.externe) };
-        });
-        if (new Set(participants.map((p) => p.nom)).size !== participants.length) throw new Error('noms_en_double');
-        s = await ouvrirSession({ ...commun, participants, mode: MODES.includes(m.mode) ? m.mode : 'default', echanges: m.echanges });
+        s = await ouvrirSession({ ...commun, participants: preparerParticipants(m.participants), mode: MODES.includes(m.mode) ? m.mode : 'default', echanges: m.echanges });
       } else {
         const c = compte(String(m.compte || 'defaut'));
         const reprise = c.defaut && typeof m.reprise === 'string' && /^[0-9a-f-]{36}$/.test(m.reprise) ? m.reprise : undefined;

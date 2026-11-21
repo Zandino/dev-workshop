@@ -31,8 +31,9 @@ function histoire(journal) {
     else if (e.t === 'assistant' && !e.sousAgent) {
       const texte = (e.blocs || []).filter((b) => b.type === 'texte').map((b) => b.texte).join('\n');
       const outils = (e.blocs || []).filter((b) => b.type === 'outil').map((b) => b.nom);
-      if (texte) lignes.push(`[IA]\n${texte}`);
-      if (outils.length) lignes.push(`[IA : outils utilisés] ${outils.join(', ')}`);
+      const qui = e.auteur?.nom || 'IA'; // à plusieurs (salon, orchestre), chacun signe
+      if (texte) lignes.push(`[${qui}]\n${texte}`);
+      if (outils.length) lignes.push(`[${qui} : outils utilisés] ${outils.join(', ')}`);
     }
   }
   const tout = lignes.join('\n\n');
@@ -41,12 +42,14 @@ function histoire(journal) {
 
 /**
  * `motif` : 'limite' (l'IA précédente a atteint sa limite ; la demande est renvoyée), 'demande' (changement
- * d'IA voulu par l'utilisateur), 'redemarrage' (session reprise après un redémarrage du serveur).
+ * d'IA voulu par l'utilisateur), 'redemarrage' (session reprise après un redémarrage du serveur), 'equipe'
+ * (l'utilisateur change l'équipe de la conversation : une IA, plusieurs, ou l'orchestre ; voir sessions.mjs).
  */
 export function consigneRelais(ancien, journal, motif = 'limite') {
   const debut = {
     limite: `Tu prends le relais d'une autre IA (« ${ancien} ») qui a atteint sa limite d'utilisation au milieu de cette conversation.`,
     demande: `Tu prends le relais d'une autre IA (« ${ancien} »), à la demande de l'utilisateur, au milieu de cette conversation.`,
+    equipe: `L'utilisateur vient de changer l'équipe d'IA de cette conversation (jusqu'ici : ${ancien}). Tu la rejoins en cours de route.`,
     redemarrage: "Tu reprends une conversation interrompue par un redémarrage du serveur (ce qui était en cours s'est arrêté).",
   }[motif];
   return [

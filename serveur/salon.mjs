@@ -5,6 +5,7 @@
 import { fournisseurDe } from './fournisseurs/index.mjs';
 import { consigneDeProjet } from './projets.mjs';
 import { connecteursPour } from './connecteurs.mjs';
+import { compte, listerComptes } from './comptes.mjs';
 
 export const MAX_PARTICIPANTS = 4;
 export const MAX_ECHANGES = 10;
@@ -38,7 +39,25 @@ function consigne(moi, tous) {
 /** Les mots-clés sont des signaux pour le salon : à l'écran et aux autres, on montre « ✓ d'accord ». */
 const lisible = (texte) => texte.replaceAll(`${ACCORD} ${SANS_TRAVAIL}`, '✓ d’accord').replaceAll(ACCORD, '✓ d’accord').replaceAll(SANS_TRAVAIL, '').trim();
 
-export function ouvrirSalon({ participants, dossier, mode, echanges }, emettre) {
+/**
+ * Les participants tels que l'écran les envoie ([{ compte, modele, nom }]), vérifiés et résolus en comptes :
+ * à l'ouverture d'un salon comme au changement d'équipe d'une discussion ouverte.
+ */
+export function preparerParticipants(liste) {
+  if (liste.length > MAX_PARTICIPANTS) throw new Error('trop_de_participants');
+  const vues = listerComptes();
+  const participants = liste.map((p, i) => {
+    const c = compte(String(p.compte));
+    const nom = String(p.nom || '').trim().slice(0, 30) || `${c.nom} ${i + 1}`;
+    const modele = typeof p.modele === 'string' && p.modele ? p.modele.slice(0, 120) : undefined;
+    return { compte: c, modele, nom, externe: Boolean(vues.find((v) => v.id === c.id)?.externe) };
+  });
+  if (new Set(participants.map((p) => p.nom)).size !== participants.length) throw new Error('noms_en_double');
+  return participants;
+}
+
+/** `histoire` : la conversation déjà tenue, quand une discussion existante devient un salon (sessions.mjs). */
+export function ouvrirSalon({ participants, dossier, mode, echanges, histoire }, emettre) {
   const limite = Math.min(MAX_ECHANGES, Math.max(1, Number(echanges) || 4));
   const proprietaires = new Map(); // demande d'accord -> participant
   let arret = false;
@@ -91,7 +110,7 @@ export function ouvrirSalon({ participants, dossier, mode, echanges }, emettre) 
         modele: p.modele,
         dossier,
         mode,
-        consigne: [consigneDeProjet(dossier), consigne(m, membres)].filter(Boolean).join('\n\n'),
+        consigne: [consigneDeProjet(dossier), consigne(m, membres), histoire].filter(Boolean).join('\n\n'),
         connecteurs: connecteursPour(p.compte),
       },
       recevoir,

@@ -20,7 +20,8 @@ Free software, built by the Deltinfo Studio team and published under the Apache 
   with the provider's own sign-in page. No API key needed for these.
 - **Local and API models**: LM Studio, Ollama or any OpenAI-compatible address. These can talk but do not touch
   files.
-- **Group discussions**: two to four agents answer each other in turn on your request, then stop. Messages and
+- **Group discussions**: two to four agents answer each other in turn on your request, then stop. An open
+  conversation can change its team (add or remove AIs, one AI, or the orchestra) and keep its history. Messages and
   approval requests are signed with the agent's name.
 - **Token usage**: context gauge and per-model, per-agent counters, exactly as reported by each tool.
 - **Conversations** keep running if the tab closes. Each project lists its conversations; "All conversations"

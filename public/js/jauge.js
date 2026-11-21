@@ -1,7 +1,20 @@
 // Jauge de contexte et détail de la consommation : uniquement les chiffres renvoyés par chaque IA.
 // Dans une discussion à plusieurs, chaque participant a ses propres lignes.
 import { h, jetons, nombre, dollars, dateCourte } from './dom.js';
-import { t, aTexte } from './i18n.js';
+import { t, aTexte, ajouterTextes } from './i18n.js';
+
+ajouterTextes({
+  fr: {
+    tour_reprise: 'premier tour après la reprise : son coût propre est inconnu',
+    cumul_reprise: 'Cumul de la discussion depuis son début (avant la reprise ici, et ce premier tour compris)',
+    cout_titre: 'Coût estimé au tarif de l’API depuis l’ouverture ici. Avec un abonnement, ce n’est pas une facture.', total_ici: 'Depuis l’ouverture ici',
+  },
+  en: {
+    tour_reprise: 'first turn after resuming: its own cost is unknown',
+    cumul_reprise: 'Conversation total since its start (before resuming here, this first turn included)',
+    cout_titre: 'Cost estimated at API list price since this was opened here. On a subscription, this is not an invoice.', total_ici: 'Since opened here',
+  },
+});
 
 const COLONNES = ['entree', 'sortie', 'cacheLu', 'cacheEcrit'];
 const CLES = { entree: 'entree', sortie: 'sortie', cacheLu: 'cache_lu', cacheEcrit: 'cache_ecrit' };
@@ -19,7 +32,10 @@ export function majJauge(e) {
   if (e.t === 'contexte') conso.contexte = e;
   if (e.t === 'limite') conso.limite = e;
   if (e.t === 'tour') {
-    conso.tours.set(qui, { tour: e, precedent: conso.tours.get(qui)?.tour || null });
+    const ancien = conso.tours.get(qui);
+    // Discussion reprise : son premier tour porte le cumul de toute la discussion, depuis son tout début
+    // (« anterieur », voir claude.mjs). Ce cumul devient le point de départ ; le coût de ce tour-là reste inconnu.
+    conso.tours.set(qui, { tour: e, precedent: ancien?.tour || null, base: e.anterieur ? e : ancien?.base || null });
     conso.dernier = qui;
   }
   dessiner();
@@ -31,9 +47,22 @@ function somme(tour) {
   return s;
 }
 
-/** Coût total : la somme des coûts connus ; rien si aucune IA n'en fournit. */
+/** Les chiffres d'un modèle depuis le point de départ (rien à retirer hors reprise). */
+function depuisBase(m, base) {
+  const b = base?.modeles.find((x) => x.modele === m.modele);
+  const r = { modele: m.modele, cout: m.cout == null ? null : m.cout - (b?.cout || 0) };
+  for (const c of COLONNES) r[c] = Math.max(0, (m[c] || 0) - (b?.[c] || 0));
+  return r;
+}
+
+/**
+ * Coût depuis l'ouverture ici : la somme des coûts connus ; rien si aucune IA n'en fournit. Une discussion
+ * reprise ne compte qu'à partir de son deuxième tour (le premier n'a pas de coût propre connu).
+ */
 function coutTotal() {
-  const connus = [...conso.tours.values()].map((x) => x.tour.coutSession).filter((c) => c != null);
+  const connus = [...conso.tours.values()]
+    .filter((x) => x.tour.coutSession != null && !x.tour.anterieur)
+    .map((x) => x.tour.coutSession - (x.base?.coutSession || 0));
   return connus.length ? connus.reduce((a, b) => a + b, 0) : null;
 }
 
@@ -45,8 +74,12 @@ function tableau() {
   if (!conso.tours.size) return null;
   const lignes = [];
   const total = { entree: 0, sortie: 0, cacheLu: 0, cacheEcrit: 0 };
-  for (const [qui, { tour }] of conso.tours) {
-    for (const m of tour.modeles) {
+  const avantReprise = [];
+  for (const [qui, { tour, base }] of conso.tours) {
+    if (base) avantReprise.push(base.coutSession);
+    if (tour.anterieur) continue; // rien de propre à cette ouverture n'est encore connu
+    for (const brut of tour.modeles) {
+      const m = depuisBase(brut, base);
       lignes.push(ligne(qui ? `${qui} · ${m.modele}` : m.modele, [...COLONNES.map((c) => nombre(m[c])), dollars(m.cout)]));
       for (const c of COLONNES) total[c] += m[c] || 0;
     }
@@ -54,7 +87,9 @@ function tableau() {
   const { tour, precedent } = conso.tours.get(conso.dernier);
   const apres = somme(tour);
   const avant = somme(precedent);
-  const ecart = tour.coutSession == null ? null : tour.coutSession - (precedent?.coutSession || 0);
+  const inconnu = Boolean(tour.anterieur);
+  const ecart = inconnu || tour.coutSession == null ? null : tour.coutSession - (precedent?.coutSession || 0);
+  const cumul = avantReprise.filter((c) => c != null);
   return h(
     'table.conso',
     {},
@@ -63,8 +98,10 @@ function tableau() {
       'tbody',
       {},
       lignes,
-      ligne(t('total'), [...COLONNES.map((c) => nombre(total[c])), dollars(coutTotal())]),
-      ligne(t('dernier_tour') + (conso.dernier ? ` (${conso.dernier})` : ''), [...COLONNES.map((c) => nombre(Math.max(0, apres[c] - avant[c]))), dollars(ecart)]),
+      ligne(t('total_ici'), [...COLONNES.map((c) => nombre(total[c])), dollars(coutTotal())]),
+      ligne(t('dernier_tour') + (conso.dernier ? ` (${conso.dernier})` : '') + (inconnu ? ` — ${t('tour_reprise')}` : ''),
+        [...COLONNES.map((c) => (inconnu ? '–' : nombre(Math.max(0, apres[c] - avant[c])))), dollars(ecart)]),
+      cumul.length ? ligne(t('cumul_reprise'), [...COLONNES.map(() => ''), dollars(cumul.reduce((a, b) => a + b, 0))]) : null,
     ),
   );
 }
@@ -96,7 +133,7 @@ function dessiner() {
     barre,
     h('span.valeur', {}, c ? `${format.format(pourcent)} % · ${jetons(c.utilises)} / ${jetons(c.max)}` : conso?.tours.size ? `${jetons(sortis)} ${t('sortie').toLowerCase()}` : '–'),
     // replaceChildren écrirait « null » en toutes lettres : sans coût connu, on n'ajoute rien.
-    ...(cout != null ? [h('span.cout', {}, dollars(cout))] : []),
+    ...(cout != null ? [h('span.cout', { title: t('cout_titre') }, dollars(cout))] : []),
   );
   panneau.replaceChildren(
     h('h2', {}, t('conso_titre')),

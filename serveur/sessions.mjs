@@ -5,7 +5,8 @@ import { fournisseurDe } from './fournisseurs/index.mjs';
 import { ouvrirSalon } from './salon.mjs';
 import { RACINE_PROJETS } from './securite.mjs';
 import { ouvrirOrchestre } from './orchestre.mjs';
-import { piloteAvecRelais } from './relais.mjs';
+import { piloteAvecRelais, consigneRelais, nomCompte } from './relais.mjs';
+import { compte } from './comptes.mjs';
 import { ecrireSession, oublierSession, listerInterrompues } from './sauvegarde-sessions.mjs';
 import { alerteDe, changeLaBarre, signaler } from './veille.mjs';
 
@@ -41,7 +42,19 @@ function resume(s) {
     sessionId: s.etat.sessionId || null, // discussion enregistrée par Claude Code (compte du serveur)
     attente: s.attente.size > 0,
     nonLu: s.nonLu || null, // 'fini' ou 'echec' : tour terminé pendant que personne ne regardait (veille.mjs)
+    equipe: s.participantsComplets, // à plusieurs : comptes, modèles et noms, pour modifier l'équipe à l'écran
+    echanges: s.echanges || null,
     creeLe: s.creeLe,
+  };
+}
+
+const rejouer = (s, absentDepuis) => ({ t: 'rejouer', session: s.id, resume: resume(s), etat: s.etat, evenements: s.journal, absentDepuis });
+
+/** L'émetteur de l'équipe en place : quand l'équipe change (changerEquipe), l'ancienne ne parle plus ici. */
+function emetteurDe(s) {
+  const g = s.generation;
+  return (e) => {
+    if (s.generation === g) s.emettre(e);
   };
 }
 
@@ -66,6 +79,8 @@ export async function ouvrirSession({ compte, participants, dossier, modele, mod
     avecOutils: salon || compte.type !== 'api',
     participants: salon ? participants.map((p) => p.nom) : null,
     participantsComplets: salon ? participants.map((p) => ({ compte: p.compte.id, modele: p.modele || null, nom: p.nom })) : null,
+    echanges: salon ? echanges : null,
+    generation: 0,
     dossier,
     titre: titre || '',
     creeLe: Date.now(),
@@ -75,7 +90,7 @@ export async function ouvrirSession({ compte, participants, dossier, modele, mod
     etat: { occupe: false, ferme: false, modele: modele || 'default', mode: mode || 'default', effort: effort || 'default', sessionId: reprise || null },
   };
 
-  const emettre = (e) => {
+  s.emettre = (e) => {
     if (e.t === 'etat') Object.assign(s.etat, { ...e, t: undefined });
     if (e.t === 'pret') Object.assign(s.etat, { sessionId: e.sessionId || s.etat.sessionId, mode: e.mode });
     if (e.t === 'permission') s.attente.add(e.id);
@@ -93,6 +108,7 @@ export async function ouvrirSession({ compte, participants, dossier, modele, mod
     if (alerte || changeLaBarre(e)) signaler(alerte);
   };
 
+  const emettre = emetteurDe(s);
   // Session reprise après un redémarrage : son historique s'affiche comme avant.
   if (Array.isArray(journalInitial)) s.journal.push(...journalInitial);
   if (salon) {
@@ -128,7 +144,7 @@ export function session(id) {
  */
 export function attacher(id, envoyer) {
   const s = session(id);
-  envoyer({ t: 'rejouer', session: s.id, resume: resume(s), etat: s.etat, evenements: s.journal, absentDepuis: s.abonnes.size ? null : s.absentDepuis || null });
+  envoyer(rejouer(s, s.abonnes.size ? null : s.absentDepuis || null));
   s.abonnes.add(envoyer);
   if (s.nonLu) {
     s.nonLu = null; // quelqu'un la regarde : elle est lue
@@ -138,6 +154,60 @@ export function attacher(id, envoyer) {
     s.abonnes.delete(envoyer);
     if (!s.abonnes.size) s.absentDepuis = Date.now();
   };
+}
+
+const nomDe = (id) => {
+  try {
+    return nomCompte(compte(id));
+  } catch {
+    return String(id); // compte supprimé depuis
+  }
+};
+const equipeDe = (s) => (s.participants ? s.participants.join(', ') : nomDe(s.compte) + (s.orchestre ? ' (cheffe d’orchestre)' : ''));
+
+/**
+ * Change l'équipe d'une discussion ouverte, sans en ouvrir une autre : une IA (`{ compte }`), plusieurs
+ * (`{ participants, echanges }`, comptes déjà résolus comme pour ouvrirSession) ou l'orchestre (`{ orchestre:
+ * compte }`). La nouvelle équipe reçoit l'historique en consigne ; l'ancienne est fermée et ne parle plus ici. Les
+ * écrans qui suivent la discussion la reçoivent rejouée : compte, participants et réglages y changent.
+ */
+export function changerEquipe(id, equipe) {
+  const s = session(id);
+  if (s.etat.occupe) throw new Error('changement_occupe');
+  const salon = Array.isArray(equipe.participants) && equipe.participants.length > 1;
+  const autres = listerVivantes().filter((x) => x.id !== s.id).reduce((n, x) => n + (x.participants?.length || 1), 0);
+  if (autres + (salon ? equipe.participants.length : 1) > MAX_PILOTES) throw new Error('trop_de_sessions');
+  const c = salon ? null : equipe.orchestre || equipe.compte;
+  // La cheffe est toujours un compte Claude : l'outil « deleguer » est propre à Claude Code.
+  if (equipe.orchestre && c.type !== 'claude') throw new Error('orchestre_claude');
+
+  const histoire = consigneRelais(equipeDe(s), s.journal, 'equipe');
+  const ancien = s.pilote;
+  s.generation += 1;
+  const emettre = emetteurDe(s);
+  const { dossier } = s;
+  const { mode, effort } = s.etat;
+  // Plus de discussion Claude Code unique derrière : la nouvelle équipe annonce la sienne, s'il y en a une.
+  Object.assign(s.etat, { sessionId: null, modele: 'default' });
+  if (salon) {
+    Object.assign(s, {
+      compte: null, orchestre: false, avecOutils: true, echanges: equipe.echanges,
+      participants: equipe.participants.map((p) => p.nom),
+      participantsComplets: equipe.participants.map((p) => ({ compte: p.compte.id, modele: p.modele || null, nom: p.nom })),
+    });
+    s.pilote = ouvrirSalon({ participants: equipe.participants, dossier, mode, echanges: equipe.echanges, histoire }, emettre);
+  } else {
+    Object.assign(s, { compte: c.id, orchestre: Boolean(equipe.orchestre), avecOutils: c.type !== 'api', participants: null, participantsComplets: null, echanges: null });
+    s.pilote = equipe.orchestre
+      ? ouvrirOrchestre({ compte: c, dossier, mode, effort, histoire }, emettre)
+      : piloteAvecRelais({ s, compte: c, dossier, mode, effort, consigneReprise: histoire }, emettre);
+  }
+  ancien.fermer();
+  s.attente.clear(); // les demandes d'accord de l'ancienne équipe ne valent plus
+  s.emettre({ t: 'info', code: 'equipe', qui: equipeDe(s) });
+  for (const envoyer of s.abonnes) envoyer(rejouer(s, null));
+  signaler();
+  return s;
 }
 
 /** `oublier` : la personne ferme la session (sa sauvegarde est effacée) ; sinon, arrêt du serveur (gardée). */

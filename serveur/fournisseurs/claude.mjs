@@ -54,6 +54,7 @@ export function ouvrir({ dossier, modele, mode, reprise, compte, consigne, conne
   const permissions = new Map();
   let fenetre = null;
   let ferme = false;
+  let dejaUnResultat = false; // voir « anterieur » à la fin d'un tour
 
   const canUseTool = (outil, saisie, o) =>
     new Promise((resoudre) => {
@@ -154,7 +155,11 @@ export function ouvrir({ dossier, modele, mode, reprise, compte, consigne, conne
     } else if (m.type === 'user') {
       for (const e of utilisateurVersEvenements(m, { avecTexte: false })) emettre(e);
     } else if (m.type === 'result') {
-      emettre(resultatVersEvenement(m));
+      // Discussion reprise : Claude Code rend, au premier tour, le cumul (jetons et coût) de TOUTE la discussion,
+      // depuis son tout début (relevé le 21/11/2026 : 323,90 $ et 349 millions de jetons lus pour un tour de 68 s).
+      // L'écran s'en sert de point de départ au lieu de l'afficher comme le prix de ce tour (jauge.js).
+      emettre({ ...resultatVersEvenement(m), ...(reprise && !dejaUnResultat ? { anterieur: true } : {}) });
+      dejaUnResultat = true;
       emettre({ t: 'etat', occupe: false });
       contexte();
     } else if (m.type === 'rate_limit_event') {
