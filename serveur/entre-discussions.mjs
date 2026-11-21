@@ -11,7 +11,8 @@ import { z } from 'zod';
 import { assezPour } from './memoire.mjs';
 import { signaler } from './veille.mjs';
 
-const MAX_SAUTS = 6;
+const MAX_SAUTS = 6; // messages entre discussions par échange (voir « envoyer »)
+const envoisParEchange = new Map(); // id d'échange -> messages déjà envoyés
 const MAX_FILE = 10;
 const MAX_MESSAGE = 20_000;
 const MAX_LU = 20_000;
@@ -103,15 +104,20 @@ function envoyer(ctx, { id, message }) {
   if (cible === source) return 'C’est ta propre discussion.';
   const texte = String(message || '').trim().slice(0, MAX_MESSAGE);
   if (!texte) return 'Message vide.';
-  // Un message écrit pendant un tour lui-même causé par un message continue le même échange.
-  const chaine = source.chaine ? { id: source.chaine.id, sauts: source.chaine.sauts + 1 } : { id: randomUUID(), sauts: 1 };
-  if (chaine.sauts > MAX_SAUTS) {
+  // Un échange naît d'une demande de la personne ; tout ce qui en découle (autres messages du même tour, messages
+  // des discussions qu'il réveille, réponses) le continue. On compte les messages de tout l'échange, pas sa profondeur.
+  source.chaine ??= { id: randomUUID() };
+  const chaine = source.chaine;
+  const deja = envoisParEchange.get(chaine.id) || 0;
+  if (deja >= MAX_SAUTS) {
     source.emettre({ t: 'info', code: 'echange_limite', n: MAX_SAUTS, vers: titreDe(cible) });
     signaler({ id: source.id, projet: acces.projetDe(source), titre: source.titre, compte: source.compte, genre: 'echange', auteur: ctx.auteur?.nom || null, outil: null, message: titreDe(cible) });
     return `Limite atteinte : ${MAX_SAUTS} messages entre discussions pour cette demande. Le message n’est PAS parti. Dis à l’utilisateur ce que tu voulais envoyer à « ${titreDe(cible)} » : c’est lui qui relancera.`;
   }
   cible.fileDiscussions ??= [];
   if (cible.fileDiscussions.length >= MAX_FILE) return `« ${titreDe(cible)} » a déjà ${MAX_FILE} messages en attente : réessaie plus tard.`;
+  envoisParEchange.set(chaine.id, deja + 1);
+  if (envoisParEchange.size > 1000) envoisParEchange.delete(envoisParEchange.keys().next().value); // les plus anciens
   cible.fileDiscussions.push({ genre: 'message', texte, chaine, repondreA: source.id, de: origine(source, ctx) });
   const tout_de_suite = distribuer(cible);
   return `Message remis à « ${titreDe(cible)} » (projet ${acces.projetDe(cible)}). ${tout_de_suite ? 'Elle le traite maintenant.' : 'Elle est occupée : elle le traitera dès qu’elle sera libre.'} Sa réponse t’arrivera plus tard, comme un nouveau message : termine ton tour sans l’attendre.`;

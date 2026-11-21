@@ -104,14 +104,18 @@ noter('remis dès qu’elle est libre', B.recus.at(-1)?.includes('Deuxième dema
 A.emettre({ t: 'utilisateur', texte: 'Demande de la personne' }); // remet le compteur de A à zéro
 let dernier = '';
 let partis = 0;
+// Trois messages dans le même tour, puis d'autres pendant les tours causés par les réponses : un seul échange.
 for (let i = 0; i < 8; i += 1) {
-  // Chaque message part pendant un tour de A causé par la réponse précédente (même échange).
   dernier = await outil(dwA.jeton, 'envoyer_message', { id: 'bbbbbbbb', message: `relance ${i}` });
-  await pause(250);
+  if (i >= 2) await pause(250);
   if (dernier.includes('Limite')) break;
   partis += 1;
 }
-noter('6 messages passent, le 7e est arrêté', partis === 6 && dernier.includes('Limite') && A.journal.some((e) => e.code === 'echange_limite'), `${partis} partis`);
+noter('6 messages par échange au total (3 dans un même tour compris), le 7e est arrêté', partis === 6 && dernier.includes('Limite') && A.journal.some((e) => e.code === 'echange_limite'), `${partis} partis`);
+// B, réveillée par cet échange, ne peut pas non plus relancer au-delà : le compteur est celui de l'échange.
+await pause(1500);
+B.chaine = A.chaine;
+noter('une discussion réveillée par l’échange partage son compteur', (await outil(dwB.jeton, 'envoyer_message', { id: 'aaaaaaaa', message: 'x' })).includes('Limite'));
 A.emettre({ t: 'utilisateur', texte: 'La personne relance' });
 noter('la personne relance : nouvel échange permis', (await outil(dwA.jeton, 'envoyer_message', { id: 'bbbbbbbb', message: 'reprise' })).includes('Message remis'));
 await pause(300);
