@@ -9,7 +9,7 @@
   "private": true,
   "scripts": {
     "start": "electron .",
-    "icone": "node outils/icone.js",
+    "icone": "node outils/icone.js && node outils/main-levee.js",
     "dist": "electron-builder --win --publish never",
     "dist:mac": "electron-builder --mac --publish never",
     "dist:linux": "electron-builder --linux --publish never"
@@ -30,6 +30,7 @@
       "src/**",
       "accueil/**",
       "ressources/icone.png",
+      "ressources/main-levee.png",
       "package.json"
     ],
     "win": {

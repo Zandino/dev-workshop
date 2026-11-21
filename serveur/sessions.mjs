@@ -7,6 +7,7 @@ import { RACINE_PROJETS } from './securite.mjs';
 import { ouvrirOrchestre } from './orchestre.mjs';
 import { piloteAvecRelais } from './relais.mjs';
 import { ecrireSession, oublierSession, listerInterrompues } from './sauvegarde-sessions.mjs';
+import { alerteDe, changeLaBarre, signaler } from './veille.mjs';
 
 const MAX_JOURNAL = 4000;
 const MAX_SESSIONS = 8;
@@ -26,17 +27,20 @@ setInterval(sauver, 5000).unref();
 /** Sessions sauvegardées qui ne tournent plus (serveur redémarré entre-temps). */
 export const interrompues = () => listerInterrompues(new Set(sessions.keys()));
 
+const projetDe = (s) => path.relative(RACINE_PROJETS, s.dossier) || '.';
+
 function resume(s) {
   return {
     id: s.id,
     compte: s.compte,
     participants: s.participants,
-    projet: path.relative(RACINE_PROJETS, s.dossier) || '.',
+    projet: projetDe(s),
     titre: s.titre,
     orchestre: Boolean(s.orchestre),
     occupe: s.etat.occupe,
     sessionId: s.etat.sessionId || null, // discussion enregistrée par Claude Code (compte du serveur)
     attente: s.attente.size > 0,
+    nonLu: s.nonLu || null, // 'fini' ou 'echec' : tour terminé pendant que personne ne regardait (veille.mjs)
     creeLe: s.creeLe,
   };
 }
@@ -85,6 +89,8 @@ export async function ouvrirSession({ compte, participants, dossier, modele, mod
     s.aSauver = true;
     if (s.journal.length > MAX_JOURNAL) s.journal.splice(0, s.journal.length - MAX_JOURNAL);
     for (const envoyer of s.abonnes) envoyer({ ...e, session: s.id });
+    const alerte = alerteDe(s, e, projetDe(s));
+    if (alerte || changeLaBarre(e)) signaler(alerte);
   };
 
   // Session reprise après un redémarrage : son historique s'affiche comme avant.
@@ -106,6 +112,7 @@ export async function ouvrirSession({ compte, participants, dossier, modele, mod
     s.pilote = piloteAvecRelais({ s, compte, dossier, modele, mode, reprise, effort, consigneReprise }, emettre);
   }
   sessions.set(s.id, s);
+  signaler();
   return s;
 }
 
@@ -123,6 +130,10 @@ export function attacher(id, envoyer) {
   const s = session(id);
   envoyer({ t: 'rejouer', session: s.id, resume: resume(s), etat: s.etat, evenements: s.journal, absentDepuis: s.abonnes.size ? null : s.absentDepuis || null });
   s.abonnes.add(envoyer);
+  if (s.nonLu) {
+    s.nonLu = null; // quelqu'un la regarde : elle est lue
+    signaler();
+  }
   return () => {
     s.abonnes.delete(envoyer);
     if (!s.abonnes.size) s.absentDepuis = Date.now();
@@ -137,6 +148,7 @@ export function fermerSession(id, { oublier = true } = {}) {
   s.etat.ferme = true;
   sessions.delete(id);
   if (oublier) oublierSession(id);
+  signaler();
 }
 
 /** Arrêt du serveur : on écrit une dernière fois chaque session, pour la retrouver « interrompue » au démarrage. */

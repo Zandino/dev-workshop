@@ -2,6 +2,7 @@
 // La page du serveur n'a aucun accès au poste : ni Node, ni pont, ni nouvelle fenêtre, ni navigation ailleurs.
 const { BrowserWindow, nativeTheme, shell, session } = require('electron');
 const path = require('node:path');
+const { suivreBesoins } = require('./main-levee');
 
 const RACINE = path.join(__dirname, '..');
 const ICONE = path.join(RACINE, 'ressources', 'icone.png');
@@ -78,8 +79,13 @@ function creerAtelier(serveur, titre) {
       spellcheck: true,
     },
   });
-  // La page change son titre (« Dev Workshop ») : on garde le nom du serveur dans la barre de titre.
-  fenetre.on('page-title-updated', (e) => e.preventDefault());
+  // La page change son titre (« Dev Workshop ») : on garde le nom du serveur dans la barre de titre. Elle y
+  // annonce aussi les discussions qui attendent ton accord : main levée sur l'icône (main-levee.js).
+  const besoins = suivreBesoins(fenetre, titre);
+  fenetre.on('page-title-updated', (e, titrePage) => {
+    e.preventDefault();
+    besoins(titrePage);
+  });
   fenetre.webContents.setWindowOpenHandler(({ url }) => {
     ouvrirDehors(url);
     return { action: 'deny' };

@@ -16,6 +16,7 @@ import { initDiscussions, ouvrirDiscussions, ouvrirRanger, majProjetsDiscussions
 import { nouvelAppel, surEvenementDirect } from './direct.js';
 import { pastilleLogo } from './logos.js';
 import { brancherAjouts } from './ajouts.js';
+import { initAlertes } from './alertes.js';
 
 ajouterTextes({
   fr: {
@@ -162,7 +163,6 @@ function surEvenement(m) {
     if (m.modele) $('modele').value = m.modele;
     if (m.ferme) noteFil(t('session_fermee'));
     majEntete();
-    if ('occupe' in m && !ecran.rejeu) dire({ t: 'general' });
   } else if (m.t === 'capacites') {
     definirCommandes(m.commandes);
     const modeles = m.modeles.length ? m.modeles : [{ id: 'default', nom: '' }];
@@ -172,8 +172,7 @@ function surEvenement(m) {
     majEntete();
   } else if (m.t === 'permission' || m.t === 'permission_fin') {
     if (m.t === 'permission') afficherPermission(m);
-    else retirerPermission(m.id);
-    if (!ecran.rejeu) dire({ t: 'general' }); // la pastille de la barre suit l'attente d'accord
+    else retirerPermission(m.id); // la pastille de la barre suit l'attente d'accord par la veille (« vivantes »)
   } else if (m.t === 'contexte' || m.t === 'tour' || m.t === 'limite') {
     majJauge(m);
     if (m.t === 'tour') afficher(m);
@@ -215,7 +214,10 @@ ecouter((m) => {
       demanderJeton(true);
     }
   } else if (m.t === 'general') surGeneral(m);
-  else if (m.t === 'historique') m.projet === ecran.projet && majBarre({ historique: m.sessions });
+  else if (m.t === 'vivantes' && ecran.general) {
+    ecran.general.vivantes = m.vivantes; // veille du serveur : toutes les discussions ouvertes, en direct
+    majBarre({ general: ecran.general });
+  } else if (m.t === 'historique') m.projet === ecran.projet && majBarre({ historique: m.sessions });
   else if (m.t === 'rejouer') surRejouer(m);
   else if (m.t === 'etat_compte') surEtatCompte(m);
   else if (m.t === 'connexion') surConnexion(m);
@@ -295,6 +297,7 @@ function demarrer() {
     nouvelle: () => ecran.projet && choisirProjet(ecran.projet),
   });
   initDiscussions({ reprendre: (d) => reprendreDiscussion(d, d.projet) });
+  initAlertes({ ecran, libelle: libelleCompte, rejoindre: (id) => id !== ecran.session && dire({ t: 'attacher', session: id }) });
   razJauge();
   majEntete();
   if (jetonInitial()) connecter();

@@ -21,7 +21,6 @@ ajouterTextes({
     refus_changement_impossible: 'On ne change pas d’IA dans une discussion à plusieurs ni dans l’orchestre.',
     refus_changement_occupe: 'Attends que l’IA ait fini son tour (ou arrête-la) avant de changer d’IA.',
     orchestre_en_debut: 'L’orchestre se choisit au début d’une discussion : ouvre une « Nouvelle discussion ».',
-    notif_accord: '{nom} attend ton accord', notif_fini: 'Session terminée · {projet}', notif_echec: 'Tour interrompu · {projet}',
   },
   en: {
     puissance: 'Power', effort_default: 'Default power', effort_low: 'Low power', effort_medium: 'Medium power',
@@ -36,7 +35,6 @@ ajouterTextes({
     refus_changement_impossible: 'The AI cannot be switched in a group discussion or in the orchestra.',
     refus_changement_occupe: 'Wait until the AI has finished its turn (or stop it) before switching AI.',
     orchestre_en_debut: 'The orchestra is chosen when a conversation starts: open a “New conversation”.',
-    notif_accord: '{nom} is waiting for your approval', notif_fini: 'Session finished · {projet}', notif_echec: 'Turn interrupted · {projet}',
   },
 });
 
@@ -73,24 +71,8 @@ function dessiner() {
   ].filter(Boolean));
 }
 
-/** Notification du système quand la fenêtre n'est pas au premier plan (tour fini, accord attendu, relais). */
-function prevenir(titre, corps) {
-  if (document.hasFocus() || typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
-  try {
-    const n = new Notification(titre, { body: String(corps || '').slice(0, 180), tag: 'dev-workshop-' + (lire.ecran.session || '') });
-    n.onclick = () => window.focus();
-  } catch { /* notifications indisponibles */ }
-}
-
-function annoncer(m) {
-  const nom = m.auteur?.nom || etat.qui?.nom || (lire.compte() ? lire.libelle(lire.compte()) : 'IA');
-  const projet = lire.ecran.projet || '';
-  if (m.t === 'permission') prevenir(t('notif_accord', { nom }), `${projet} · ${m.outil || ''}`);
-  else if (m.t === 'tour' && !m.auteur) prevenir(m.ok ? t('notif_fini', { projet }) : t('notif_echec', { projet }), m.ok ? '' : m.message);
-}
-
+// Les notifications (accord attendu, tour fini) sont dans alertes.js : elles suivent toutes les discussions.
 function suivre(m) {
-  annoncer(m);
   const auteur = m.auteur ? { nom: m.auteur.nom, compte: m.auteur.compte } : null;
   if (m.t === 'pret' && m.modele) etat.modele = m.modele;
   else if (m.t === 'etat') {
@@ -167,8 +149,4 @@ export function initTravail(lecteurs) {
     dessiner();
   });
   setInterval(() => etat.occupe && dessiner(), 1000);
-  // Autorisation des notifications : demandée au premier clic (un navigateur la refuse sans geste de la personne).
-  if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
-    document.addEventListener('click', () => Notification.requestPermission().catch(() => {}), { once: true });
-  }
 }

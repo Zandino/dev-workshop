@@ -2,6 +2,7 @@
 const TEXTES = {
   fr: {
     titre: 'Dev Workshop',
+    main_levee: '{n} discussion(s) attend(ent) ton accord',
     sous_titre: 'Code avec tes agents IA, sur ton serveur.',
     serveurs: 'Serveurs',
     aucun_serveur: 'Aucun serveur pour l’instant. Ajoute celui où tourne Dev Workshop.',
@@ -90,6 +91,7 @@ const TEXTES = {
   },
   en: {
     titre: 'Dev Workshop',
+    main_levee: '{n} conversation(s) waiting for your approval',
     sous_titre: 'Code with your AI agents, on your server.',
     serveurs: 'Servers',
     aucun_serveur: 'No server yet. Add the one where Dev Workshop runs.',

@@ -7,8 +7,8 @@ import './projet.js'; // ses textes (corbeille) servent aussi ici
 import { ajouterTextes } from './i18n.js';
 
 ajouterTextes({
-  fr: { glisser_aide: 'Glisse-la sur un autre projet pour l’y ranger', rangement_vers: 'Rangement dans « {projet} »…', ranger_titre_court: 'Ranger dans un autre projet', voir_toutes: 'Voir les {n} discussions du projet', interrompues: 'Discussions interrompues', oublier_interrompue: 'Oublier cette discussion', confirmer_oublier: 'Oublier la discussion interrompue « {titre} » ? Elle ne pourra plus être reprise d’ici.' },
-  en: { glisser_aide: 'Drag it onto another project to move it there', rangement_vers: 'Moving to “{projet}”…', ranger_titre_court: 'Move to another project', voir_toutes: 'See all {n} conversations of this project', interrompues: 'Interrupted conversations', oublier_interrompue: 'Forget this conversation', confirmer_oublier: 'Forget the interrupted conversation “{titre}”? It can no longer be resumed from here.' },
+  fr: { etat_main: 'Elle a besoin de toi : un accord t’attend', etat_occupe: 'L’IA travaille', etat_libre: 'Prête, elle attend ton message', etat_non_lu: 'Terminée, pas encore lue', etat_echec: 'Tour interrompu, pas encore lu', etat_attente: 'Interrompue par un redémarrage', glisser_aide: 'Glisse-la sur un autre projet pour l’y ranger', rangement_vers: 'Rangement dans « {projet} »…', ranger_titre_court: 'Ranger dans un autre projet', voir_toutes: 'Voir les {n} discussions du projet', interrompues: 'Discussions interrompues', oublier_interrompue: 'Oublier cette discussion', confirmer_oublier: 'Oublier la discussion interrompue « {titre} » ? Elle ne pourra plus être reprise d’ici.' },
+  en: { etat_main: 'It needs you: an approval is waiting', etat_occupe: 'The AI is working', etat_libre: 'Ready, waiting for your message', etat_non_lu: 'Finished, not read yet', etat_echec: 'Turn interrupted, not read yet', etat_attente: 'Interrupted by a restart', glisser_aide: 'Drag it onto another project to move it there', rangement_vers: 'Moving to “{projet}”…', ranger_titre_court: 'Move to another project', voir_toutes: 'See all {n} conversations of this project', interrompues: 'Interrupted conversations', oublier_interrompue: 'Forget this conversation', confirmer_oublier: 'Forget the interrupted conversation “{titre}”? It can no longer be resumed from here.' },
 });
 
 let actions = {};
@@ -74,11 +74,26 @@ export function majBarre(partiel) {
   dessiner();
 }
 
-function element(classe, { actif, titre, sous, pastille, onclick }) {
+/** La marque d'une discussion : ✋ quand elle a besoin de toi, sinon une pastille de couleur (avec son sens au survol). */
+function marque(pastille) {
+  if (pastille === 'main') return h('span.main-levee', { role: 'img', title: t('etat_main'), 'aria-label': t('etat_main') }, '✋');
+  return h('span.pastille.' + pastille, aria(t('etat_' + pastille.replace('-', '_'))));
+}
+const aria = (texte) => ({ role: 'img', title: texte, 'aria-label': texte });
+
+/** L'état d'une discussion ouverte, du plus pressant au plus calme. */
+function etatDe(s) {
+  if (s.attente) return 'main';
+  if (s.occupe) return 'occupe';
+  if (s.nonLu) return s.nonLu === 'echec' ? 'echec' : 'non-lu';
+  return 'libre';
+}
+
+function element(classe, { actif, titre, sous, pastille, nonLu, onclick }) {
   return h(
-    'button.' + classe + (actif ? '.actif' : ''),
+    'button.' + classe + (actif ? '.actif' : '') + (nonLu ? '.non-lu' : ''),
     { type: 'button', onclick, title: titre },
-    pastille ? h('span.pastille.' + pastille) : null,
+    pastille ? marque(pastille) : null,
     h('span.titre', {}, titre),
     sous ? h('span.sous', {}, sous) : null,
   );
@@ -96,6 +111,14 @@ function avecPoubelle(ligne, quoi) {
   }));
 }
 
+/** Projet replié : ce qui t'y attend se voit sur le dossier (✋ un accord, ou une pastille « pas encore lue »). */
+function resumeDossier(vivantes, projet) {
+  const siennes = vivantes.filter((s) => s.projet === projet);
+  if (siennes.some((s) => s.attente)) return marque('main');
+  const nonLue = siennes.find((s) => s.nonLu && !s.occupe);
+  return nonLue ? marque(nonLue.nonLu === 'echec' ? 'echec' : 'non-lu') : null;
+}
+
 function dessiner() {
   const g = vue.general;
   if (!g) return;
@@ -105,7 +128,8 @@ function dessiner() {
     actif: s.id === vue.active,
     titre: s.titre || t('sans_titre'),
     sous,
-    pastille: s.attente ? 'attente' : s.occupe ? 'occupe' : 'libre',
+    pastille: etatDe(s),
+    nonLu: Boolean(s.nonLu) && !s.attente && !s.occupe,
     onclick: () => actions.rejoindre(s),
   }), { session: s.id, titre: s.titre });
   const ici = vue.projet ? g.vivantes.filter((s) => s.projet === vue.projet) : [];
@@ -127,7 +151,7 @@ function dessiner() {
             dessiner();
           }
         },
-      }, h('span.chevron', { 'aria-hidden': 'true' }, deplie ? '▾' : '▸'), h('span.titre', {}, p));
+      }, h('span.chevron', { 'aria-hidden': 'true' }, deplie ? '▾' : '▸'), h('span.titre', {}, p), deplie ? null : resumeDossier(g.vivantes, p));
       rendreCible(ligne, p);
       if (!actif) return [ligne];
       // Le projet ouvert garde ses réglages à portée : fiche, règles, export, et sa corbeille.

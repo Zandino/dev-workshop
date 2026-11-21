@@ -18,7 +18,7 @@
   width: 22px;
   height: 22px;
   border-radius: 7px;
-  background: linear-gradient(135deg, var(--accent), #b06dff);
+  background: linear-gradient(135deg, var(--accent), #6f9bff);
   box-shadow: 0 2px 8px var(--accent-doux);
 }
 .barre h2 { font-size: 11.5px; font-weight: 600; color: var(--texte-doux); padding: 0 10px 6px; text-transform: uppercase; letter-spacing: 0.06em; }
@@ -51,9 +51,19 @@
 .ligne .titre { grid-column: 2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ligne .sous { grid-column: 2; font-size: 12px; font-weight: 400; color: var(--texte-doux); }
 .ligne .pastille { grid-row: span 2; width: 8px; height: 8px; border-radius: 50%; }
+/* Sans sous-titre, le titre occupe les deux rangées : il reste aligné sur la pastille. */
+.ligne > .titre:last-child { grid-row: span 2; }
 .pastille.libre { background: var(--vert); box-shadow: 0 0 0 3px var(--vert-doux); }
 .pastille.occupe { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-doux); animation: pouls 1.1s ease-in-out infinite; }
 .pastille.attente { background: var(--orange); box-shadow: 0 0 0 3px var(--orange-doux); animation: pouls 0.8s ease-in-out infinite; }
+.pastille.non-lu { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-doux); }
+.pastille.echec { background: var(--rouge); box-shadow: 0 0 0 3px var(--rouge-doux); }
+.ligne.non-lu .titre { font-weight: 700; }
+/* Main levée : la discussion a besoin de toi (un accord à donner). Elle salue de temps en temps. */
+.main-levee { display: inline-flex; justify-content: center; width: 8px; font-size: 13px; line-height: 1; transform-origin: 50% 90%; animation: salut 2.4s ease-in-out infinite; }
+.ligne .main-levee { grid-row: span 2; }
+@keyframes salut { 0%, 70%, 100% { transform: rotate(0); } 77% { transform: rotate(-16deg); } 84% { transform: rotate(12deg); } 91% { transform: rotate(-8deg); } }
+@media (prefers-reduced-motion: reduce) { .main-levee, .pastille { animation: none !important; } }
 @keyframes pouls { 50% { opacity: 0.4; } }
 .liste .vide { margin: 0; padding: 4px 10px; color: var(--texte-doux); font-size: 13px; }
 

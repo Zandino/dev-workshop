@@ -72,13 +72,16 @@ export function dateCourte(ms) {
 }
 
 /** Petite notification en bas à droite, visible même quand un panneau couvre le fil. */
-export function notifier(texte, { echec = false, duree: ms = 6000 } = {}) {
+/** `surClic` : la bulle devient un bouton (par exemple « ouvrir la discussion qui t'attend »). */
+export function notifier(texte, { echec = false, duree: ms = 6000, surClic = null } = {}) {
   let pile = document.getElementById('notifications');
   if (!pile) {
     pile = h('div.notifications', { id: 'notifications', role: 'status', 'aria-live': 'polite' });
     document.body.append(pile);
   }
-  const note = h('div.notification' + (echec ? '.echec' : ''), {}, texte);
+  const note = surClic
+    ? h('button.notification.cliquable' + (echec ? '.echec' : ''), { type: 'button', onclick: () => { note.remove(); surClic(); } }, texte)
+    : h('div.notification' + (echec ? '.echec' : ''), {}, texte);
   pile.append(note);
   setTimeout(() => note.remove(), ms);
 }

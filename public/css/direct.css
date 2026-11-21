@@ -15,7 +15,7 @@
 .vignette { position: relative; display: grid; justify-items: center; gap: 4px; padding: 18px 12px 14px; border-radius: 16px; background: var(--surface); border: 1px solid var(--trait); box-shadow: var(--ombre); transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s; }
 .vignette.parle { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-doux), var(--ombre-haute); transform: translateY(-2px); }
 .vignette.accord { border-color: var(--orange); box-shadow: 0 0 0 3px var(--orange-doux); }
-.vignette .visage { position: relative; width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(135deg, #6d4aff, #b06dff); color: #fff; margin-bottom: 6px; }
+.vignette .visage { position: relative; width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(135deg, #4169e1, #6f9bff); color: #fff; margin-bottom: 6px; }
 .vignette.rang-1 .visage { background: linear-gradient(135deg, #db2777, #f472b6); }
 .vignette.rang-2 .visage { background: linear-gradient(135deg, #0d9488, #5eead4); }
 .vignette.rang-3 .visage { background: linear-gradient(135deg, #d97706, #fbbf24); }
@@ -148,7 +148,8 @@ textarea.retenu { width: 100%; min-height: 200px; resize: vertical; }
 .retour-liste { justify-self: start; }
 
 /* Arborescence : un projet est un dossier, ses discussions s'affichent en retrait juste en dessous. */
-.ligne.dossier { grid-template-columns: 14px 1fr; }
+.ligne.dossier { grid-template-columns: 14px 1fr auto; }
+.ligne.dossier > .main-levee, .ligne.dossier > .pastille { grid-column: 3; grid-row: auto; margin-right: 4px; }
 .ligne.dossier .chevron { grid-column: 1; font-size: 13px; color: var(--texte-doux); text-align: center; }
 .ligne.dossier.actif .chevron { color: var(--accent); }
 .sous-liste { display: grid; gap: 1px; margin: 2px 0 6px 15px; padding-left: 7px; border-left: 1px solid var(--trait-fort); }

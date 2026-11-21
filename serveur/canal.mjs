@@ -14,6 +14,7 @@ import { messageAvecFichiers } from './fichiers.mjs';
 import { listerCorbeille } from './projets.mjs';
 import { listerSessionsCorbeille } from './corbeille-sessions.mjs';
 import { enDeplacement } from './deplacer-session.mjs';
+import { veiller } from './veille.mjs';
 
 const NOM_PROJET = /^[A-Za-z0-9][A-Za-z0-9._-]{0,60}$/;
 const MAX_TEXTE = 200_000;
@@ -39,6 +40,17 @@ export function brancher(ws, jeton) {
     if (ws.readyState === 1) ws.send(JSON.stringify(o));
   };
   const delai = setTimeout(() => !authentifie && ws.close(4401, 'jeton'), 5000);
+  // Veille (voir veille.mjs) : les alertes partent tout de suite ; l'état des discussions ouvertes, regroupé
+  // (un tour de Claude change d'état plusieurs fois par seconde).
+  let quitterVeille = () => {};
+  let regroupement = null;
+  const suivreVeille = (alerte) => {
+    if (alerte) envoyer({ t: 'alerte', ...alerte });
+    regroupement ??= setTimeout(() => {
+      regroupement = null;
+      envoyer({ t: 'vivantes', vivantes: listerVivantes() });
+    }, 200);
+  };
 
   const ordres = {
     general: () => envoyer(etatGeneral()),
@@ -183,6 +195,7 @@ export function brancher(ws, jeton) {
       if (m?.t !== 'bonjour' || !jetonValide(jeton, m.jeton)) return ws.close(4401, 'jeton');
       authentifie = true;
       clearTimeout(delai);
+      quitterVeille = veiller(suivreVeille);
       return envoyer(etatGeneral());
     }
     const ordre = Object.hasOwn(ordres, m?.t) ? ordres[m.t] : null;
@@ -199,6 +212,8 @@ export function brancher(ws, jeton) {
 
   ws.on('close', () => {
     clearTimeout(delai);
+    quitterVeille();
+    clearTimeout(regroupement);
     projetsEtFichiers.fermer();
     for (const quitter of abonnements.values()) quitter();
     abonnements.clear();

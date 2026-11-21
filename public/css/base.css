@@ -9,8 +9,8 @@
   --trait-fort: #d2d2da;
   --texte: #18181b;
   --texte-doux: #6b6b76;
-  --accent: #6d4aff;
-  --accent-doux: rgba(109, 74, 255, 0.1);
+  --accent: #4169e1;
+  --accent-doux: rgba(65, 105, 225, 0.1);
   --sur-accent: #ffffff;
   --plein: #18181b;
   --sur-plein: #ffffff;
@@ -43,8 +43,8 @@
     --trait-fort: #34343d;
     --texte: #ececf1;
     --texte-doux: #9a9aa6;
-    --accent: #8b6dff;
-    --accent-doux: rgba(139, 109, 255, 0.16);
+    --accent: #5b7cf5;
+    --accent-doux: rgba(91, 124, 245, 0.16);
     --plein: #ececf1;
     --sur-plein: #111114;
     --vert: #22c55e;
@@ -166,6 +166,8 @@ pre.code {
   font-size: 13.5px;
   animation: entree 0.2s ease-out;
 }
+.notification.cliquable { display: block; width: 100%; text-align: left; cursor: pointer; font-weight: 400; border-left: 4px solid var(--accent); }
+.notification.cliquable:hover { background: var(--surface-2); }
 .notification.echec { border-color: color-mix(in srgb, var(--rouge) 45%, var(--trait)); border-left: 4px solid var(--rouge); }
 @keyframes entree { from { opacity: 0; transform: translateY(8px); } }
 

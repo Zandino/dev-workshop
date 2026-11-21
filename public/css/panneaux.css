@@ -53,7 +53,7 @@ button.discret:hover:not(:disabled) { color: var(--rouge); background: var(--rou
 /* Signature d'un participant : une teinte par rang. */
 .auteur { justify-self: start; padding: 1px 9px; border-radius: 99px; font-size: 12px; font-weight: 600; color: #fff; }
 .auteur .hors { font-weight: 400; opacity: 0.85; }
-.auteur.rang-0 { background: #6d4aff; }
+.auteur.rang-0 { background: #4169e1; }
 .auteur.rang-1 { background: #db2777; }
 .auteur.rang-2 { background: #0d9488; }
 .auteur.rang-3 { background: #d97706; }

@@ -2,7 +2,7 @@
 :root {
   --fond: #f7f7f9; --surface: #ffffff; --surface-2: #f1f1f4; --surface-3: #e8e8ed;
   --trait: #e4e4ea; --trait-fort: #d2d2da; --texte: #18181b; --texte-doux: #6b6b76;
-  --accent: #6d4aff; --accent-doux: rgba(109, 74, 255, 0.1); --vert: #16a34a; --rouge: #dc2626; --rouge-doux: rgba(220, 38, 38, 0.1);
+  --accent: #4169e1; --accent-doux: rgba(65, 105, 225, 0.1); --vert: #16a34a; --rouge: #dc2626; --rouge-doux: rgba(220, 38, 38, 0.1);
   --ombre: 0 1px 2px rgba(16, 16, 24, 0.05); --ombre-haute: 0 12px 32px rgba(16, 16, 24, 0.14), 0 2px 6px rgba(16, 16, 24, 0.06);
   --police: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Inter", sans-serif;
   --mono: "Cascadia Code", "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -12,7 +12,7 @@
   :root {
     --fond: #111114; --surface: #18181c; --surface-2: #1f1f24; --surface-3: #2a2a31;
     --trait: #26262d; --trait-fort: #34343d; --texte: #ececf1; --texte-doux: #9a9aa6;
-    --accent: #8b6dff; --accent-doux: rgba(139, 109, 255, 0.16); --vert: #22c55e; --rouge: #f05252; --rouge-doux: rgba(240, 82, 82, 0.15);
+    --accent: #5b7cf5; --accent-doux: rgba(91, 124, 245, 0.16); --vert: #22c55e; --rouge: #f05252; --rouge-doux: rgba(240, 82, 82, 0.15);
     --ombre: 0 1px 2px rgba(0, 0, 0, 0.3); --ombre-haute: 0 16px 40px rgba(0, 0, 0, 0.5);
     color-scheme: dark;
   }
@@ -43,7 +43,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 
 .page { width: min(820px, 100% - 48px); margin: 0 auto; padding: 56px 0 28px; min-height: 100vh; display: flex; flex-direction: column; gap: 36px; }
 .tete { display: flex; align-items: center; gap: 18px; }
-.logo { width: 52px; height: 52px; border-radius: 15px; background: linear-gradient(135deg, var(--accent), #b06dff); box-shadow: 0 8px 24px var(--accent-doux); position: relative; }
+.logo { width: 52px; height: 52px; border-radius: 15px; background: linear-gradient(135deg, var(--accent), #6f9bff); box-shadow: 0 8px 24px var(--accent-doux); position: relative; }
 .logo::after { content: ""; position: absolute; inset: 15px; background: #fff; transform: rotate(45deg); border-radius: 3px; }
 .tete h1 { font-size: 26px; }
 
