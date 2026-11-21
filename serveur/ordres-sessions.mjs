@@ -33,12 +33,21 @@ export function ordresSessions(envoyer, general, corbeille, attacher) {
       const vues = listerComptes();
       const commun = { dossier: d.dossier, titre: d.titre, mode: d.etat?.mode || 'default', effort: d.etat?.effort, equipeChangee: d.equipeChangee, origine: d.origine || d.etat?.sessionId || undefined };
       const histoire = consigneRelais('', d.journal, 'redemarrage');
+      // Un compte supprimé depuis (vécu le 21/11/2026 : un compte Gemini refait sous un autre nom) ne doit pas
+      // empêcher la reprise : son IA quitte l'équipe, le fil le dit ; seule, l'IA restante continue la discussion.
+      const existe = (id) => vues.some((v) => v.id === id);
+      const partis = (d.participants || []).filter((p) => !existe(p.compte)).map((p) => p.nom);
+      const restants = (d.participants || []).filter((p) => existe(p.compte));
       let s;
-      if (d.participants) {
-        const participants = d.participants.map((p) => ({ compte: compte(p.compte), modele: p.modele || undefined, nom: p.nom, externe: Boolean(vues.find((v) => v.id === p.compte)?.externe) }));
+      if (restants.length > 1) {
+        const participants = restants.map((p) => ({ compte: compte(p.compte), modele: p.modele || undefined, nom: p.nom, externe: Boolean(vues.find((v) => v.id === p.compte)?.externe) }));
         s = await ouvrirSession({ ...commun, participants, echanges: d.echanges || undefined, journalInitial: d.journal, consigneReprise: histoire });
+      } else if (d.participants) {
+        // Une seule IA encore là (ou aucune : le Claude du serveur reprend) : elle continue seule, avec l'historique.
+        s = await ouvrirSession({ ...commun, compte: compte(restants[0]?.compte || 'defaut'), equipeChangee: true, journalInitial: d.journal, consigneReprise: histoire });
       } else {
-        const c = compte(d.compte);
+        const c = existe(d.compte) ? compte(d.compte) : compte('defaut');
+        if (!existe(d.compte)) partis.push(d.compte);
         // Après un changement d'équipe, la session Claude Code ne porte que la suite : on repart du journal.
         const reprise = c.defaut && d.etat?.sessionId && !d.equipeChangee ? d.etat.sessionId : undefined;
         s = await ouvrirSession({
@@ -48,6 +57,7 @@ export function ordresSessions(envoyer, general, corbeille, attacher) {
           consigneReprise: reprise ? undefined : histoire,
         });
       }
+      if (partis.length) s.emettre({ t: 'info', code: 'comptes_supprimes', qui: partis.join(', ') });
       oublierSession(d.id);
       attacher(s.id);
       general();
