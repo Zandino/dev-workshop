@@ -10,10 +10,12 @@ ajouterTextes({
   fr: {
     notif_accord: '✋ {nom} a besoin de ton accord', notif_fini: 'Discussion terminée · {projet}', notif_echec: 'Tour interrompu · {projet}',
     notif_ouvrir: 'clique pour l’ouvrir', notif_memoire: '⚠ Mémoire du serveur presque pleine · travail arrêté · {projet}',
+    notif_echange: '✋ Échanges entre discussions arrêtés · {projet}',
   },
   en: {
     notif_accord: '✋ {nom} needs your approval', notif_fini: 'Conversation finished · {projet}', notif_echec: 'Turn interrupted · {projet}',
     notif_ouvrir: 'click to open it', notif_memoire: '⚠ Server memory almost full · work stopped · {projet}',
+    notif_echange: '✋ Exchanges between conversations stopped · {projet}',
   },
 });
 
@@ -28,6 +30,7 @@ function textes(a) {
   }
   if (a.genre === 'fini') return [t('notif_fini', { projet: a.projet }), titre];
   if (a.genre === 'memoire') return [t('notif_memoire', { projet: a.projet }), `${titre} · ${a.message}`];
+  if (a.genre === 'echange') return [t('notif_echange', { projet: a.projet }), `${titre} → « ${a.message} »`];
   return [t('notif_echec', { projet: a.projet }), a.message ? `${titre} · ${a.message}` : titre];
 }
 

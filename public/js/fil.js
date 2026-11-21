@@ -1,8 +1,19 @@
 // Fil de la conversation : messages, réflexion, outils, fins de tour.
 import { h, markdown, duree } from './dom.js';
-import { t } from './i18n.js';
+import { t, ajouterTextes } from './i18n.js';
 import { carteOutil, poserResultat, oublierCartes } from './outils.js';
 import { pastilleLogo } from './logos.js';
+
+ajouterTextes({
+  fr: {
+    message_de_discussion: '↪ De « {titre} » · {projet} · {qui}', reponse_de_discussion: '↩ Réponse de « {titre} » · {projet} · {qui}',
+    info_echange_limite: 'Échanges avec les autres discussions arrêtés ({n} messages pour cette demande) : le message pour « {vers} » n’est pas parti. Relance toi-même si tu veux continuer.',
+  },
+  en: {
+    message_de_discussion: '↪ From “{titre}” · {projet} · {qui}', reponse_de_discussion: '↩ Reply from “{titre}” · {projet} · {qui}',
+    info_echange_limite: 'Exchanges with other conversations stopped ({n} messages for this request): the message for “{vers}” was not sent. Start again yourself if you want to go on.',
+  },
+});
 
 const fil = () => document.getElementById('fil');
 let direct = null; // message en cours d'écriture : { boite, texte, reflexion }
@@ -67,7 +78,12 @@ function signer() {
 
 /** Le serveur ajoute la liste des fichiers joints au message : à l'écran, on la montre en puces. */
 const MARQUE_FICHIERS = '\n\n---\nFichiers joints';
-function messageUtilisateur(texte) {
+/** `e.de` : message venu d'une autre discussion (une IA l'a envoyé, ou c'est la réponse au sien), signé d'elle. */
+function messageUtilisateur({ texte, de }) {
+  if (de) {
+    const qui = t(de.genre === 'reponse' ? 'reponse_de_discussion' : 'message_de_discussion', { titre: de.titre, projet: de.projet, qui: de.qui });
+    return h('article.message.utilisateur.autre-discussion', { dataset: { auteur: qui } }, texte);
+  }
   const coupe = texte.indexOf(MARQUE_FICHIERS);
   if (coupe < 0) return h('article.message.utilisateur', { dataset: { auteur: t('toi') } }, texte);
   const fichiers = [...texte.slice(coupe).matchAll(/(?:^- |^### )(\.devworkshop\/fichiers\/\S+)/gm)].map((x) => x[1]);
@@ -132,7 +148,7 @@ const TRAITEMENTS = {
     document.querySelector('#fil .accueil')?.remove();
     auBas = true;
     signe = false;
-    ajouter(messageUtilisateur(e.texte));
+    ajouter(messageUtilisateur(e));
   },
   delta: surDelta,
   assistant: surAssistant,

@@ -8,26 +8,39 @@ import { lier, binaire } from './jsonrpc.mjs';
 import { consigneComplete } from './regles.mjs';
 import { versCodexToml } from '../connecteurs.mjs';
 import { decisionAuto } from '../regles-accord.mjs';
+import { NOM_SERVEUR } from '../entre-discussions.mjs';
 
-const env = (compte) => ({ ...process.env, CODEX_HOME: compte.dossier });
+// Le jeton des outils « entre discussions » passe par l'environnement du processus, propre à chaque session :
+// config.toml, lui, est partagé par toutes les sessions du compte et ne contient que l'adresse.
+const VARIABLE_JETON = 'DEVWORKSHOP_MCP_JETON';
+const env = (compte, jeton) => ({ ...process.env, CODEX_HOME: compte.dossier, ...(jeton ? { [VARIABLE_JETON]: jeton } : {}) });
 const DEBUT = '# >>> dev-workshop : connecteurs partagés (bloc géré par Dev Workshop, réécrit à chaque session)';
 const FIN = '# <<< dev-workshop';
 
+/** Nos outils (entre-discussions.mjs) : pré-approuvés, ils ne font que lire et transmettre des messages. */
+const tomlOutilsDw = (url) => [
+  `[mcp_servers.${JSON.stringify(NOM_SERVEUR)}]`,
+  `url = ${JSON.stringify(url)}`,
+  `bearer_token_env_var = ${JSON.stringify(VARIABLE_JETON)}`,
+  'default_tools_approval_mode = "approve"',
+].join('\n');
+
 /** Codex lit ses serveurs MCP dans config.toml : on y tient un bloc à nous, sans toucher au reste du fichier. */
-function poserConnecteurs(compte, connecteurs) {
+function poserConnecteurs(compte, connecteurs, outilsDw) {
   const fichier = path.join(compte.dossier, 'config.toml');
   let actuel = '';
   try { actuel = readFileSync(fichier, 'utf8'); } catch { /* pas encore de configuration */ }
   const debut = actuel.indexOf(DEBUT);
   const fin = actuel.indexOf(FIN, debut);
   const reste = debut >= 0 && fin > debut ? actuel.slice(0, debut) + actuel.slice(fin + FIN.length) : actuel;
-  const bloc = connecteurs?.length ? `${DEBUT}\n${versCodexToml(connecteurs)}\n${FIN}\n` : '';
+  const parties = [connecteurs?.length ? versCodexToml(connecteurs) : '', outilsDw ? tomlOutilsDw(outilsDw.url) : ''].filter(Boolean);
+  const bloc = parties.length ? `${DEBUT}\n${parties.join('\n\n')}\n${FIN}\n` : '';
   const nouveau = reste.trimEnd() + (reste.trim() && bloc ? '\n\n' : '') + bloc;
   if (nouveau !== actuel) writeFileSync(fichier, nouveau, { mode: 0o600 });
 }
 
-function lancer(compte, crochets) {
-  const l = lier(binaire('codex'), ['app-server'], { env: env(compte), ...crochets });
+function lancer(compte, crochets, jeton) {
+  const l = lier(binaire('codex'), ['app-server'], { env: env(compte, jeton), ...crochets });
   const pret = l.demander('initialize', { clientInfo: { name: 'dev-workshop', title: 'Dev Workshop', version: '0.3.0' } }).then(() => l.notifier('initialized'));
   return { l, pret };
 }
@@ -68,8 +81,8 @@ function resultatDe(item) {
   return { contenu: '', erreur: false };
 }
 
-export function ouvrir({ compte, dossier, modele, mode, consigne, connecteurs }, emettre) {
-  poserConnecteurs(compte, connecteurs);
+export function ouvrir({ compte, dossier, modele, mode, consigne, connecteurs, outilsDw }, emettre) {
+  poserConnecteurs(compte, connecteurs, outilsDw);
   const accords = new Map();
   const elements = new Map();
   let fil = null;
@@ -80,6 +93,8 @@ export function ouvrir({ compte, dossier, modele, mode, consigne, connecteurs },
 
   const { l, pret } = lancer(compte, {
     surDemande(methode, p) {
+      // Accord demandé pour un de nos outils (selon le réglage du compte, Codex peut le demander malgré tout).
+      if (methode === 'mcpServer/elicitation/request' && p.serverName === NOM_SERVEUR) return Promise.resolve({ action: 'accept', content: {} });
       const commande = methode === 'item/commandExecution/requestApproval';
       if (!commande && methode !== 'item/fileChange/requestApproval') throw new Error('demande_non_geree');
       // Règles d'accord du projet : décision immédiate quand elles tranchent.
@@ -143,7 +158,7 @@ export function ouvrir({ compte, dossier, modele, mode, consigne, connecteurs },
       for (const repondre of [...accords.values()]) repondre('cancel');
       if (!ferme) emettre({ t: 'etat', occupe: false, ferme: true });
     },
-  });
+  }, outilsDw?.jeton);
 
   const demarre = (async () => {
     await pret;

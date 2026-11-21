@@ -167,7 +167,7 @@ function surRejouer(m) {
 
 function surEvenement(m) {
   surEvenementDirect(m, ecran.rejeu);
-  if (m.t === 'utilisateur' && !ecran.titre) ecran.titre = m.texte.slice(0, 80);
+  if (m.t === 'utilisateur' && !ecran.titre && !m.de) ecran.titre = m.texte.slice(0, 80);
   if (m.t === 'etat') {
     Object.assign(ecran.etat, m);
     if (m.modele) $('modele').value = m.modele;

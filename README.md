@@ -32,6 +32,12 @@ Free software, built by the Deltinfo Studio team and published under the Apache 
   hand ✋ when it needs your approval, a pulsing dot while it works, a bold title when it finished unseen (red if it
   failed). A clickable bubble (window in front) or a system notification (in the background) opens it, and the
   desktop app puts a raised hand on its taskbar icon.
+- **Conversations talk to each other**: every AI with tools (Claude, Codex, Gemini, Copilot) can list the other open
+  conversations of all projects, read them and send them a message. A free conversation handles it on its own (a
+  busy one as soon as it is free), and its answer comes back to the sender as a new message; nothing waits, so two
+  conversations writing to each other never block. Messages are signed with the conversation they come from. At most
+  6 messages per request of yours: beyond that the exchange stops and raises its hand ✋. The AIs other than Claude
+  can also ask you questions in the same tabbed question window as Claude. See README.fr.md, "Entre discussions".
 - **Dictation** (🎤): click to talk, click to stop; the text lands in the message box for you to review. Engine:
   Whisper on your server (open source, free, the voice stays on the server; installed on demand, ~750 MB plus the
   model) or an API account you added (OpenAI, Groq, Mistral… via `/audio/transcriptions`). See README.fr.md,
@@ -169,7 +175,9 @@ DEVWORKSHOP_PORT=5331 node tests/ecran.mjs <project> en    # the real page in a 
 call, but they write into Claude Code's folder: run the server and the tests with a scratch `HOME` under `/tmp` (see
 README.fr.md, "Essais"). `tests/alertes.mjs <project>` covers alerts (rule table, channel with a fake local API, the
 real page) without any model call either. `tests/dictee.mjs <project> voice.wav "expected words"` covers dictation
-(Whisper, installed if missing; a fake API; the real page with a fake microphone).
+(Whisper, installed if missing; a fake API; the real page with a fake microphone). `node tests/entre-discussions.mjs`
+(simulated conversations, the real `/mcp` address) and `node tests/questions.mjs` (the question window in a simulated
+browser) need no server and no model.
 
 ## Licence and third-party tools
 

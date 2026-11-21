@@ -10,6 +10,7 @@ import { fermerTout } from './sessions.mjs';
 import { annulerToutes } from './connexion.mjs';
 import { purgerCorbeille } from './projets.mjs';
 import { servirApercu } from './apercu.mjs';
+import { servirMcp } from './mcp-http.mjs';
 import { purgerSessions } from './corbeille-sessions.mjs';
 
 // La corbeille garde un projet 30 jours : on la passe en revue au démarrage, puis toutes les 6 heures.
@@ -55,13 +56,14 @@ const serveur = http.createServer((req, res) => {
     res.end(texte);
   };
   if (!hoteAutorise(req.headers.host)) return repondre(421, 'Hôte refusé');
-  if (req.method !== 'GET' && req.method !== 'HEAD') return repondre(405, 'Méthode refusée');
   let chemin;
   try {
     chemin = decodeURIComponent(new URL(req.url, 'http://x').pathname);
   } catch {
     return repondre(400, 'Adresse invalide');
   }
+  if (servirMcp(chemin, req, res)) return; // outils des IA entre discussions (POST, jeton propre à chaque IA)
+  if (req.method !== 'GET' && req.method !== 'HEAD') return repondre(405, 'Méthode refusée');
   if (servirApercu(chemin, req, res)) return;
   const fichier = fichierDemande(chemin);
   try {

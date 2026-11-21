@@ -11,6 +11,7 @@ import { ecrireSession, oublierSession, listerInterrompues } from './sauvegarde-
 import { alerteDe, changeLaBarre, signaler } from './veille.mjs';
 import { verifierPlace, surveillerMemoire, enMo, tuerLesPlusGros, aLibererPour } from './memoire.mjs';
 import { libererDictee } from './dictee.mjs';
+import { brancherDiscussions, suivreEvenement, oublierJetons } from './entre-discussions.mjs';
 
 const MAX_JOURNAL = 4000;
 const MAX_SESSIONS = 8;
@@ -115,11 +116,12 @@ export async function ouvrirSession({ compte, participants, dossier, modele, mod
   };
 
   s.emettre = (e) => {
+    suivreEvenement(s, e); // messages entre discussions (entre-discussions.mjs)
     if (e.t === 'etat') Object.assign(s.etat, { ...e, t: undefined });
     if (e.t === 'pret') Object.assign(s.etat, { sessionId: e.sessionId || s.etat.sessionId, mode: e.mode });
     if (e.t === 'permission') s.attente.add(e.id);
     if (e.t === 'permission_fin') s.attente.delete(e.id);
-    if (e.t === 'utilisateur' && !s.titre) s.titre = e.texte.slice(0, 80);
+    if (e.t === 'utilisateur' && !s.titre && !e.de) s.titre = e.texte.slice(0, 80);
     // Les fragments en direct ne servent plus une fois le message complet reçu.
     if (e.t === 'assistant' && !e.sousAgent) s.journal = s.journal.filter((x) => x.t !== 'delta');
     // L'heure de chaque événement : à ton retour, l'écran résume ce qui s'est passé pendant ton absence.
@@ -136,13 +138,13 @@ export async function ouvrirSession({ compte, participants, dossier, modele, mod
   // Session reprise après un redémarrage : son historique s'affiche comme avant.
   if (Array.isArray(journalInitial)) s.journal.push(...journalInitial);
   if (salon) {
-    s.pilote = ouvrirSalon({ participants, dossier, mode, echanges, histoire: consigneReprise }, emettre);
+    s.pilote = ouvrirSalon({ session: s.id, participants, dossier, mode, echanges, histoire: consigneReprise }, emettre);
   } else if (orchestre) {
     // La cheffe est toujours un compte Claude : l'outil « deleguer » est propre à Claude Code.
     if (compte.type !== 'claude') throw new Error('orchestre_claude');
     s.orchestre = true;
     // Reprise : la cheffe reprend sa session Claude Code ; sinon l'historique éventuel lui est donné en consigne.
-    s.pilote = ouvrirOrchestre({ compte, dossier, modele, mode, effort, reprise, histoire: reprise ? null : consigneReprise }, emettre);
+    s.pilote = ouvrirOrchestre({ session: s.id, compte, dossier, modele, mode, effort, reprise, histoire: reprise ? null : consigneReprise }, emettre);
   } else {
     if (reprise && f.lireHistorique) {
       try {
@@ -227,8 +229,8 @@ export function changerEquipe(id, equipe) {
   };
   const ancien = s.pilote;
   const ouvrir = () => {
-    if (salon) return ouvrirSalon({ participants: equipe.participants, dossier, mode, echanges: equipe.echanges, histoire }, emettre);
-    if (equipe.orchestre) return ouvrirOrchestre({ compte: c, dossier, mode, effort, histoire, reprise: memeClaude ? sessionId : undefined }, emettre);
+    if (salon) return ouvrirSalon({ session: s.id, participants: equipe.participants, dossier, mode, echanges: equipe.echanges, histoire }, emettre);
+    if (equipe.orchestre) return ouvrirOrchestre({ session: s.id, compte: c, dossier, mode, effort, histoire, reprise: memeClaude ? sessionId : undefined }, emettre);
     return piloteAvecRelais({ s, compte: c, dossier, mode, effort, consigneReprise: histoire }, emettre);
   };
   let pilote;
@@ -270,6 +272,9 @@ export function changerEquipe(id, equipe) {
   return s;
 }
 
+// Les outils des IA entre discussions voient les sessions ouvertes par ici.
+brancherDiscussions({ session: (id) => sessions.get(id) || null, toutes: () => [...sessions.values()], projetDe, equipeDe });
+
 /** `oublier` : la personne ferme la session (sa sauvegarde est effacée) ; sinon, arrêt du serveur (gardée). */
 export function fermerSession(id, { oublier = true } = {}) {
   const s = sessions.get(id);
@@ -277,6 +282,7 @@ export function fermerSession(id, { oublier = true } = {}) {
   s.pilote.fermer();
   s.etat.ferme = true;
   sessions.delete(id);
+  oublierJetons(id);
   if (oublier) oublierSession(id);
   signaler();
 }

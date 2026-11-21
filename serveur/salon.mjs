@@ -5,6 +5,7 @@
 import { fournisseurDe } from './fournisseurs/index.mjs';
 import { consigneDeProjet } from './projets.mjs';
 import { connecteursPour } from './connecteurs.mjs';
+import { outilsPour } from './entre-discussions.mjs';
 import { compte, listerComptes } from './comptes.mjs';
 import { assezPour, REGLE_MEMOIRE } from './memoire.mjs';
 
@@ -83,7 +84,7 @@ export function preparerParticipants(liste) {
  * quand la mémoire du serveur se resserre ; relancée, elle retrouve la discussion (Claude reprend sa propre session,
  * les autres la reçoivent en consigne). Pendant l'exécution, elles travaillent en même temps si la mémoire le permet.
  */
-export function ouvrirSalon({ participants, dossier, mode, echanges, histoire }, emettre) {
+export function ouvrirSalon({ session, participants, dossier, mode, echanges, histoire }, emettre) {
   const limite = Math.min(MAX_ECHANGES, Math.max(1, Number(echanges) || 4));
   const proprietaires = new Map(); // demande d'accord -> participant
   const fil = []; // ce qui a été dit (utilisateur et participants), pour une IA relancée sans sa session
@@ -163,6 +164,7 @@ export function ouvrirSalon({ participants, dossier, mode, echanges, histoire },
       reprise,
       consigne: [consigneDeProjet(dossier), consigne(m, membres), histoire, reprise ? '' : dejaDit(m)].filter(Boolean).join('\n\n'),
       connecteurs: connecteursPour(m.p.compte),
+      outilsDw: outilsPour(m.p.compte, { session, auteur: m.auteur }),
     }, recevoirPour(m, g));
   }
 

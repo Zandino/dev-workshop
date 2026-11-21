@@ -140,6 +140,28 @@ est fermée ; refusé pendant qu'une IA travaille. Les IA de la nouvelle équipe
 côté (Claude Code compris) : elles connaissent la conversation par cet historique, borné à ses 20 000 derniers
 caractères.
 
+## Entre discussions
+
+Chaque IA qui a des outils (Claude, Codex, Gemini, Copilot) reçoit quatre outils propres à Dev Workshop :
+
+- `discussions` : les autres discussions ouvertes, tous projets confondus (id, projet, titre, IA, état) ;
+- `lire_discussion` : leurs derniers échanges (le texte des demandes et des réponses, pas les résultats d'outils) ;
+- `envoyer_message` : un message à une autre discussion. Libre, elle le traite d'elle-même ; occupée ou en attente de
+  ton accord, dès qu'elle est libre. Sa réponse finale revient ensuite à l'envoyeuse, comme un nouveau message qui la
+  relance. Rien n'attend : deux discussions qui s'écrivent en même temps ne se bloquent pas ;
+- `poser_question` (IA autres que Claude, qui a la sienne) : la fenêtre de questions à onglets, la même que celle de
+  Claude ; la réponse arrive à l'IA comme prochain message.
+
+À l'écran, un message venu d'une autre discussion est à gauche, signé de son origine (« ↪ De « titre » · projet ·
+IA ») ; l'IA qui le reçoit sait qu'il vient d'une IA collègue, pas de toi. Garde-fou : au plus 6 messages entre
+discussions par demande de ta part ; au-delà, l'échange s'arrête, le message ne part pas et une alerte ✋ te prévient.
+⚠ Une discussion réglée sur « tout autoriser » exécute sans demander ce qu'une autre lui demande, quel que soit le
+projet d'où vient la demande. Les messages en attente ne survivent pas à un redémarrage du serveur.
+
+Claude reçoit ces outils dans le serveur même ; les autres IA par l'adresse locale `/mcp` (127.0.0.1 seulement), avec
+un jeton propre à chaque IA lancée, oublié à la fermeture de la discussion (pour Codex, il passe par l'environnement
+de son processus, jamais par `config.toml`). Qwen Code ne sait pas joindre cette adresse : il s'en passe.
+
 ## Sécurité
 
 Cette page donne la main sur le serveur (commandes, fichiers). Les garde-fous sont côté serveur :
@@ -243,6 +265,8 @@ node tests/discussions.mjs                # canal : liste, déplacement et ses r
 node tests/ecran-discussions.mjs          # la vraie page (sur des discussions refabriquées)
 node tests/alertes.mjs <projet>           # alertes : règle, canal (fausse API locale), vraie page ; sans modèle
 node tests/dictee.mjs <projet> voix.wav "mots attendus"   # dictée : Whisper (installé si besoin), API factice, page
+node tests/entre-discussions.mjs          # entre discussions : discussions simulées, vraie adresse /mcp ; sans serveur ni modèle
+node tests/questions.mjs                  # fenêtre de questions à onglets (navigateur simulé) ; sans serveur ni modèle
 ```
 
 Les essais créent des comptes : les lancer avec `DEVWORKSHOP_CONFIG` sur un dossier d'essai, côté serveur et côté

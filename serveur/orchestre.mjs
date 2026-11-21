@@ -10,6 +10,7 @@ import { listerComptes, compte as compteDe } from './comptes.mjs';
 import { assezPour, REGLE_MEMOIRE } from './memoire.mjs';
 import { consigneDeProjet } from './projets.mjs';
 import { connecteursPour } from './connecteurs.mjs';
+import { outilsPour } from './entre-discussions.mjs';
 
 const MAX_EN_PARALLELE = 3;
 const MAX_RESULTAT = 40_000;
@@ -54,7 +55,7 @@ const consigneSousAgent = (role) => [
  * Ouvre une session orchestrée ; même interface qu'un pilote ordinaire. `histoire` : la conversation déjà tenue,
  * quand une discussion existante passe en orchestre (sessions.mjs) ; `reprise` : la session Claude Code à reprendre.
  */
-export function ouvrirOrchestre({ compte, dossier, modele, mode, effort, histoire, reprise }, emettre) {
+export function ouvrirOrchestre({ session, compte, dossier, modele, mode, effort, histoire, reprise }, emettre) {
   const proprietaires = new Map(); // demande d'accord -> pilote qui l'a faite
   const sousAgents = new Set();
   let ferme = false;
@@ -141,6 +142,7 @@ export function ouvrirOrchestre({ compte, dossier, modele, mode, effort, histoir
     consigne: [consigneDeProjet(dossier), consigneCheffe(), histoire].filter(Boolean).join('\n\n'),
     reprise, // session Claude Code reprise : la cheffe garde tout son contexte
     connecteurs: connecteursPour(compte),
+    outilsDw: outilsPour(compte, { session }), // la cheffe seule : ses sous-agents n'écrivent pas aux autres discussions
     serveursMcp: { orchestre: outils },
     outilsPermis: ['mcp__orchestre__deleguer'],
     effort,

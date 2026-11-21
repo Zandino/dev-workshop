@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { lier } from './jsonrpc.mjs';
 import { versAcp } from '../connecteurs.mjs';
 import { decisionAuto } from '../regles-accord.mjs';
+import { NOM_SERVEUR } from '../entre-discussions.mjs';
 
 /**
  * Fiche d'un outil : { nom, binaire(), args(modele), env(compte), preparer?(compte), modes: {nos modes -> les
@@ -13,10 +14,17 @@ import { decisionAuto } from '../regles-accord.mjs';
  */
 const initialiser = (l) => l.demander('initialize', { protocolVersion: 1, clientCapabilities: {} });
 
+/** Rend ce que l'outil déclare savoir faire (agentCapabilities). */
 async function connecter(fiche, l) {
-  await initialiser(l);
+  const r = await initialiser(l);
   if (fiche.methodeAuth) await l.demander('authenticate', { methodId: fiche.methodeAuth }, 60000).catch(() => {});
+  return r?.agentCapabilities || {};
 }
+
+/** Nos outils « entre discussions », si l'outil sait joindre un serveur MCP par HTTP (sinon il s'en passe). */
+const serveurOutilsDw = (outilsDw, capacites) => (outilsDw && capacites.mcpCapabilities?.http
+  ? [{ type: 'http', name: NOM_SERVEUR, url: outilsDw.url, headers: [{ name: 'Authorization', value: `Bearer ${outilsDw.jeton}` }] }]
+  : []);
 
 /** Connecté ou non : une session ne s'ouvre que si le compte l'est. Le motif de l'outil est transmis. */
 export async function etatAcp(fiche, compte) {
@@ -39,7 +47,7 @@ const texteDe = (contenu) => (Array.isArray(contenu) ? contenu : [contenu]).map(
 /** Types d'action ACP ramenés aux noms d'outils habituels, pour les règles d'accord du projet. */
 const OUTILS = { read: 'Read', search: 'Grep', edit: 'Edit', execute: 'Bash', fetch: 'WebFetch' };
 
-export function ouvrirAcp(fiche, { compte, dossier, modele, mode, consigne, connecteurs }, emettre) {
+export function ouvrirAcp(fiche, { compte, dossier, modele, mode, consigne, connecteurs, outilsDw }, emettre) {
   const accords = new Map();
   let session = null;
   let ecrit = '';
@@ -68,6 +76,11 @@ export function ouvrirAcp(fiche, { compte, dossier, modele, mode, consigne, conn
       const option = (genre) => (p.options || []).find((o) => o.kind === genre)?.optionId;
       const genre = p.toolCall?.kind;
       const brut = p.toolCall?.rawInput || {};
+      // Nos outils (titre de Gemini : « outil (devworkshop MCP Server) ») passent sans demande, comme pour Claude.
+      // Titre exact seulement : un autre connecteur ne doit pas pouvoir s'en faire passer pour nous.
+      if (outilsDw && (p.toolCall?.title || '').endsWith(` (${NOM_SERVEUR} MCP Server)`) && option('allow_once')) {
+        return Promise.resolve({ outcome: { outcome: 'selected', optionId: option('allow_once') } });
+      }
       const auto = genre === 'delete'
         ? decisionAuto(dossier, 'Bash', { command: 'rm ' + (brut.file_path || brut.path || '') })
         : decisionAuto(dossier, OUTILS[genre] || p.toolCall?.title || '', brut);
@@ -114,10 +127,10 @@ export function ouvrirAcp(fiche, { compte, dossier, modele, mode, consigne, conn
   const demarre = (async () => {
     const absente = fiche.sansConnexion?.(compte);
     if (absente) throw new Error(`Compte non connecté (${absente}) : connecte-le depuis le panneau « Comptes ».`);
-    await connecter(fiche, l);
+    const capacites = await connecter(fiche, l);
     let r;
     try {
-      r = await l.demander('session/new', { cwd: dossier, mcpServers: versAcp(connecteurs || []) });
+      r = await l.demander('session/new', { cwd: dossier, mcpServers: [...versAcp(connecteurs || []), ...serveurOutilsDw(outilsDw, capacites)] });
     } catch (e) {
       throw new Error(`Compte non connecté (${String(e?.message || e).slice(0, 160)}) : connecte-le depuis le panneau « Comptes ».`);
     }

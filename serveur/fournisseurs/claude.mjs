@@ -2,6 +2,7 @@
 import { randomUUID } from 'node:crypto';
 import { optionsDeCompte } from './claude-compte.mjs';
 import { versClaude } from '../connecteurs.mjs';
+import { NOM_SERVEUR } from '../entre-discussions.mjs';
 import { decisionAuto, interditsClaude, MOTIF_REFUS } from '../regles-accord.mjs';
 import { query, listSessions, getSessionMessages } from '@anthropic-ai/claude-agent-sdk';
 import { discussionsNonListees } from '../sessions-claude.mjs';
@@ -49,7 +50,7 @@ function fileEntree() {
   };
 }
 
-export function ouvrir({ dossier, modele, mode, reprise, compte, consigne, connecteurs, serveursMcp, outilsPermis, effort }, emettre) {
+export function ouvrir({ dossier, modele, mode, reprise, compte, consigne, connecteurs, serveursMcp, outilsPermis, effort, outilsDw }, emettre) {
   const entree = fileEntree();
   const permissions = new Map();
   let fenetre = null;
@@ -58,6 +59,7 @@ export function ouvrir({ dossier, modele, mode, reprise, compte, consigne, conne
 
   const canUseTool = (outil, saisie, o) =>
     new Promise((resoudre) => {
+      if (outilsDw && outil.startsWith(`mcp__${NOM_SERVEUR}__`)) return resoudre({ behavior: 'allow', updatedInput: saisie });
       // Règles d'accord du projet : ce qui est permis passe sans demande, ce qui est interdit est refusé.
       const auto = decisionAuto(dossier, outil, saisie);
       if (auto === 'autoriser') return resoudre({ behavior: 'allow', updatedInput: saisie });
@@ -98,8 +100,11 @@ export function ouvrir({ dossier, modele, mode, reprise, compte, consigne, conne
   if (reprise) options.resume = reprise;
   // Connecteurs partagés de Dev Workshop, en plus de ceux que le compte a déjà (claude.ai, réglages), et outils
   // propres à Dev Workshop (mode orchestre), qui tournent dans le serveur même.
-  if (connecteurs?.length || serveursMcp) options.mcpServers = { ...versClaude(connecteurs || []), ...(serveursMcp || {}) };
-  // Seuls nos propres outils passent sans demande d'accord ; tout le reste revient à l'écran.
+  // Outils « entre discussions » (entre-discussions.mjs) : dans le serveur même, l'identité tient à la fermeture.
+  const propres = { ...(serveursMcp || {}), ...(outilsDw ? { [NOM_SERVEUR]: outilsDw.claude() } : {}) };
+  if (connecteurs?.length || Object.keys(propres).length) options.mcpServers = { ...versClaude(connecteurs || []), ...propres };
+  // Seuls nos propres outils passent sans demande d'accord ; tout le reste revient à l'écran. (Ceux « entre
+  // discussions » sont acceptés dans canUseTool : une règle sur tout le serveur ferait râler le SDK.)
   if (outilsPermis?.length) options.allowedTools = outilsPermis;
   // Les refus du projet valent dans tous les modes, « tout autoriser » compris.
   const interdits = interditsClaude(dossier);
