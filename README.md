@@ -43,6 +43,9 @@ Free software, built by the Deltinfo Studio team and published under the Apache 
   6 messages per request of yours: beyond that the exchange stops, the message is not sent, and an alert tells you. A
   conversation that acts without asking (allow everything, automatic, accept edits) handles a message from elsewhere only after your approval. The AIs other than Claude
   can also ask you questions in the same tabbed question window as Claude. See README.fr.md, "Entre discussions".
+- **Live desk** (screen icon, right of the conversation): one card per AI showing what it is doing right now: the
+  file it edits (changed lines), its terminal (command, then output) and its browser (latest screenshot). The tab
+  follows the AI's last action unless you pick one. Screenshots only show live: they are not kept in the history.
 - **Dictation** (🎤): click to talk, click to stop; the text lands in the message box for you to review. Engine:
   Whisper on your server (open source, free, the voice stays on the server; installed on demand, ~750 MB plus the
   model) or an API account you added (OpenAI, Groq, Mistral… via `/audio/transcriptions`). See README.fr.md,

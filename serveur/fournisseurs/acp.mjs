@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { lier } from './jsonrpc.mjs';
 import { versAcp } from '../connecteurs.mjs';
 import { decisionAuto } from '../regles-accord.mjs';
+import { MAX_IMAGE } from './claude-normaliser.mjs';
 import { NOM_SERVEUR, NOMS_OUTILS } from '../outils-discussions.mjs';
 
 /**
@@ -115,7 +116,9 @@ export function ouvrirAcp(fiche, { compte, dossier, modele, mode, consigne, conn
         vider();
         emettre({ t: 'assistant', blocs: [{ type: 'outil', id: u.toolCallId, nom: u.title || u.kind || 'outil', entree: u.rawInput || {} }], usage: null, modele: choisi, sousAgent: false });
       } else if (u.sessionUpdate === 'tool_call_update' && ['completed', 'failed'].includes(u.status)) {
-        emettre({ t: 'resultat_outil', id: u.toolCallId, contenu: texteDe(u.content || []).slice(0, 20000), erreur: u.status === 'failed' });
+        const capture = (u.content || []).map((c) => c?.content || c).find((c) => c?.type === 'image' && typeof c.data === 'string');
+        const image = capture && capture.data.length <= MAX_IMAGE && /^image\/(png|jpeg|gif|webp)$/.test(capture.mimeType || '') ? { type: capture.mimeType, donnees: capture.data } : null;
+        emettre({ t: 'resultat_outil', id: u.toolCallId, contenu: texteDe(u.content || []).slice(0, 20000), erreur: u.status === 'failed', ...(image ? { image } : {}) });
       } else if (u.sessionUpdate === 'usage_update' && typeof u.used === 'number' && typeof u.size === 'number' && u.size > 0) {
         emettre({ t: 'contexte', utilises: u.used, max: u.size, pourcent: (u.used / u.size) * 100 });
       }

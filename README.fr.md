@@ -244,6 +244,19 @@ accord ou une question t'attend, puis un échec pas encore lu, puis une IA au tr
   nouvelle demande). La page n'ayant aucun accès au poste, elle l'annonce dans son titre (« ✋ 2 · Dev Workshop »),
   que le logiciel lit.
 
+## Bureau en direct
+
+Bouton écran, à droite de la conversation (il partage la colonne de l'aperçu : ouvrir l'un ferme l'autre) : une carte
+par IA, qui montre ce qu'elle fait à l'instant, en trois onglets :
+
+- **Fichier** : le fichier qu'elle modifie, avec les lignes changées ;
+- **Terminal** : la commande qu'elle lance, puis sa sortie ;
+- **Navigateur** : la dernière capture d'écran de son navigateur (connecteur « navigateur »).
+
+L'onglet suit sa dernière action ; un clic en garde un, un second clic le laisse de nouveau suivre l'IA. Tout vient des
+événements de la discussion : rien de plus ne tourne sur le serveur. Les captures (PNG, JPEG, GIF, WebP, 3 Mo au
+plus) ne vont qu'aux écrans qui regardent : elles ne sont pas gardées dans l'historique, qu'elles alourdiraient.
+
 ## Dictée
 
 - 🎤 à côté de « Envoyer » : un clic écoute, un second clic arrête, Échap annule. Le texte s'ajoute dans la zone de

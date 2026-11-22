@@ -17,6 +17,17 @@ export function texteDeResultat(contenu) {
   );
 }
 
+/** Taille au-delà de laquelle une capture d'écran ne part pas à l'écran (base64). */
+export const MAX_IMAGE = 3 * 1024 * 1024;
+
+/** Première image d'un résultat d'outil (capture du navigateur…), pour le bureau en direct ; null sinon. */
+export function imageDeResultat(contenu) {
+  if (!Array.isArray(contenu)) return null;
+  const b = contenu.find((x) => x?.type === 'image' && x.source?.type === 'base64' && typeof x.source.data === 'string');
+  if (!b || b.source.data.length > MAX_IMAGE || !/^image\/(png|jpeg|gif|webp)$/.test(b.source.media_type || '')) return null;
+  return { type: b.source.media_type, donnees: b.source.data };
+}
+
 /** Jetons d'un appel au modèle. */
 export function usageNormalise(u) {
   if (!u) return null;
@@ -64,6 +75,7 @@ export function utilisateurVersEvenements(m, { avecTexte }) {
         id: b.tool_use_id,
         contenu: texteDeResultat(b.content),
         erreur: Boolean(b.is_error),
+        ...(imageDeResultat(b.content) ? { image: imageDeResultat(b.content) } : {}),
       });
     } else if (b.type === 'text' && avecTexte && saisieReelle(b.text) && !m.isSynthetic && !m.isMeta) {
       evenements.push({ t: 'utilisateur', texte: b.text });

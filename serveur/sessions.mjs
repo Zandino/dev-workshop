@@ -156,7 +156,7 @@ async function ouvrirNouvelle({ compte, participants, dossier, modele, mode, rep
     if (e.t === 'assistant' && !e.sousAgent) s.journal = s.journal.filter((x) => x.t !== 'delta');
     // L'heure de chaque événement : à ton retour, l'écran résume ce qui s'est passé pendant ton absence.
     e.le = Date.now();
-    s.journal.push(e);
+    s.journal.push(e.image ? { ...e, image: null, imageVue: true } : e);
     s.aSauver = true;
     if (s.journal.length > MAX_JOURNAL) s.journal.splice(0, s.journal.length - MAX_JOURNAL);
     for (const envoyer of s.abonnes) envoyer({ ...e, session: s.id });
