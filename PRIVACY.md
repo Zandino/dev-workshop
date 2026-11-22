@@ -28,6 +28,10 @@ AI services whose accounts or keys you connect (Anthropic, OpenAI, Google, GitHu
 it starts only the connectors (MCP servers) you add. Each of those services has its own privacy policy. Starting a
 connector with `npx` downloads its package from the npm registry.
 
+**Live team voices.** Natural voices run on your server (Piper): the text the AIs say is turned into speech there
+and sent only to your screen. Installing them (your click) downloads Piper from PyPI and the voice models from Hugging
+Face (`huggingface.co`); no text is sent there.
+
 **Between conversations.** An AI can read the other open conversations (titles, your requests and the AIs' answers,
 all projects) and send them messages. What it reads or receives this way goes to that AI's provider: a Codex or
 Gemini conversation that reads a Claude one sends that text to OpenAI or Google.
@@ -71,6 +75,10 @@ Le serveur tourne sur ta machine. Il envoie tes messages, et les fichiers joints
 d'IA dont tu branches le compte ou la clé (Anthropic, OpenAI, Google, GitHub, ou l'adresse d'API que tu indiques), et
 ne démarre que les connecteurs (serveurs MCP) que tu ajoutes. Chacun a sa propre politique de confidentialité. Démarrer
 un connecteur avec `npx` télécharge son paquet depuis le registre npm.
+
+**Voix de l'équipe en direct.** Les voix naturelles tournent sur ton serveur (Piper) : le texte que disent les IA y
+devient de la parole et ne part que vers ton écran. Leur installation (sur ton clic) télécharge Piper depuis PyPI et les
+voix depuis Hugging Face (`huggingface.co`) ; aucun texte n'y est envoyé.
 
 **Entre discussions.** Une IA peut lire les autres discussions ouvertes (titres, tes demandes et les réponses des IA,
 tous projets) et leur écrire. Ce qu'elle lit ou reçoit ainsi part chez son fournisseur : une discussion Codex ou

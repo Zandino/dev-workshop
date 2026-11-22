@@ -16,6 +16,7 @@ import { listerSessionsCorbeille } from './corbeille-sessions.mjs';
 import { enDeplacement } from './deplacer-session.mjs';
 import { veiller } from './veille.mjs';
 import { ordresDictee } from './dictee.mjs';
+import { ordresVoix, etatVoix } from './voix.mjs';
 import { verifierCleGemini } from './fournisseurs/gemini.mjs';
 import { repondreDemande } from './entre-discussions.mjs';
 import { lireOrdre, trier } from './ordre.mjs';
@@ -61,7 +62,7 @@ const VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.u
 
 function etatGeneral() {
   const ordre = lireOrdre(); // ordre choisi dans la barre (ordre.mjs)
-  return { t: 'general', version: VERSION, comptes: listerComptes(), projets: trier(projets(), ordre.projets), copiesDeTravail: copiesDeTravail(), ordreDiscussions: ordre.discussions, skins: listerSkins(), vivantes: listerVivantes(), modes: MODES, corbeille: listerCorbeille().length + listerSessionsCorbeille().length, interrompues: interrompues() };
+  return { t: 'general', version: VERSION, comptes: listerComptes(), projets: trier(projets(), ordre.projets), copiesDeTravail: copiesDeTravail(), ordreDiscussions: ordre.discussions, skins: listerSkins(), voix: etatVoix(), vivantes: listerVivantes(), modes: MODES, corbeille: listerCorbeille().length + listerSessionsCorbeille().length, interrompues: interrompues() };
 }
 
 export function brancher(ws, jeton) {
@@ -222,7 +223,8 @@ export function brancher(ws, jeton) {
 
   const projetsEtFichiers = ordresProjets(envoyer, () => envoyer(etatGeneral()), (id) => ordres.attacher({ session: id }));
   const dictee = ordresDictee(envoyer);
-  for (const lot of [projetsEtFichiers, dictee]) {
+  const voix = { ordres: ordresVoix(envoyer) }; // voix naturelles de l'équipe en direct (voix.mjs)
+  for (const lot of [projetsEtFichiers, dictee, voix]) {
     for (const [nom, f] of Object.entries(lot.ordres)) if (!Object.hasOwn(ordres, nom)) ordres[nom] = f;
   }
 

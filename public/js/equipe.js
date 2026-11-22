@@ -11,13 +11,15 @@ import { pastilleLogo } from './logos.js';
 import { detailOutil } from './outils.js';
 import { scene, couleurDe } from './avatars.js';
 import { creerEquipe } from './equipe-etat.js';
+import { parlerMembre, taire, etatVoix, moteurVoix, choisirMoteur, installerVoix } from './voix-equipe.js';
 
 ajouterTextes({
   fr: {
     equipe: 'Équipe en direct', equipe_retour: 'Retour à la conversation', vue_appel: 'Appel', vue_arbre: 'Arbre',
     equipe_vide: 'L’équipe apparaîtra ici dès que l’IA travaille : chacun avec son prénom, sa fonction, ce qu’il fait et son écran.',
     agents_n: 'Agents · {n}', jetons_n: '{n} jetons', au_travail_n: '{n} au travail', en_attente_n: '{n} en attente', termines_n: '{n} terminés',
-    voix_oui: 'Voix activée', voix_non: 'Voix coupée', voix_choix: 'Voix',
+    voix_oui: 'Voix activée', voix_non: 'Voix coupée', voix_choix: 'Voix', parle: 'parle',
+    voix_naturelles: 'Voix naturelles', voix_installer: 'Voix naturelles : installer (~300 Mo)', voix_installation: 'Installation des voix… ({fait}/{total})', voix_systeme: 'Voix du système',
     eq_pret: 'à l’écoute', eq_reflechit: 'réfléchit…', eq_ecrit: 'écrit…', eq_travaille: 'travaille', eq_attend: 'attend {qui}',
     eq_besoin: 'a besoin de toi', eq_bloque: 'sans nouvelles depuis 3 min', eq_fini: 'terminé', eq_erreur: 'en échec',
     eq_longue: 'commande longue', eq_boucle: 'tourne en rond ?', eq_de: 'de {qui}', eq_mission: 'Mission : {ordre}',
@@ -30,7 +32,8 @@ ajouterTextes({
     equipe: 'Live team', equipe_retour: 'Back to the conversation', vue_appel: 'Call', vue_arbre: 'Tree',
     equipe_vide: 'The team will show here as soon as the AI works: each one with a first name, a role, what it is doing and its screen.',
     agents_n: 'Agents · {n}', jetons_n: '{n} tokens', au_travail_n: '{n} working', en_attente_n: '{n} waiting', termines_n: '{n} done',
-    voix_oui: 'Voice on', voix_non: 'Voice off', voix_choix: 'Voice',
+    voix_oui: 'Voice on', voix_non: 'Voice off', voix_choix: 'Voice', parle: 'speaking',
+    voix_naturelles: 'Natural voices', voix_installer: 'Natural voices: install (~300 MB)', voix_installation: 'Installing voices… ({fait}/{total})', voix_systeme: 'System voices',
     eq_pret: 'listening', eq_reflechit: 'thinking…', eq_ecrit: 'writing…', eq_travaille: 'working', eq_attend: 'waiting for {qui}',
     eq_besoin: 'needs you', eq_bloque: 'no news for 3 min', eq_fini: 'done', eq_erreur: 'failed',
     eq_longue: 'long command', eq_boucle: 'going in circles?', eq_de: 'for {qui}', eq_mission: 'Mission: {ordre}',
@@ -86,7 +89,6 @@ let epingle = null; // clé du membre gardé au premier plan
 let parle = null; // clé du membre dont la voix est en cours
 const etatsVus = new Map(); // pour la fête (fini) et le sursaut (échec), une seule fois
 let voixActive = lire('devworkshop.voix') !== 'non';
-let voixChoisie = lire('devworkshop.voix.nom') || '';
 
 function lire(cle) {
   try { return localStorage.getItem(cle); } catch { return null; }
@@ -111,8 +113,7 @@ export function nouvelleEquipe(sig, session = '') {
   epingle = null;
   etatsVus.clear();
   zone()?.replaceChildren();
-
-  window.speechSynthesis?.cancel();
+  taire();
   redessiner();
 }
 
@@ -125,21 +126,13 @@ function pourLaVoix(texte) {
   return coupe.slice(0, Math.max(coupe.lastIndexOf('. '), 160) + 1);
 }
 
-function voixDisponibles() {
-  const code = langue();
-  return (window.speechSynthesis?.getVoices?.() || []).filter((v) => v.lang?.toLowerCase().startsWith(code));
-}
-
+/** Chaque membre parle avec sa voix, un à la fois (voix-equipe.js) ; sa tuile le montre pendant qu'il parle. */
 function parler(m, texte) {
-  const s = window.speechSynthesis;
-  const phrase = pourLaVoix(texte);
-  if (!voixActive || !ouvert || !s || !phrase || typeof SpeechSynthesisUtterance === 'undefined') return;
-  const u = new SpeechSynthesisUtterance(phrase);
-  const voix = voixDisponibles();
-  u.voice = voix.find((v) => v.name === voixChoisie) || voix[0] || null;
-  u.onstart = () => { parle = m.cle; redessiner(); };
-  u.onend = () => { if (parle === m.cle) parle = null; redessiner(); };
-  s.speak(u); // la synthèse du système les met en file : un seul parle à la fois
+  if (!voixActive || !ouvert) return;
+  parlerMembre(m, pourLaVoix(texte), (cle) => {
+    parle = cle;
+    redessiner();
+  });
 }
 
 /** Chaque événement de la discussion. `rejeu` : histoire déjà passée, rien n'est lu à voix haute. */
@@ -245,6 +238,7 @@ function tuile(m, { vedette = false, incrustee = false } = {}) {
   m.skin ? media(imageSkin(m.skin, v.etat)) : scene(m.style),
   m.skin && !/\.(mp4|webm)$/i.test(imageSkin(m.skin, v.etat)) ? effets(v.etat) : null,
   h('span.puce-etat', {}, `${ICONE[v.etat] || ''} ${phraseEtat(m, v)}`),
+  parle === m.cle ? h('span.ondes', { title: t('parle') }, h('i'), h('i'), h('i'), h('i')) : null,
   m.echecs ? h('span.puce-echecs', {}, `✕ ${m.echecs}`) : null,
   v.commandeLongue || m.boucle ? h('span.puce-alerte', {}, v.commandeLongue ? '⏱ ' + t('eq_longue') : '↻ ' + t('eq_boucle')) : null,
   vedette && m.parole && !incrustee ? h('p.bulle-parole', {}, pourLaVoix(m.parole) || String(m.parole).slice(0, 280)) : null,
@@ -310,9 +304,25 @@ function listeAgents() {
     }));
 }
 
+/** Moteur de voix : naturelles (serveur, à installer une fois) ou celles du système. */
+function choixMoteur() {
+  const e = etatVoix();
+  const naturelle = e.installee ? t('voix_naturelles')
+    : e.installation ? t('voix_installation', { fait: e.installation.fait, total: e.installation.total })
+      : t('voix_installer');
+  return h('select', { title: t('voix_choix'), onchange: (ev) => {
+    const choix = ev.target.value;
+    if (choix === 'naturelle' && !e.installee && !e.installation) installerVoix();
+    choisirMoteur(choix);
+    taire();
+    redessiner();
+  } },
+  h('option', { value: 'naturelle', selected: moteurVoix() === 'naturelle' || (!e.installee && lire('devworkshop.voix.moteur') !== 'systeme') }, naturelle),
+  h('option', { value: 'systeme', selected: moteurVoix() === 'systeme' && lire('devworkshop.voix.moteur') === 'systeme' }, t('voix_systeme')));
+}
+
 function entete() {
   const c = equipe.compteurs();
-  const voix = voixDisponibles();
   const puce = (classe, texte) => h('span.compteur.' + classe, {}, texte);
   return h('header.entete-appel', {},
     h('div.titre-appel', {}, h('strong', {}, t('equipe'))),
@@ -327,11 +337,10 @@ function entete() {
     h('button.discret', { type: 'button', title: voixActive ? t('voix_oui') : t('voix_non'), onclick: () => {
       voixActive = !voixActive;
       ecrire('devworkshop.voix', voixActive ? 'oui' : 'non');
-      if (!voixActive) window.speechSynthesis?.cancel();
+      if (!voixActive) taire();
       redessiner();
     } }, voixActive ? '🔊' : '🔇'),
-    voix.length > 1 ? h('select', { title: t('voix_choix'), onchange: (e) => { voixChoisie = e.target.value; ecrire('devworkshop.voix.nom', voixChoisie); } },
-      voix.map((x) => h('option', { value: x.name, selected: x.name === voixChoisie }, x.name))) : null,
+    choixMoteur(),
     h('button', { type: 'button', onclick: () => montrerEquipe(false) }, '← ' + t('equipe_retour')));
 }
 
@@ -384,7 +393,7 @@ export function montrerEquipe(oui) {
   ouvert = oui;
   zone().hidden = !oui;
   document.body.classList.toggle('avec-equipe', oui);
-  if (!oui) window.speechSynthesis?.cancel();
+  if (!oui) taire();
   ecrire('devworkshop.equipe', oui ? 'oui' : 'non');
   redessiner();
 }

@@ -263,7 +263,12 @@ l'agrandir ; elle partage la colonne de l'aperçu : ouvrir l'un ferme l'autre).
 - **Au premier plan** : celui qui a besoin de toi, sinon celui qui vient d'agir (un clic sur une tuile la garde au
   premier plan), avec sa bulle et son écran partagé : le fichier qu'il modifie (lignes changées), son terminal
   (commande puis sortie), la dernière capture de son navigateur (connecteur « navigateur »).
-- **La voix** du système lit ce qu'ils disent, un à la fois (rien ne part vers un service extérieur).
+- **Leurs voix** : chacun parle avec sa voix, accordée à son genre et à son débit, un seul à la fois ; des ondes sur
+  sa tuile montrent qui parle. Voix naturelles (Piper, libre, sur ce serveur : rien ne part ailleurs), à installer une
+  fois depuis l'en-tête de l'équipe : environ 480 Mo dans le dossier des réglages (environnement Python, Piper sous
+  GPL-3 téléchargé depuis PyPI, cinq voix françaises ou quatre anglaises depuis Hugging Face), 0,6 s pour une phrase,
+  ~240 Mo le temps de la dire (rien n'est dit quand la mémoire est juste). Sans elles, les voix du système, réparties
+  de la même façon.
 
 **Skins** (personnages en images) : un dossier par personnage dans le dossier des réglages du serveur,
 `skins/<nom>/`, avec une image par état : `idle`, `working`, `thinking`, `waiting`, `needs-you`, `blocked`,

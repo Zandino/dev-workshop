@@ -1,0 +1,146 @@
+// Voix de l'équipe en direct : chaque membre a sa voix (accordée à son genre, avec son propre débit), et un seul parle à
+// la fois. Deux moteurs : les voix naturelles du serveur (Piper, serveur/voix.mjs : l'audio revient en PCM et se joue
+// ici), et à défaut celles du système (synthèse du navigateur), réparties de la même façon.
+import { dire, ecouter } from './canal.js';
+import { langue } from './i18n.js';
+
+const hachage = (texte) => {
+  let h = 2166136261;
+  for (const c of String(texte)) h = Math.imul(h ^ c.codePointAt(0), 16777619);
+  return h >>> 0;
+};
+// Prénoms de voix du système (Windows, Chrome, Edge) dont on connaît le genre ; les autres sont réparties sans genre.
+const MASCULINS = /\b(paul|henri|claude|jean|antoine|thomas|remy|rémy|jerome|jérôme|alain|fabrice|gerard|gérard|maurice|yves|guy|david|mark|george|james|ryan|guy|christopher|eric|roger|steffan|brian|andrew)\b/i;
+const FEMININS = /\b(hortense|julie|denise|eloise|vivienne|brigitte|celeste|coralie|josephine|yvette|amelie|audrey|marie|aria|jenny|zira|hazel|susan|sonia|libby|emma|michelle|ava|ana|sylvie|ariane)\b/i;
+
+let etatServeur = { installee: false, voix: [], installation: null };
+let moteur = lire('devworkshop.voix.moteur') || 'naturelle';
+const file = []; // { m, texte, id, audio?, pret }
+let enCours = null;
+let contexteAudio = null;
+let numero = 0;
+let rappel = () => {}; // (cle qui parle, ou null) -> l'écran met la tuile en avant
+
+function lire(cle) {
+  try { return localStorage.getItem(cle); } catch { return null; }
+}
+function ecrire(cle, v) {
+  try { localStorage.setItem(cle, v); } catch { /* stockage indisponible */ }
+}
+
+export const etatVoix = () => etatServeur;
+export const moteurVoix = () => (moteur === 'naturelle' && naturellesPretes() ? 'naturelle' : 'systeme');
+export function choisirMoteur(m) {
+  moteur = m;
+  ecrire('devworkshop.voix.moteur', m);
+}
+const naturellesPretes = () => etatServeur.installee && etatServeur.voix.some((v) => v.langue === langue());
+
+export function definirEtatVoix(etat) {
+  if (etat) etatServeur = etat;
+}
+export const installerVoix = () => dire({ t: 'voix_installer', langue: langue() });
+
+/** La voix d'un membre : parmi celles de sa langue et de son genre, toujours la même pour lui. */
+function voixNaturelle(m) {
+  const toutes = etatServeur.voix.filter((v) => v.langue === langue());
+  const genre = toutes.filter((v) => v.genre === (m.feminin ? 'f' : 'm'));
+  const liste = genre.length ? genre : toutes;
+  return liste[hachage(m.cle) % liste.length]?.cle || null;
+}
+const vitesseDe = (m) => 0.92 + (hachage(`${m.cle}|vitesse`) % 17) / 100; // 0,92 à 1,08
+
+function voixSysteme(m) {
+  const toutes = (window.speechSynthesis?.getVoices?.() || []).filter((v) => v.lang?.toLowerCase().startsWith(langue()));
+  const motif = m.feminin ? FEMININS : MASCULINS;
+  const genre = toutes.filter((v) => motif.test(v.name));
+  const liste = genre.length ? genre : toutes;
+  return liste.length ? liste[hachage(m.cle) % liste.length] : null;
+}
+
+function suivant() {
+  if (enCours) return;
+  const x = file[0];
+  if (!x || !x.pret) return;
+  file.shift();
+  enCours = x;
+  if (x.audio) jouer(x);
+  else if (x.systeme) parlerSysteme(x);
+  else fini(); // la voix naturelle a échoué (mémoire juste…) : on passe
+}
+
+function fini() {
+  const x = enCours;
+  enCours = null;
+  if (x) rappel(null);
+  suivant();
+}
+
+function jouer(x) {
+  try {
+    contexteAudio ??= new AudioContext();
+    const brut = Uint8Array.from(atob(x.audio.pcm), (c) => c.charCodeAt(0));
+    const pcm = new Int16Array(brut.buffer, 0, brut.length >> 1);
+    const tampon = contexteAudio.createBuffer(1, pcm.length, x.audio.taux);
+    const canal = tampon.getChannelData(0);
+    for (let i = 0; i < pcm.length; i += 1) canal[i] = pcm[i] / 32768;
+    const source = contexteAudio.createBufferSource();
+    source.buffer = tampon;
+    source.connect(contexteAudio.destination);
+    source.onended = fini;
+    rappel(x.m.cle);
+    source.start();
+    x.source = source;
+  } catch {
+    fini();
+  }
+}
+
+function parlerSysteme(x) {
+  const s = window.speechSynthesis;
+  if (!s || typeof SpeechSynthesisUtterance === 'undefined') return fini();
+  const u = new SpeechSynthesisUtterance(x.texte);
+  u.voice = voixSysteme(x.m);
+  // Même voix pour deux membres : le timbre et le débit les distinguent.
+  u.pitch = 0.85 + (hachage(`${x.m.cle}|timbre`) % 31) / 100;
+  u.rate = vitesseDe(x.m);
+  u.onstart = () => rappel(x.m.cle);
+  u.onend = fini;
+  u.onerror = fini;
+  s.speak(u);
+}
+
+/** Met une phrase en file pour le membre `m`. `quiParle(cle|null)` : l'écran suit qui parle. */
+export function parlerMembre(m, texte, quiParle) {
+  rappel = quiParle;
+  if (!texte) return;
+  const x = { m, texte, id: `v${++numero}`, pret: false };
+  file.push(x);
+  if (moteurVoix() === 'naturelle') {
+    dire({ t: 'voix_dire', id: x.id, texte, voix: voixNaturelle(m), vitesse: vitesseDe(m) });
+  } else {
+    x.systeme = true;
+    x.pret = true;
+    suivant();
+  }
+}
+
+/** Tout se tait (équipe fermée, voix coupée, autre discussion). */
+export function taire() {
+  file.length = 0;
+  try { enCours?.source?.stop(); } catch { /* déjà fini */ }
+  window.speechSynthesis?.cancel();
+  if (enCours) rappel(null);
+  enCours = null;
+}
+
+ecouter((msg) => {
+  if (msg.t === 'voix_etat') definirEtatVoix(msg);
+  if (msg.t !== 'voix_audio') return;
+  const x = file.find((y) => y.id === msg.id);
+  if (!x) return;
+  if (!msg.erreur) x.audio = { taux: msg.taux, pcm: msg.pcm };
+  else if (msg.erreur === 'voix_absente') x.systeme = true; // pas encore installée : la voix du système prend le relais
+  x.pret = true;
+  suivant();
+});

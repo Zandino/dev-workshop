@@ -111,6 +111,13 @@ img.scene-img.fondu { animation: fondu-img 0.45s ease-out; }
 .etat-erreur .puce-etat, .etat-bloque .puce-etat { color: #ff8a80; }
 .etat-pret .puce-etat, .etat-reflechit .puce-etat { color: var(--appel-doux); }
 .puce-echecs { top: 44px; color: #ff8a80; }
+/* Celui qui parle : des ondes sur sa tuile. */
+.ondes { position: absolute; left: 12px; bottom: 52px; display: flex; align-items: flex-end; gap: 3px; height: 22px; padding: 4px 8px; border-radius: 99px; background: rgba(20, 22, 29, 0.85); }
+.ondes i { width: 4px; border-radius: 2px; background: #6ee7b7; animation: onde 0.9s ease-in-out infinite; }
+.ondes i:nth-child(2) { animation-delay: 0.15s; }
+.ondes i:nth-child(3) { animation-delay: 0.3s; }
+.ondes i:nth-child(4) { animation-delay: 0.45s; }
+@keyframes onde { 0%, 100% { height: 4px; } 50% { height: 14px; } }
 .puce-alerte { top: 78px; color: #ffcf6e; }
 .puces-bas { position: absolute; left: 10px; right: 10px; bottom: 10px; display: flex; gap: 6px; flex-wrap: nowrap; overflow: hidden; }
 .puce-nom, .puces-bas .puce { padding: 4px 11px; border-radius: 99px; background: rgba(20, 22, 29, 0.85); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

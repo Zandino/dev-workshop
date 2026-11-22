@@ -14,6 +14,7 @@ import { prendrePieces } from './pieces.js';
 import { ouvrirProjet, majCorbeille, ouvrirRetenir } from './projet.js';
 import { initDiscussions, ouvrirDiscussions, ouvrirRanger, majProjetsDiscussions } from './discussions.js';
 import { initEquipe, nouvelleEquipe, surEvenementEquipe, definirSkins } from './equipe.js';
+import { definirEtatVoix } from './voix-equipe.js';
 import { pastilleLogo } from './logos.js';
 import { brancherAjouts } from './ajouts.js';
 import { initAlertes } from './alertes.js';
@@ -201,6 +202,7 @@ function surEvenement(m) {
 function surGeneral(m) {
   ecran.general = m;
   definirSkins(m.skins);
+  definirEtatVoix(m.voix);
   $('version').textContent = m.version || '';
   const choisi = m.comptes.some((c) => c.id === $('compte').value) || ['orchestre', 'salon'].includes($('compte').value) ? $('compte').value : 'defaut';
   // « Plusieurs IA » ouvre le panneau 👥 (choix des participants) ; une fois appliqué, il dit ce qu'est la discussion.
