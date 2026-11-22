@@ -55,6 +55,7 @@ export function detailOutil(nom, e = {}) {
     return h('ul.taches', {}, e.todos.map((x) => h('li.' + (x.status || 'pending'), {}, x.content)));
   }
   if ((nom === 'Agent' || nom === 'Task') && e.prompt) return bloc(e.prompt);
+  if (nom === 'MessageDiscussion' && e.message) return bloc(e.message); // message d'une autre discussion, en entier
   const reste = Object.keys(e).length ? JSON.stringify(e, null, 2) : '';
   return reste ? bloc(reste) : null;
 }

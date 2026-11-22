@@ -89,7 +89,7 @@ export function piloteAvecRelais({ s, compte, dossier, modele, mode, reprise, ef
       if (g !== generation) return; // l'IA remplacée ne parle plus dans la session
       if (e.t === 'utilisateur' && masquerUtilisateur) return void (masquerUtilisateur = false); // demande déjà affichée
       if (e.t === 'tour' && !e.ok && !enRelais && (e.limite || estLimite(e.message))) {
-        emettre({ ...e, limite: true });
+        emettre({ ...e, limite: true, relaye: true }); // une autre IA va reprendre la demande (entre-discussions.mjs)
         relayer();
         return;
       }

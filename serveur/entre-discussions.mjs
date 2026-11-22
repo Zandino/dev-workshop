@@ -20,7 +20,7 @@ const MAX_FILE = 10;
 const MAX_MESSAGE = 20_000;
 const MAX_LU = 20_000;
 /** Modes où l'IA agit sans demander : un message venu d'ailleurs y attend ton accord. */
-const MODES_SANS_ACCORD = ['bypassPermissions', 'auto'];
+const MODES_SANS_ACCORD = ['bypassPermissions', 'auto', 'acceptEdits'];
 
 /** Ce que sessions.mjs nous prête : session(id) ou null, toutes(), projetDe(s), equipeDe(s). */
 let acces = { session: () => null, toutes: () => [], projetDe: () => '.', equipeDe: () => '' };
@@ -30,7 +30,15 @@ export function brancherDiscussions(a) {
 
 // Une session sans IA libre au moment voulu (mémoire juste, autre message en cours…) : on réessaie régulièrement.
 setInterval(() => {
-  for (const s of acces.toutes()) distribuer(s);
+  for (const s of acces.toutes()) {
+    if (!s.etat.occupe && !s.etat.ferme && toursEnCours(s) > 0 && Date.now() - (s.dernierEvenement || 0) > 120_000) {
+      console.error(`[dev-workshop] tours de « ${titreDe(s)} » recalés (${toursEnCours(s)} sans fin annoncée)`);
+      s.toursFinis = s.toursDemandes;
+      s.relais = null;
+      if (s.livraison) finDeLivraison(s);
+    }
+    distribuer(s);
+  }
 }, 5000).unref();
 
 const etatDe = (s) => (s.attente.size ? 'attend une réponse de l’utilisateur' : s.etat.occupe ? 'au travail' : 'libre');
@@ -133,8 +141,8 @@ function demanderAccord(s, x) {
   s.emettre({
     t: 'permission', id, outil: 'MessageDiscussion', toujours: false,
     titre: `Message de « ${x.de.titre} » (${x.de.projet}, ${x.de.qui}) : le traiter ?`,
-    description: x.texte.slice(0, 4000),
-    entree: { de: `${x.de.titre} · ${x.de.projet} · ${x.de.qui}` },
+    description: null,
+    entree: { de: `${x.de.titre} · ${x.de.projet} · ${x.de.qui}`, message: x.texte },
   });
 }
 
@@ -249,6 +257,7 @@ function finDeTour(s) {
  * renvoyée à l'envoyeuse à la fin de ce tour-là.
  */
 export function suivreEvenement(s, e) {
+  s.dernierEvenement = Date.now();
   if (e.t === 'utilisateur') {
     s.toursDemandes = (s.toursDemandes || 0) + 1;
     if (s.prochainDe) {
@@ -270,7 +279,7 @@ export function suivreEvenement(s, e) {
   }
   // Limite atteinte : une autre IA va reprendre la même demande (relais.mjs). La fin de tour de celle qui s'arrête
   // ne compte pas ; celle de l'IA de relais, si. Sans IA de relais, le tour finit là.
-  if (e.t === 'tour' && e.limite && !e.auteur) {
+  if (e.t === 'tour' && e.relaye && !e.auteur) {
     s.relais = 'limite';
     return;
   }

@@ -155,7 +155,7 @@ Chaque IA qui a des outils (Claude, Codex, Gemini, Copilot) reçoit quatre outil
 À l'écran, un message venu d'une autre discussion est à gauche, signé de son origine (« ↪ De « titre » · projet ·
 IA ») ; l'IA qui le reçoit sait qu'il vient d'une IA collègue, pas de toi. Garde-fou : au plus 6 messages entre
 discussions par demande de ta part ; au-delà, l'échange s'arrête, le message ne part pas et une alerte te prévient.
-Une discussion réglée sur « tout autoriser » ou en automatique, qui agit sans demander, ne traite un message venu
+Une discussion qui agit sans demander (« tout autoriser », automatique, accepter les modifications) ne traite un message venu
 d'ailleurs qu'après ton accord (✋ « Message de … : le traiter ? ») ; refusé, l'envoyeuse en est prévenue. Le texte
 d'un message est cité dans les historiques : il ne peut pas s'y faire passer pour toi. Une discussion fermée prévient
 celles qui attendaient sa réponse. Les messages en attente ne survivent pas à un redémarrage du serveur.

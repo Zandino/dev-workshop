@@ -125,7 +125,7 @@ noter('A reçoit la réponse à M1, puis celle à M2, jamais celle faite à la p
 // 5. Relais sur limite pendant un message : la réponse est celle de l'IA de relais (audit F2).
 B.retenir = true;
 await outil(dwA.jeton, 'envoyer_message', { id: 'bbbbbbbb', message: 'M3' });
-B.emettre({ t: 'tour', ok: false, limite: true, message: 'limite' });
+B.emettre({ t: 'tour', ok: false, limite: true, relaye: true, message: 'limite' });
 B.emettre({ t: 'etat', occupe: false }); // l'IA qui s'arrête
 await pause(100);
 noter('limite atteinte : la réponse n’est pas encore partie', !reponsesA().some((t) => t.includes('M3') || t.includes('rien répondu')));
@@ -136,6 +136,16 @@ B.enTour = false;
 B.retenir = false;
 await pause(200);
 noter('… elle part avec ce qu’a dit l’IA de relais', reponsesA().some((t) => t.includes('IA de relais')));
+// Limite sans relais (chef d'orchestre) : le tour finit là, la discussion ne reste pas en retard d'un tour.
+B.retenir = true;
+await outil(dwA.jeton, 'envoyer_message', { id: 'bbbbbbbb', message: 'M3bis' });
+B.emettre({ t: 'tour', ok: false, limite: true, message: 'limite' });
+B.file = [];
+B.enTour = false;
+B.retenir = false;
+B.emettre({ t: 'etat', occupe: false });
+await pause(200);
+noter('limite sans relais : la livraison se termine, rien ne reste en retard', !B.livraison && (B.toursFinis === B.toursDemandes));
 
 // 6. Limite : 6 messages par échange, quel que soit l'envoyeur.
 A.emettre({ t: 'utilisateur', texte: 'Nouvelle demande' });
