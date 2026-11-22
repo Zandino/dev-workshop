@@ -56,6 +56,11 @@ export function detailOutil(nom, e = {}) {
   }
   if ((nom === 'Agent' || nom === 'Task') && e.prompt) return bloc(e.prompt);
   if (nom === 'MessageDiscussion' && e.message) return bloc(e.message); // message d'une autre discussion, en entier
+  // Nouvelles instructions de mémoire proposées par l'IA : sa raison, puis le texte complet (avant → après).
+  if (nom === 'MemoireInstructions') {
+    const parties = [e.raison && `Raison : ${e.raison}`, e.avant && `Instructions actuelles :\n${e.avant}`, `Nouvelles instructions :\n${e.instructions || '(aucune)'}`];
+    return bloc(parties.filter(Boolean).join('\n\n'));
+  }
   const reste = Object.keys(e).length ? JSON.stringify(e, null, 2) : '';
   return reste ? bloc(reste) : null;
 }

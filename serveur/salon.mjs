@@ -10,6 +10,7 @@ import { compte, listerComptes } from './comptes.mjs';
 import { assezPour, REGLE_MEMOIRE } from './memoire.mjs';
 import { estLimite } from './fournisseurs/claude-normaliser.mjs';
 import { choisirRelais, nomCompte, finDeLimite, heureDe } from './relais.mjs';
+import { consigneMemoire } from './memoire-discussion.mjs';
 
 export const MAX_PARTICIPANTS = 4;
 export const MAX_ECHANGES = 10;
@@ -172,7 +173,7 @@ export function ouvrirSalon({ session, participants, dossier, mode, echanges, hi
       mode: modeCourant,
       effort: effortCourant,
       reprise,
-      consigne: [consigneDeProjet(dossier), consigne(m, membres), histoire, reprise ? '' : dejaDit(m)].filter(Boolean).join('\n\n'),
+      consigne: [consigneDeProjet(dossier), consigneMemoire(session), consigne(m, membres), histoire, reprise ? '' : dejaDit(m)].filter(Boolean).join('\n\n'),
       connecteurs: connecteursPour(m.p.compte),
       outilsDw: outilsPour(m.p.compte, { session, auteur: m.auteur }),
       interne: true, // sa session Claude Code n'est pas une discussion à part (sessions-internes.mjs)

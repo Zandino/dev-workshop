@@ -13,6 +13,7 @@ import { connecteursPour } from './connecteurs.mjs';
 import { outilsPour } from './outils-discussions.mjs';
 import { estLimite } from './fournisseurs/claude-normaliser.mjs';
 import { choisirRelais, consigneRelais, nomCompte, finDeLimite, heureDe } from './relais.mjs';
+import { consigneMemoire } from './memoire-discussion.mjs';
 
 const MAX_EN_PARALLELE = 3;
 const MAX_RESULTAT = 40_000;
@@ -165,7 +166,7 @@ export function ouvrirOrchestre({ session, compte, dossier, modele, mode, effort
       dossier,
       modele,
       mode,
-      consigne: [consigneDeProjet(dossier), consigneCheffe(), consigneEnPlus].filter(Boolean).join('\n\n'),
+      consigne: [consigneDeProjet(dossier), consigneMemoire(session), consigneCheffe(), consigneEnPlus].filter(Boolean).join('\n\n'),
       reprise: premiere ? reprise : undefined, // session Claude Code reprise : la cheffe garde tout son contexte
       connecteurs: connecteursPour(c),
       outilsDw: outilsPour(c, { session }), // la cheffe seule : ses sous-agents n'écrivent pas aux autres discussions

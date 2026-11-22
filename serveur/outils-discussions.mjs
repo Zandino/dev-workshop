@@ -6,6 +6,7 @@ import { randomBytes } from 'node:crypto';
 import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
 import { listerDiscussions, lireDiscussion, envoyerMessage, poserQuestion } from './entre-discussions.mjs';
+import { outilLire, outilRetenir, outilProposerInstructions, MAX_INSTRUCTIONS } from './memoire-discussion.mjs';
 
 /**
  * Nom du serveur d'outils, tiré au hasard à chaque démarrage : un dépôt piégé qui déclarerait son propre serveur
@@ -82,6 +83,31 @@ const OUTILS = [
     },
     seulementSi: (ctx) => ctx.questions,
     faire: poserQuestion,
+  },
+  // Mémoire de la discussion (memoire-discussion.mjs).
+  {
+    nom: 'memoire_lire',
+    description: 'Relit la mémoire de cette discussion : les instructions de l’utilisateur et ce que tu as retenu.',
+    schema: {},
+    faire: outilLire,
+  },
+  {
+    nom: 'memoire_retenir',
+    description: 'Note dans la mémoire de cette discussion ce qu’il faut retenir : décisions, faits utiles qui ne se devinent pas, préférences de l’utilisateur, ce qui reste à faire. Mode « ajouter » (par défaut) : ajoute tes lignes ; « remplacer » : réécrit toute la partie retenue (pour retirer ce qui n’est plus vrai ou raccourcir). Jamais de secret.',
+    schema: {
+      texte: z.string().max(12_000).describe('lignes courtes à noter (ou toute la partie, en mode « remplacer »)'),
+      mode: z.enum(['ajouter', 'remplacer']).optional().describe('« ajouter » par défaut'),
+    },
+    faire: outilRetenir,
+  },
+  {
+    nom: 'memoire_proposer_instructions',
+    description: 'Propose à l’utilisateur de changer les instructions de la mémoire de cette discussion (elles ne changent que s’il accepte, à l’écran). Donne le texte complet des nouvelles instructions et la raison.',
+    schema: {
+      instructions: z.string().max(MAX_INSTRUCTIONS).describe('le texte complet des nouvelles instructions'),
+      raison: z.string().max(1000).describe('pourquoi les changer, en une ou deux phrases'),
+    },
+    faire: outilProposerInstructions,
   },
 ];
 

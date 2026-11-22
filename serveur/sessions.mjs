@@ -13,11 +13,14 @@ import { verifierPlace, surveillerMemoire, enMo, tuerLesPlusGros, aLibererPour }
 import { libererDictee } from './dictee.mjs';
 import { brancherDiscussions, suivreEvenement, fermetureDe, oublierDemandes, remettreTours } from './entre-discussions.mjs';
 import { oublierJetons } from './outils-discussions.mjs';
+import { brancherMemoire, lireMemoire, deplacerMemoire, oublierDemandesMemoire } from './memoire-discussion.mjs';
 
 const MAX_JOURNAL = 4000;
 const MAX_SESSIONS = 8;
 const MAX_PILOTES = 12; // chaque participant Claude est un processus : on borne le total
 const sessions = new Map();
+// Sessions en cours de création : leurs IA démarrent avant qu'elles soient rangées ici, et lisent déjà leur mémoire.
+const naissantes = new Map();
 
 // Les sessions qui ont bougé sont écrites sur le disque toutes les 5 secondes (voir sauvegarde-sessions.mjs).
 function sauver() {
@@ -113,15 +116,16 @@ export async function ouvrirSession(options) {
   }
 }
 
-async function ouvrirNouvelle({ compte, participants, dossier, modele, mode, reprise, titre, echanges, orchestre, effort, journalInitial, consigneReprise, equipeChangee, origine }) {
+async function ouvrirNouvelle({ compte, participants, dossier, modele, mode, reprise, titre, echanges, orchestre, effort, journalInitial, consigneReprise, equipeChangee, origine, cleMemoire }) {
   if (listerVivantes().length >= MAX_SESSIONS) throw new Error('trop_de_sessions');
   const salon = Array.isArray(participants) && participants.length > 1;
   const pilotes = listerVivantes().reduce((n, x) => n + (x.participants?.length || 1), 0);
   if (pilotes + (salon ? participants.length : 1) > MAX_PILOTES) throw new Error('trop_de_sessions');
   verifierPlace(salon ? participants.length : 1);
   const f = salon ? null : fournisseurDe(compte);
+  const id = randomUUID();
   const s = {
-    id: randomUUID(),
+    id,
     compte: salon ? null : compte.id,
     // Une API sans outils ne lit pas les fichiers joints : on lui en donne le contenu (voir fichiers.mjs).
     avecOutils: salon || compte.type !== 'api',
@@ -140,15 +144,31 @@ async function ouvrirNouvelle({ compte, participants, dossier, modele, mode, rep
     // La discussion Claude Code dont celle-ci est partie : elle la suit à travers les changements d'équipe et les
     // redémarrages, pour que la rouvrir depuis la liste du projet reprenne cette copie au lieu d'en créer une autre.
     origine: origine || reprise || null,
+    // Clé de sa mémoire (memoire-discussion.mjs) : gardée à travers redémarrages, changements d'équipe, rangements.
+    cleMemoire: cleMemoire || origine || reprise || id,
   };
+  s.memoireVue = lireMemoire(s.cleMemoire).version; // ses IA démarrent avec cette version en consigne
 
   s.emettre = (e) => {
+    // Mémoire redonnée en tête d'un message (canal.mjs) : l'IA la lit, le fil montre le message seul.
+    if (e.t === 'utilisateur' && s.prefixeMemoire && typeof e.texte === 'string' && e.texte.startsWith(s.prefixeMemoire)) {
+      e.texte = e.texte.slice(s.prefixeMemoire.length);
+      e.memoireRedonnee = true;
+      s.prefixeMemoire = null;
+    }
     suivreEvenement(s, e); // messages entre discussions (entre-discussions.mjs)
     if (e.t === 'etat') Object.assign(s.etat, { ...e, t: undefined });
     if (e.t === 'pret') Object.assign(s.etat, { sessionId: e.sessionId || s.etat.sessionId, mode: e.mode });
     // Le Claude du serveur : sa propre session devient l'origine de la discussion, une clé qui ne bouge plus (ordre
     // choisi dans la barre, copie interrompue, rangement).
-    if (e.t === 'pret' && !s.origine && s.compte === 'defaut' && e.sessionId) s.origine = e.sessionId;
+    if (e.t === 'pret' && !s.origine && s.compte === 'defaut' && e.sessionId) {
+      s.origine = e.sessionId;
+      // Sa mémoire prend la même clé : rouverte plus tard depuis la liste du projet, la discussion la retrouve.
+      if (s.cleMemoire === s.id) {
+        deplacerMemoire(s.id, e.sessionId);
+        s.cleMemoire = e.sessionId;
+      }
+    }
     if (e.t === 'permission') s.attente.add(e.id);
     if (e.t === 'permission_fin') s.attente.delete(e.id);
     if (e.t === 'utilisateur' && !s.titre && !e.de) s.titre = e.texte.slice(0, 80);
@@ -167,6 +187,18 @@ async function ouvrirNouvelle({ compte, participants, dossier, modele, mode, rep
   const emettre = emetteurDe(s);
   // Session reprise après un redémarrage : son historique s'affiche comme avant.
   if (Array.isArray(journalInitial)) s.journal.push(...journalInitial);
+  naissantes.set(s.id, s);
+  try {
+    await demarrerPilote(s, { salon, participants, dossier, mode, echanges, consigneReprise, orchestre, compte, modele, effort, reprise, f }, emettre);
+  } finally {
+    naissantes.delete(s.id);
+  }
+  sessions.set(s.id, s);
+  signaler();
+  return s;
+}
+
+async function demarrerPilote(s, { salon, participants, dossier, mode, echanges, consigneReprise, orchestre, compte, modele, effort, reprise, f }, emettre) {
   if (salon) {
     s.pilote = ouvrirSalon({ session: s.id, participants, dossier, mode, echanges, histoire: consigneReprise }, emettre);
   } else if (orchestre) {
@@ -184,9 +216,6 @@ async function ouvrirNouvelle({ compte, participants, dossier, modele, mode, rep
     // Si l'IA atteint sa limite en cours de route, une autre IA connectée prend le relais (voir relais.mjs).
     s.pilote = piloteAvecRelais({ s, compte, dossier, modele, mode, reprise, effort, consigneReprise }, emettre);
   }
-  sessions.set(s.id, s);
-  signaler();
-  return s;
 }
 
 export function session(id) {
@@ -303,6 +332,7 @@ export function changerEquipe(id, equipe, { ailleurs = null, note = null } = {})
   for (const idDemande of [...s.attente]) s.emettre({ t: 'permission_fin', id: idDemande });
   s.attente.clear();
   oublierDemandes(s.id);
+  oublierDemandesMemoire(s.id);
   remettreTours(s);
   s.emettre(note || { t: 'info', code: s.orchestre ? 'equipe_orchestre' : 'equipe', qui: s.participants ? s.participants.join(', ') : nomDe(s.compte) });
   enPlace = true;
@@ -314,6 +344,7 @@ export function changerEquipe(id, equipe, { ailleurs = null, note = null } = {})
 
 // Les outils des IA entre discussions voient les sessions ouvertes par ici.
 brancherDiscussions({ session: (id) => sessions.get(id) || null, toutes: () => [...sessions.values()], projetDe, equipeDe });
+brancherMemoire({ session: (id) => sessions.get(id) || naissantes.get(id) || null });
 
 /** Nouveau titre d'une discussion ouverte (déjà vérifié par l'appelant) : barre, alertes et sauvegarde suivent. */
 export function renommerSession(id, titre) {
@@ -332,6 +363,7 @@ export function fermerSession(id, { oublier = true } = {}) {
   s.etat.ferme = true;
   sessions.delete(id);
   fermetureDe(s); // les discussions qui attendaient sa réponse sont prévenues
+  oublierDemandesMemoire(id);
   oublierJetons(id);
   if (oublier) oublierSession(id);
   signaler();

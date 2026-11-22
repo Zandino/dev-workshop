@@ -24,6 +24,11 @@ export const oublierCle = () => {};
 // --- memoire.mjs : toujours de la place pour une IA ; jamais assez pour travailler « en même temps » (essai déterministe).
 export const assezPour = (_n, enPlus = 0) => !enPlus;
 export const REGLE_MEMOIRE = 'Règle de mémoire.';
+export const verifierPlace = () => {};
+export const surveillerMemoire = () => {};
+export const enMo = (o) => Math.round(o / 1048576);
+export const tuerLesPlusGros = () => [];
+export const aLibererPour = () => 0;
 
 // --- fournisseurs
 export const ouvertures = []; // { compte, consigne }
@@ -31,6 +36,8 @@ export const envois = []; // { compte, texte }
 export const fermetures = []; // compte
 /** comportements[compte](texte, recevoir) : ce que dit l'IA de ce compte à chaque message reçu. */
 export const comportements = {};
+/** Réglages de l'essai : `echoUtilisateur` renvoie chaque demande au fil (comme le fait Claude). */
+export const faux = { echoUtilisateur: false };
 export const etatDuCompte = async () => ({ connecte: true });
 
 function piloteFaux(opts, recevoir) {
@@ -39,6 +46,7 @@ function piloteFaux(opts, recevoir) {
   return {
     envoyer(texte) {
       envois.push({ compte: id, texte });
+      if (faux.echoUtilisateur) recevoir({ t: 'utilisateur', texte }); // comme Claude : la demande revient au fil
       setTimeout(() => comportements[id]?.(texte, recevoir), 5);
     },
     fermer() { fermetures.push(id); },
@@ -55,10 +63,18 @@ export const fournisseurDe = () => ({ ouvrir: piloteFaux });
 // Réponses toutes faites.
 export const repondre = (texte) => (_t, recevoir) => {
   recevoir({ t: 'assistant', blocs: [{ type: 'texte', texte }] });
-  recevoir({ t: 'tour', ok: true, motif: 'success' });
+  recevoir({ t: 'tour', ok: true, motif: 'success', dureeMs: 10, appels: 1, modeles: [] }); // comme une vraie fin de tour
 };
 /** Limite atteinte, avec l'heure de remise à zéro annoncée (comme Claude) ou sans. */
 export const limite = (retablieLe = null) => (_t, recevoir) => {
   if (retablieLe) recevoir({ t: 'limite', statut: 'rejected', type: 'five_hour', retablieLe });
-  recevoir({ t: 'tour', ok: false, motif: 'limite', limite: true, message: "You've hit your 5-hour limit · resets 3:20pm (Europe/Paris)" });
+  recevoir({ t: 'tour', ok: false, motif: 'limite', limite: true, message: "You've hit your 5-hour limit · resets 3:20pm (Europe/Paris)", modeles: [] });
 };
+
+// --- Pour faire tourner le serveur entier sur ces fausses IA (essais de l'écran : tests/faux/serveur.mjs).
+export const MODES = ['default', 'auto', 'acceptEdits', 'plan', 'bypassPermissions'];
+export const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'];
+export const historique = async () => [];
+export const creerCompte = () => { throw new Error('comptes_figes'); };
+export const definirCle = () => {};
+export const supprimerCompte = () => { throw new Error('comptes_figes'); };

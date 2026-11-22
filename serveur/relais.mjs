@@ -8,6 +8,7 @@ import { consigneDeProjet } from './projets.mjs';
 import { connecteursPour } from './connecteurs.mjs';
 import { outilsPour } from './outils-discussions.mjs';
 import { ligneDeMessage } from './entre-discussions.mjs';
+import { consigneMemoire } from './memoire-discussion.mjs';
 
 const ORDRE = { claude: 0, codex: 1, copilot: 1, gemini: 2, qwen: 3, api: 4 };
 const MAX_HISTOIRE = 20_000;
@@ -120,7 +121,7 @@ export function piloteAvecRelais({ s, compte, dossier, modele, mode, reprise, ef
       modele: premier ? modele : undefined,
       reprise: premier ? reprise : undefined,
       effort: premier ? effort : undefined,
-      consigne: [consigneDeProjet(dossier), consigneEnPlus].filter(Boolean).join('\n\n'),
+      consigne: [consigneDeProjet(dossier), consigneMemoire(s.id), consigneEnPlus].filter(Boolean).join('\n\n'),
       connecteurs: connecteursPour(c),
       outilsDw: outilsPour(c, { session: s.id }),
     }, recevoir);

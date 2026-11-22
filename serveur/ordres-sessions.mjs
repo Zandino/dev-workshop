@@ -33,7 +33,7 @@ export function ordresSessions(envoyer, general, corbeille, attacher) {
       const d = chargerInterrompue(String(m.id || ''));
       resoudreProjet(nomProjet(d.dossier));
       const vues = listerComptes();
-      const commun = { dossier: d.dossier, titre: d.titre, mode: d.etat?.mode || 'default', effort: d.etat?.effort, equipeChangee: d.equipeChangee, origine: d.origine || d.etat?.sessionId || undefined };
+      const commun = { dossier: d.dossier, titre: d.titre, mode: d.etat?.mode || 'default', effort: d.etat?.effort, equipeChangee: d.equipeChangee, origine: d.origine || d.etat?.sessionId || undefined, cleMemoire: d.cleMemoire || undefined };
       const histoire = consigneRelais('', d.journal, 'redemarrage');
       // Un compte supprimé depuis (vécu le 21/11/2026 : un compte Gemini refait sous un autre nom) ne doit pas
       // empêcher la reprise : son IA quitte l'équipe, le fil le dit ; seule, l'IA restante continue la discussion.

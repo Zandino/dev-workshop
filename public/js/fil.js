@@ -3,6 +3,7 @@ import { h, markdown, duree } from './dom.js';
 import { t, ajouterTextes } from './i18n.js';
 import { carteOutil, poserResultat, oublierCartes } from './outils.js';
 import { pastilleLogo } from './logos.js';
+import { texteFilMemoire } from './memoire-discussion.js';
 
 ajouterTextes({
   fr: {
@@ -152,7 +153,10 @@ const TRAITEMENTS = {
     auBas = true;
     signe = false;
     ajouter(messageUtilisateur(e));
+    if (e.memoireRedonnee) ajouter(h('div.fin-tour', {}, t('fil_memoire_redonnee')));
   },
+  // La mémoire de la discussion a changé (memoire-discussion.js).
+  memoire: (e) => ajouter(h('div.fin-tour', {}, texteFilMemoire(e))),
   delta: surDelta,
   assistant: surAssistant,
   resultat_outil: (e) => {

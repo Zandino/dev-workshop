@@ -245,6 +245,14 @@ accord ou une question t'attend, puis un échec pas encore lu, puis une IA au tr
 - La fiche du projet (réglages ⚙) est donnée à toutes les IA au début de chaque discussion du projet. Dans une
   discussion, « Retenir pour le projet » demande à l'IA ce qu'il faut garder ; tu relis et corriges, et rien n'est
   ajouté à la fiche sans ton clic.
+- Chaque discussion a aussi sa **mémoire** (🧠 dans l'en-tête), en deux parties. *Tes instructions* : l'IA les suit ;
+  elle peut seulement proposer de les changer, par une demande d'accord à l'écran (raison, avant, après). *Ce que
+  l'IA retient* : elle le tient à jour elle-même avec ses outils (décisions, faits utiles, préférences, reste à faire ;
+  12 000 caractères au plus, réécrit quand il faut raccourcir), le fil dit qui a noté quoi, et tu peux le corriger.
+  Toutes les IA de la discussion la reçoivent en démarrant ; une modification faite par toi leur est transmise avec
+  ton message suivant (le fil ne montre que ton message). Elle suit la discussion : redémarrage du serveur, changement
+  d'équipe, rangement dans un autre projet, réouverture depuis la liste du projet. Rangée sur le serveur, dans
+  `memoires/` des réglages.
 - Toutes les discussions ouvertes se suivent en direct dans la barre, même quand tu en regardes une autre : ✋ elle a
   besoin de toi (un accord à donner), pastille qui pulse elle travaille, titre en gras elle a fini sans que tu l'aies
   vue (rouge : en échec), verte elle attend ton message. Un projet replié montre la ✋ de ses discussions. Fenêtre au

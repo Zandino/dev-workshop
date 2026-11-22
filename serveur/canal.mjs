@@ -19,6 +19,7 @@ import { ordresDictee } from './dictee.mjs';
 import { ordresVoix, etatVoix } from './voix.mjs';
 import { verifierCleGemini } from './fournisseurs/gemini.mjs';
 import { repondreDemande } from './entre-discussions.mjs';
+import { envoyerAvecMemoire, repondreDemandeMemoire, lireMemoire, ecrireDepuisEcran } from './memoire-discussion.mjs';
 import { lireOrdre, trier } from './ordre.mjs';
 import { listerSkins } from './skins.mjs';
 
@@ -190,7 +191,18 @@ export function brancher(ws, jeton) {
       if (!texte.trim() || texte.length > MAX_TEXTE) throw new Error('texte_invalide');
       const s = session(m.session);
       if (s.demenagement) throw new Error('discussion_en_rangement'); // son IA redémarre ailleurs (demenager-session.mjs)
-      s.pilote.envoyer(messageAvecFichiers(texte, s.dossier, m.fichiers, s.avecOutils));
+      // Mémoire changée par la personne depuis : ses IA la reçoivent à jour avec ce message (le fil ne montre que lui).
+      envoyerAvecMemoire(s, messageAvecFichiers(texte, s.dossier, m.fichiers, s.avecOutils));
+    },
+
+    memoire_lire(m) {
+      const s = session(m.session);
+      envoyer({ t: 'memoire_etat', discussion: s.id, ...lireMemoire(s.cleMemoire) });
+    },
+
+    memoire_ecrire(m) {
+      const s = session(m.session);
+      envoyer({ t: 'memoire_etat', discussion: s.id, enregistree: true, ...ecrireDepuisEcran(s, m) });
     },
 
     interrompre: (m) => session(m.session).pilote.interrompre(),
@@ -207,6 +219,7 @@ export function brancher(ws, jeton) {
       if (!['autoriser', 'toujours', 'refuser'].includes(m.decision)) throw new Error('decision_invalide');
       const s = session(m.session);
       if (repondreDemande(s.id, String(m.id), m)) return; // question d'une IA autre que Claude, ou message à accepter
+      if (repondreDemandeMemoire(s.id, String(m.id), m)) return; // nouvelles instructions de mémoire proposées par une IA
       s.pilote.repondrePermission(String(m.id), {
         decision: m.decision,
         reponses: m.reponses,

@@ -19,6 +19,7 @@ import { pastilleLogo } from './logos.js';
 import { brancherAjouts } from './ajouts.js';
 import { initAlertes } from './alertes.js';
 import { initAnnonces } from './annonces.js';
+import { initMemoire } from './memoire-discussion.js';
 
 ajouterTextes({
   fr: {
@@ -56,6 +57,7 @@ function majEntete() {
   $('titre-session').textContent = ecran.projet || t('titre');
   $('fermer-session').hidden = !ecran.session;
   $('retenir').hidden = !ecran.session || ecran.salon || Boolean(ecran.etat.ferme);
+  $('memoire').hidden = !ecran.session || Boolean(ecran.etat.ferme);
   // À plusieurs, le modèle est fixé par participant. Choisir une IA dans la liste, en discussion, change son équipe
   // en gardant l'historique (travail.js).
   $('modele').disabled = ecran.salon;
@@ -336,6 +338,7 @@ function demarrer() {
   initEquipe();
   initAlertes({ ecran, libelle: libelleCompte, rejoindre: (id) => id !== ecran.session && dire({ t: 'attacher', session: id }) });
   initAnnonces({ session: () => ecran.session });
+  initMemoire({ session: () => ecran.session });
   razJauge();
   majEntete();
   if (jetonInitial()) connecter();

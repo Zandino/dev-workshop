@@ -32,6 +32,9 @@ connector with `npx` downloads its package from the npm registry.
 and sent only to your screen. Installing them (your click) downloads Piper from PyPI and the voice models from Hugging
 Face (`huggingface.co`); no text is sent there.
 
+**Conversation memory.** It is stored on your server (`memoires/` in the settings folder) and given to the
+conversation's AIs: it therefore goes to their providers, like your messages.
+
 **Between conversations.** An AI can read the other open conversations (titles, your requests and the AIs' answers,
 all projects) and send them messages. What it reads or receives this way goes to that AI's provider: a Codex or
 Gemini conversation that reads a Claude one sends that text to OpenAI or Google.
@@ -79,6 +82,9 @@ un connecteur avec `npx` télécharge son paquet depuis le registre npm.
 **Voix de l'équipe en direct.** Les voix naturelles tournent sur ton serveur (Piper) : le texte que disent les IA y
 devient de la parole et ne part que vers ton écran. Leur installation (sur ton clic) télécharge Piper depuis PyPI et les
 voix depuis Hugging Face (`huggingface.co`) ; aucun texte n'y est envoyé.
+
+**Mémoire des discussions.** Elle est rangée sur ton serveur (dossier `memoires/` des réglages) et donnée aux IA de
+la discussion : elle part donc chez leurs fournisseurs, comme tes messages.
 
 **Entre discussions.** Une IA peut lire les autres discussions ouvertes (titres, tes demandes et les réponses des IA,
 tous projets) et leur écrire. Ce qu'elle lit ou reçoit ainsi part chez son fournisseur : une discussion Codex ou

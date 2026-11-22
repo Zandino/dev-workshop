@@ -34,6 +34,10 @@ Free software, built by the Deltinfo Studio team and published under the Apache 
   session there). Conversations can be renamed from the sidebar (pencil on hover, or F2).
 - **Project notes**, given to every AI at the start of each conversation in the project. "Remember for the project"
   asks the AI what is worth keeping; you review it, and nothing is added without your click.
+- **Conversation memory** (🧠): your instructions, which the AI follows and may only suggest changing (approval on
+  screen), and what the AI remembers, which it keeps up to date itself with its tools and you can correct. Every AI
+  of the conversation receives it; it follows the conversation across restarts, team changes and moves. Stored on the
+  server, in `memoires/` of the settings folder.
 - **Alerts**: every open conversation is followed live in the sidebar, even while you look at another one: a raised
   hand ✋ when it needs your approval, a pulsing dot while it works, a bold title when it finished unseen (red if it
   failed). A clickable bubble (window in front) or a system notification (in the background) opens it, and the

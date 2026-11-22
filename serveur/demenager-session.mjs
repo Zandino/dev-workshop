@@ -58,7 +58,7 @@ async function natif(s, c, sessionId, vers, note) {
     if (!s.etat.ferme) {
       const emettre = emetteurDe(s);
       s.pilote = s.orchestre
-        ? ouvrirOrchestre({ session: s.id, compte: c, dossier: ici, modele, mode, effort, reprise: sessionId }, emettre)
+        ? ouvrirOrchestre({ session: s.id, compte: c, dossier: ici, modele, mode, effort, reprise: sessionId, journal: () => s.journal, surRelais: (x) => { s.compte = x.id; } }, emettre)
         : piloteAvecRelais({ s, compte: c, dossier: ici, modele, mode, effort, reprise: sessionId }, emettre);
     }
   }

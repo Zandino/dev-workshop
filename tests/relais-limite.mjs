@@ -1,13 +1,14 @@
 // Essai des relais quand une IA atteint sa limite d'utilisation (abonnement, quota), sans aucune vraie IA (fausses IA
 // de tests/faux/ia.mjs) : discussion à plusieurs (sa part passe à un autre, pas de nouvel essai avant la remise à zéro,
 // renfort venu de l'extérieur quand tous sont à leur limite) et orchestre (une autre cheffe prend la main).
-//   DEVWORKSHOP_CONFIG=<dossier jetable> node tests/relais-limite.mjs
+//   node tests/relais-limite.mjs   (réglages dans un dossier temporaire à lui)
 import { register } from 'node:module';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-process.env.DEVWORKSHOP_CONFIG ||= mkdtempSync(path.join(tmpdir(), 'dw-relais-'));
+process.env.DEVWORKSHOP_CONFIG = mkdtempSync(path.join(tmpdir(), 'dw-relais-')); // ses propres réglages, toujours
+process.env.DEVWORKSHOP_ROOT ||= mkdtempSync(path.join(tmpdir(), 'dw-projets-'));
 register('./faux/crochet.mjs', import.meta.url);
 const faux = await import('./faux/ia.mjs');
 const { ouvrirSalon } = await import('../serveur/salon.mjs');
