@@ -64,20 +64,45 @@ body.avec-equipe #ouvrir-direct { background: var(--accent-doux); color: var(--a
 .tuile-appel.etat-fini { filter: saturate(0.85); }
 .scene-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .scene-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; display: block; transform-origin: 50% 100%; }
-img.scene-img { animation: respire-img 4.5s ease-in-out infinite; }
-.etat-travaille img.scene-img, .etat-ecrit img.scene-img { animation: travaille-img 0.9s ease-in-out infinite alternate; }
-.etat-reflechit img.scene-img { animation: pense-img 3.2s ease-in-out infinite; }
-.etat-besoin img.scene-img { animation: appelle-img 0.8s ease-in-out infinite alternate; }
-.etat-bloque img.scene-img { animation: somnole-img 3.6s ease-in-out infinite; filter: saturate(0.8); }
-.etat-fini img.scene-img { animation: saute-img 0.7s ease-out 2, respire-img 4.5s ease-in-out 1.4s infinite; }
-.etat-erreur img.scene-img { animation: alerte-img 1.2s ease-in-out infinite; }
-@keyframes respire-img { 50% { transform: scale(1.012); } }
-@keyframes travaille-img { from { transform: translateY(0) scale(1.006); } to { transform: translateY(-0.6%) scale(1.012); } }
-@keyframes pense-img { 25% { transform: rotate(-0.5deg) scale(1.01); } 75% { transform: rotate(0.5deg) scale(1.01); } }
-@keyframes appelle-img { from { transform: scale(1) rotate(-0.4deg); } to { transform: scale(1.03) rotate(0.4deg); } }
-@keyframes somnole-img { 50% { transform: translateY(0.8%) scale(1.004); } }
-@keyframes saute-img { 40% { transform: translateY(-3%) scale(1.02); } }
-@keyframes alerte-img { 50% { filter: brightness(1.08) saturate(1.2); transform: translateX(0.4%); } }
+/* Skins : l'image reste immobile ; seuls les effets par-dessus bougent. Fondu d'une image d'état à l'autre. */
+img.scene-img.fondu { animation: fondu-img 0.45s ease-out; }
+.etat-bloque img.scene-img { filter: saturate(0.85) brightness(0.97); }
+.effets { position: absolute; inset: 0; pointer-events: none; }
+.bulle-frappe, .bulle-pensee { position: absolute; display: flex; gap: 5px; padding: 8px 12px; border-radius: 99px; background: rgba(255, 255, 255, 0.92); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18); }
+.bulle-frappe { left: 50%; bottom: 22%; transform: translateX(-50%); }
+.bulle-pensee { left: 58%; top: 16%; border-radius: 18px; }
+.bulle-pensee::after { content: ""; position: absolute; left: 6px; bottom: -9px; width: 9px; height: 9px; border-radius: 50%; background: rgba(255, 255, 255, 0.92); }
+.bulle-frappe i, .bulle-pensee i { width: 7px; height: 7px; border-radius: 50%; background: #6b7390; animation: point 1.1s ease-in-out infinite; }
+.bulle-frappe i:nth-child(2), .bulle-pensee i:nth-child(2) { animation-delay: 0.18s; }
+.bulle-frappe i:nth-child(3), .bulle-pensee i:nth-child(3) { animation-delay: 0.36s; }
+.main-effet { position: absolute; right: 16%; top: 14%; font-size: clamp(28px, 4vw, 52px); transform-origin: 70% 90%; animation: agite 0.9s ease-in-out infinite; filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.25)); }
+.dodo span { position: absolute; left: 60%; top: 30%; font-weight: 800; color: #5a6380; font-size: clamp(16px, 2.2vw, 30px); opacity: 0; animation: monte-z 3s ease-in infinite; }
+.dodo span:nth-child(2) { animation-delay: 1s; }
+.dodo span:nth-child(3) { animation-delay: 2s; }
+.sablier-effet { position: absolute; left: 6%; top: 18%; font-size: clamp(20px, 2.6vw, 34px); animation: retourne 2.4s ease-in-out infinite; }
+.alerte { box-shadow: inset 0 0 0 3px rgba(255, 80, 80, 0.55), inset 0 0 60px rgba(255, 60, 60, 0.35); animation: alerte 1.4s ease-in-out infinite; }
+.confettis i { position: absolute; top: -6%; width: 8px; height: 12px; border-radius: 2px; opacity: 0; animation: tombe 2.6s ease-in forwards; }
+.confettis i:nth-child(1) { left: 5%; background: #f5b35b; animation-delay: 0.00s; }
+.confettis i:nth-child(2) { left: 42%; background: #6ee7b7; animation-delay: 0.13s; }
+.confettis i:nth-child(3) { left: 79%; background: #93b4ff; animation-delay: 0.26s; }
+.confettis i:nth-child(4) { left: 26%; background: #ff8a80; animation-delay: 0.39s; }
+.confettis i:nth-child(5) { left: 63%; background: #d7a6ff; animation-delay: 0.52s; }
+.confettis i:nth-child(6) { left: 10%; background: #f5b35b; animation-delay: 0.65s; }
+.confettis i:nth-child(7) { left: 47%; background: #6ee7b7; animation-delay: 0.78s; }
+.confettis i:nth-child(8) { left: 84%; background: #93b4ff; animation-delay: 0.01s; }
+.confettis i:nth-child(9) { left: 31%; background: #ff8a80; animation-delay: 0.14s; }
+.confettis i:nth-child(10) { left: 68%; background: #d7a6ff; animation-delay: 0.27s; }
+.confettis i:nth-child(11) { left: 15%; background: #f5b35b; animation-delay: 0.40s; }
+.confettis i:nth-child(12) { left: 52%; background: #6ee7b7; animation-delay: 0.53s; }
+.confettis i:nth-child(13) { left: 89%; background: #93b4ff; animation-delay: 0.66s; }
+.confettis i:nth-child(14) { left: 36%; background: #ff8a80; animation-delay: 0.79s; }
+@keyframes fondu-img { from { opacity: 0; } to { opacity: 1; } }
+@keyframes point { 0%, 60%, 100% { transform: translateY(0); opacity: 0.5; } 30% { transform: translateY(-4px); opacity: 1; } }
+@keyframes agite { 0%, 100% { transform: rotate(-12deg); } 50% { transform: rotate(14deg); } }
+@keyframes monte-z { 0% { transform: translate(0, 0) scale(0.7); opacity: 0; } 20% { opacity: 1; } 100% { transform: translate(28px, -46px) scale(1.2); opacity: 0; } }
+@keyframes retourne { 0%, 40% { transform: rotate(0); } 50%, 90% { transform: rotate(180deg); } 100% { transform: rotate(360deg); } }
+@keyframes alerte { 50% { box-shadow: inset 0 0 0 3px rgba(255, 80, 80, 0.85), inset 0 0 90px rgba(255, 60, 60, 0.5); } }
+@keyframes tombe { 0% { opacity: 1; transform: translateY(0) rotate(0); } 100% { opacity: 0; transform: translateY(260px) rotate(540deg); } }
 .puce-etat, .puce-echecs, .puce-alerte { position: absolute; right: 10px; padding: 4px 10px; border-radius: 99px; background: rgba(20, 22, 29, 0.85); font-size: 13px; font-weight: 600; max-width: 75%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .puce-etat { top: 10px; color: #f5b35b; }
 .etat-attend .puce-etat { color: #93b4ff; }
@@ -156,4 +181,4 @@ img.scene-img { animation: respire-img 4.5s ease-in-out infinite; }
 @keyframes secoue { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
 @keyframes fete { from { transform: translate(-50%, 0) scale(0.6); opacity: 1; } to { transform: translate(-50%, -34px) scale(1.3); opacity: 0; } }
 @keyframes appelle { 50% { box-shadow: 0 0 0 8px rgba(255, 182, 72, 0.15); } }
-@media (prefers-reduced-motion: reduce) { .scene-svg *, .tuile-appel, .fete::after, img.scene-img { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .scene-svg *, .tuile-appel, .fete::after, img.scene-img, .effets * , .effets { animation: none !important; } }

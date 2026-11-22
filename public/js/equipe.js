@@ -55,6 +55,22 @@ export function definirSkins(liste) {
 
 /** Fichier du skin pour un état affiché. */
 const IMAGE_ETAT = { pret: 'idle', travaille: 'working', ecrit: 'working', reflechit: 'thinking', attend: 'waiting', besoin: 'needs-you', bloque: 'blocked', fini: 'done', erreur: 'error' };
+/**
+ * Ce qui s'anime par-dessus l'image d'un skin, selon l'état : l'image reste immobile (la faire bouger en entier,
+ * décor compris, faisait trembler toute la tuile), seuls ces petits effets bougent.
+ */
+function effets(etat) {
+  const points = () => [h('i'), h('i'), h('i')];
+  if (etat === 'travaille' || etat === 'ecrit') return h('div.effets.frappe', {}, h('span.bulle-frappe', {}, points()));
+  if (etat === 'reflechit') return h('div.effets.pensee', {}, h('span.bulle-pensee', {}, points()));
+  if (etat === 'besoin') return h('div.effets.besoin', {}, h('span.main-effet', {}, '✋'));
+  if (etat === 'bloque') return h('div.effets.dodo', {}, h('span', {}, 'z'), h('span', {}, 'z'), h('span', {}, 'z'));
+  if (etat === 'fini') return h('div.effets.confettis', {}, Array.from({ length: 14 }, () => h('i')));
+  if (etat === 'erreur') return h('div.effets.alerte');
+  if (etat === 'attend') return h('div.effets.attente', {}, h('span.sablier-effet', {}, '⏳'));
+  return null;
+}
+
 /** Une image, ou une vidéo en boucle (muette, sans contrôles) pour un skin animé. */
 const media = (src) => (/\.(mp4|webm)$/i.test(src)
   ? h('video.scene-img', { src, autoplay: true, muted: true, loop: true, playsInline: true, disablePictureInPicture: true })
@@ -227,6 +243,7 @@ function tuile(m, { vedette = false, incrustee = false } = {}) {
     },
   },
   m.skin ? media(imageSkin(m.skin, v.etat)) : scene(m.style),
+  m.skin && !/\.(mp4|webm)$/i.test(imageSkin(m.skin, v.etat)) ? effets(v.etat) : null,
   h('span.puce-etat', {}, `${ICONE[v.etat] || ''} ${phraseEtat(m, v)}`),
   m.echecs ? h('span.puce-echecs', {}, `✕ ${m.echecs}`) : null,
   v.commandeLongue || m.boucle ? h('span.puce-alerte', {}, v.commandeLongue ? '⏱ ' + t('eq_longue') : '↻ ' + t('eq_boucle')) : null,
@@ -333,13 +350,20 @@ function morpher(ancien, nouveau) {
     return;
   }
   if (ancien.nodeType !== 1) return;
+  if (ancien.nodeName === 'IMG' && ancien.classList.contains('scene-img') && ancien.getAttribute('src') !== nouveau.getAttribute('src')) {
+    nouveau.classList.add('fondu');
+    ancien.after(nouveau);
+    ancien.dataset.depart = '1';
+    setTimeout(() => { ancien.remove(); nouveau.classList.remove('fondu'); }, 450);
+    return;
+  }
   for (const a of [...ancien.attributes]) if (!nouveau.hasAttribute(a.name)) ancien.removeAttribute(a.name);
   for (const a of [...nouveau.attributes]) if (ancien.getAttribute(a.name) !== a.value) ancien.setAttribute(a.name, a.value);
   morpherEnfants(ancien, [...nouveau.childNodes]);
 }
 
 function morpherEnfants(parent, nouveaux) {
-  const anciens = [...parent.childNodes];
+  const anciens = [...parent.childNodes].filter((n) => !(n.nodeType === 1 && n.dataset?.depart));
   nouveaux.forEach((n, i) => (i < anciens.length ? morpher(anciens[i], n) : parent.append(n)));
   for (let i = nouveaux.length; i < anciens.length; i += 1) anciens[i].remove();
 }
