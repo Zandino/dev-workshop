@@ -1,7 +1,8 @@
 // Skins de l'équipe en direct : des personnages en images, un dossier par personnage dans le dossier des réglages
 // (skins/<nom>/), avec une image par état. Ils restent sur le serveur (jamais dans le dépôt) : ce sont les créations
 // de la personne, faites par exemple avec un générateur d'images (voir README.fr.md, « Équipe en direct »).
-// Un skin n'est proposé que s'il a ses huit images. skin.json (facultatif) donne son prénom et son genre.
+// Un skin n'est proposé que s'il a au moins son image au repos (idle) ; un état sans image prend celle-là, que l'écran
+// anime. skin.json (facultatif) donne son prénom et son genre.
 import { readdirSync, readFileSync, existsSync, statSync, createReadStream } from 'node:fs';
 import path from 'node:path';
 import { DOSSIER_CONFIG, EN_TETES_SECURITE } from './securite.mjs';
@@ -30,7 +31,8 @@ export function listerSkins() {
   for (const nom of noms.sort()) {
     const dossier = path.join(DOSSIER, nom);
     const images = Object.fromEntries(ETATS_SKIN.map((e) => [e, image(dossier, e)]));
-    if (Object.values(images).some((x) => !x)) continue; // incomplet : pas proposé
+    if (!images.idle) continue; // sans image au repos : pas proposé
+    for (const e of ETATS_SKIN) images[e] ||= images.idle; // un état sans image prend celle au repos (animée par l'écran)
     let fiche = {};
     try { fiche = JSON.parse(readFileSync(path.join(dossier, 'skin.json'), 'utf8')); } catch { /* facultatif */ }
     skins.push({ nom, prenom: String(fiche.prenom || nom).slice(0, 30), feminin: fiche.feminin === true, images });
