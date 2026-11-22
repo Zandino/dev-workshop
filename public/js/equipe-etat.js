@@ -71,7 +71,8 @@ export function creerEquipe({ session = '', principal = null, personnalises = {}
   const membres = new Map(); // clé -> membre
   const appels = new Map(); // id d'appel d'outil -> { cle, genre, depuis }
   const pris = new Set(); // prénoms déjà donnés dans cette discussion
-  const equipe = { membres, principal: principal || { nom: 'IA', compte: null }, ecranDe: null, maintenant: Date.now };
+  let sequence = 0; // ordre des actions : départage ceux qui agissent dans la même milliseconde
+  const equipe = { membres, principal: principal || { nom: 'IA', compte: null }, ecranDe: null, maintenant: Date.now, contexte: null, debut: null };
 
   function prenomPour(cle) {
     const voulu = personnalises[cle]?.prenom;
@@ -88,12 +89,12 @@ export function creerEquipe({ session = '', principal = null, personnalises = {}
     const m = {
       cle, prenom, feminin, parent, ordre,
       ia: ia || equipe.principal,
-      style: { couleur: h % 8, cheveux: (h >> 3) % 6, peau: (h >> 6) % 5, accessoire: (h >> 9) % 4 },
+      style: { couleur: h % 8, cheveux: (h >>> 3) % 6, peau: (h >>> 6) % 5, accessoire: (h >>> 9) % 4, decor: (h >>> 12) % 6 },
       fonction, fonctionLibre, activite: { dev: 0, tests: 0, analyse: 0, web: 0 },
       etat: 'pret', action: '', parole: '', attendQui: new Set(),
       ecran: { fichier: null, terminal: null, navigateur: null, dernier: null },
-      echecs: 0, commandeDepuis: null, dernierSigne: equipe.maintenant(), dernieresActions: [], boucle: false,
-      arriveLe: equipe.maintenant(), finiLe: null, erreur: false,
+      echecs: 0, jetons: 0, commandeDepuis: null, dernierSigne: equipe.maintenant(), dernieresActions: [], boucle: false,
+      arriveLe: equipe.maintenant(), finiLe: null, erreur: false, sequence: ++sequence,
     };
     membres.set(cle, m);
     return m;
@@ -108,6 +109,7 @@ export function creerEquipe({ session = '', principal = null, personnalises = {}
 
   function signe(m, etat) {
     m.dernierSigne = equipe.maintenant();
+    m.sequence = ++sequence;
     if (etat) m.etat = etat;
     if (m.finiLe && etat && etat !== 'fini') m.finiLe = null;
   }
@@ -134,26 +136,40 @@ export function creerEquipe({ session = '', principal = null, personnalises = {}
       m.activite.dev += 1;
       m.ecran.fichier = { chemin: e.file_path || e.path || e.notebook_path || '', nom: b.nom, entree: e };
       m.ecran.dernier = 'fichier';
+      m.ecran.le = equipe.maintenant();
     } else if (TERMINAL.test(b.nom)) {
       if (TEST.test(e.command || '')) m.activite.tests += 1;
       else m.activite.dev += 0.5;
       m.ecran.terminal = { commande: e.command || e.cmd || '', sortie: null, erreur: false };
       m.ecran.dernier = 'terminal';
+      m.ecran.le = equipe.maintenant();
       m.commandeDepuis = equipe.maintenant();
       appels.set(b.id, { cle: m.cle, genre: 'terminal' });
     } else if (NAVIGATEUR.test(b.nom)) {
       m.activite.web += 1;
       m.ecran.navigateur = { ...(m.ecran.navigateur || {}), action: b.nom.replace(/^mcp__[^_]+__/, ''), adresse: e.url || m.ecran.navigateur?.adresse || '' };
       m.ecran.dernier = 'navigateur';
+      m.ecran.le = equipe.maintenant();
       appels.set(b.id, { cle: m.cle, genre: 'navigateur' });
     } else if (LECTURE.test(b.nom)) {
       m.activite.analyse += 1;
+      if (/^Read$|read_file/i.test(b.nom) && (e.file_path || e.path)) {
+        m.ecran.fichier = { chemin: e.file_path || e.path, nom: b.nom, entree: e, lecture: true, contenu: null };
+        m.ecran.dernier = 'fichier';
+        m.ecran.le = equipe.maintenant();
+        appels.set(b.id, { cle: m.cle, genre: 'lecture' });
+      }
     }
     if (!appels.has(b.id)) appels.set(b.id, { cle: m.cle, genre: 'autre' });
   }
 
   /** Un événement de la discussion. Rend le membre concerné (pour la voix), ou null. */
   equipe.recevoir = (e) => {
+    if (e.le && !equipe.debut) equipe.debut = e.le;
+    if (e.t === 'contexte' && typeof e.pourcent === 'number') {
+      equipe.contexte = Math.round(e.pourcent);
+      return null;
+    }
     if (e.t === 'delegation') {
       // Orchestre : la cheffe confie une tâche ; le sous-agent (nommé par son rôle) arrive avec son ordre.
       const chef = membre('principal');
@@ -174,6 +190,8 @@ export function creerEquipe({ session = '', principal = null, personnalises = {}
     }
     if (e.t === 'assistant') {
       const m = auteurDe(e);
+      // Jetons de cet appel au modèle (entrée nouvelle + sortie), comptés sur le membre qui l'a fait.
+      if (e.usage) m.jetons += (e.usage.entree || 0) + (e.usage.sortie || 0);
       let parle = null;
       for (const b of e.blocs || []) {
         if (b.type === 'outil') outil(m, b);
@@ -192,6 +210,7 @@ export function creerEquipe({ session = '', principal = null, personnalises = {}
       const m = membres.get(a.cle);
       if (!m) return null;
       m.dernierSigne = equipe.maintenant();
+      m.sequence = ++sequence;
       if (e.erreur) m.echecs += 1;
       if (a.genre === 'tache') {
         // Le sous-agent a rendu son compte rendu : il a fini, son chef ne l'attend plus.
@@ -207,6 +226,8 @@ export function creerEquipe({ session = '', principal = null, personnalises = {}
         m.ecran.terminal.sortie = String(e.contenu || '').slice(-MAX_SORTIE);
         m.ecran.terminal.erreur = Boolean(e.erreur);
         m.commandeDepuis = null;
+      } else if (a.genre === 'lecture' && m.ecran.fichier?.lecture) {
+        m.ecran.fichier.contenu = String(e.contenu || '').slice(0, 20_000);
       } else if (a.genre === 'navigateur' && m.ecran.navigateur) {
         if (e.image?.donnees) m.ecran.navigateur.image = `data:${e.image.type};base64,${e.image.donnees}`;
         else if (e.imageVue) m.ecran.navigateur.perdue = true;
@@ -291,10 +312,32 @@ export function creerEquipe({ session = '', principal = null, personnalises = {}
     return ordre;
   };
 
+  /** Rang d'urgence d'un état : ce qui t'attend d'abord, ce qui est fini en dernier. */
+  const URGENCE = { besoin: 0, bloque: 1, erreur: 2, attend: 3, travaille: 4, ecrit: 4, reflechit: 4, pret: 5, fini: 6 };
+  equipe.parUrgence = () => equipe.liste().map((x) => x.m)
+    .sort((a, b) => (URGENCE[equipe.vue(a).etat] ?? 9) - (URGENCE[equipe.vue(b).etat] ?? 9) || b.sequence - a.sequence);
+
+  /** Ce que montre l'en-tête : jetons, contexte, au travail, en attente, terminés, durée. */
+  equipe.compteurs = () => {
+    const vues = equipe.liste().map((x) => equipe.vue(x.m).etat);
+    return {
+      jetons: [...membres.values()].reduce((n, m) => n + m.jetons, 0),
+      contexte: equipe.contexte,
+      travaillent: vues.filter((v) => ['travaille', 'ecrit', 'reflechit'].includes(v)).length,
+      attendent: vues.filter((v) => ['attend', 'besoin', 'bloque'].includes(v)).length,
+      finis: vues.filter((v) => v === 'fini').length,
+      membres: vues.length,
+      duree: equipe.debut ? Math.max(0, equipe.maintenant() - equipe.debut) : 0,
+    };
+  };
+
   /** Le membre au premier plan : celui qui a besoin de toi, sinon celui qui a agi en dernier. */
   equipe.vedette = () => {
     const tous = equipe.liste().map((x) => x.m);
-    return tous.find((m) => m.etat === 'besoin') || [...tous].sort((a, b) => b.dernierSigne - a.dernierSigne)[0] || null;
+    // Un chef qui attend ses sous-agents ne passe pas devant eux : ceux qui agissent d'abord, à égalité le dernier venu.
+    const actifs = tous.filter((m) => equipe.vue(m).etat !== 'attend');
+    const recent = (liste) => [...liste].sort((a, b) => b.sequence - a.sequence)[0];
+    return tous.find((m) => m.etat === 'besoin') || recent(actifs) || recent(tous) || null;
   };
 
   return equipe;
