@@ -63,6 +63,21 @@ body.avec-equipe #ouvrir-direct { background: var(--accent-doux); color: var(--a
 .tuile-appel.etat-besoin { border-color: #ffb648; box-shadow: 0 0 0 4px rgba(255, 182, 72, 0.35); }
 .tuile-appel.etat-fini { filter: saturate(0.85); }
 .scene-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.scene-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; transform-origin: 50% 100%; }
+img.scene-img { animation: respire-img 4.5s ease-in-out infinite; }
+.etat-travaille img.scene-img, .etat-ecrit img.scene-img { animation: travaille-img 0.9s ease-in-out infinite alternate; }
+.etat-reflechit img.scene-img { animation: pense-img 3.2s ease-in-out infinite; }
+.etat-besoin img.scene-img { animation: appelle-img 0.8s ease-in-out infinite alternate; }
+.etat-bloque img.scene-img { animation: somnole-img 3.6s ease-in-out infinite; filter: saturate(0.8); }
+.etat-fini img.scene-img { animation: saute-img 0.7s ease-out 2, respire-img 4.5s ease-in-out 1.4s infinite; }
+.etat-erreur img.scene-img { animation: alerte-img 1.2s ease-in-out infinite; }
+@keyframes respire-img { 50% { transform: scale(1.012); } }
+@keyframes travaille-img { from { transform: translateY(0) scale(1.006); } to { transform: translateY(-0.6%) scale(1.012); } }
+@keyframes pense-img { 25% { transform: rotate(-0.5deg) scale(1.01); } 75% { transform: rotate(0.5deg) scale(1.01); } }
+@keyframes appelle-img { from { transform: scale(1) rotate(-0.4deg); } to { transform: scale(1.03) rotate(0.4deg); } }
+@keyframes somnole-img { 50% { transform: translateY(0.8%) scale(1.004); } }
+@keyframes saute-img { 40% { transform: translateY(-3%) scale(1.02); } }
+@keyframes alerte-img { 50% { filter: brightness(1.08) saturate(1.2); transform: translateX(0.4%); } }
 .puce-etat, .puce-echecs, .puce-alerte { position: absolute; right: 10px; padding: 4px 10px; border-radius: 99px; background: rgba(20, 22, 29, 0.85); font-size: 13px; font-weight: 600; max-width: 75%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .puce-etat { top: 10px; color: #f5b35b; }
 .etat-attend .puce-etat { color: #93b4ff; }
@@ -141,4 +156,4 @@ body.avec-equipe #ouvrir-direct { background: var(--accent-doux); color: var(--a
 @keyframes secoue { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
 @keyframes fete { from { transform: translate(-50%, 0) scale(0.6); opacity: 1; } to { transform: translate(-50%, -34px) scale(1.3); opacity: 0; } }
 @keyframes appelle { 50% { box-shadow: 0 0 0 8px rgba(255, 182, 72, 0.15); } }
-@media (prefers-reduced-motion: reduce) { .scene-svg *, .tuile-appel, .fete::after { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .scene-svg *, .tuile-appel, .fete::after, img.scene-img { animation: none !important; } }

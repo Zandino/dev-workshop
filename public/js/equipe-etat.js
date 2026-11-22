@@ -67,15 +67,20 @@ function fonctionDuType(type) {
   return null;
 }
 
-export function creerEquipe({ session = '', principal = null, personnalises = {} } = {}) {
+export function creerEquipe({ session = '', principal = null, personnalises = {}, skins = [] } = {}) {
+  const skinsLibres = [...skins]; // personnages en images (serveur/skins.mjs), donnés aux premiers membres venus
   const membres = new Map(); // clé -> membre
   const appels = new Map(); // id d'appel d'outil -> { cle, genre, depuis }
   const pris = new Set(); // prénoms déjà donnés dans cette discussion
   let sequence = 0; // ordre des actions : départage ceux qui agissent dans la même milliseconde
   const equipe = { membres, principal: principal || { nom: 'IA', compte: null }, ecranDe: null, maintenant: Date.now, contexte: null, debut: null };
 
-  function prenomPour(cle) {
+  function prenomPour(cle, skin) {
     const voulu = personnalises[cle]?.prenom;
+    if (skin) {
+      pris.add(skin.prenom);
+      return { prenom: voulu || skin.prenom, feminin: skin.feminin };
+    }
     let i = hachage(`${session}|${cle}`) % PRENOMS.length;
     for (let n = 0; n < PRENOMS.length && pris.has(PRENOMS[i][0]); n += 1) i = (i + 1) % PRENOMS.length;
     pris.add(PRENOMS[i][0]);
@@ -84,10 +89,11 @@ export function creerEquipe({ session = '', principal = null, personnalises = {}
 
   function membre(cle, { ia, parent = null, fonction = null, fonctionLibre = null, ordre = null } = {}) {
     if (membres.has(cle)) return membres.get(cle);
-    const { prenom, feminin } = prenomPour(cle);
+    const skin = skinsLibres.length ? skinsLibres.splice(hachage(`${session}|${cle}`) % skinsLibres.length, 1)[0] : null;
+    const { prenom, feminin } = prenomPour(cle, skin);
     const h = hachage(`${session}|${cle}|style`);
     const m = {
-      cle, prenom, feminin, parent, ordre,
+      cle, prenom, feminin, parent, ordre, skin,
       ia: ia || equipe.principal,
       style: { couleur: h % 8, cheveux: (h >>> 3) % 6, peau: (h >>> 6) % 5, accessoire: (h >>> 9) % 4, decor: (h >>> 12) % 6 },
       fonction, fonctionLibre, activite: { dev: 0, tests: 0, analyse: 0, web: 0 },

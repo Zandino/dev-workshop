@@ -46,6 +46,20 @@ const ICONE = { travaille: '⚙', ecrit: '✎', reflechit: '…', attend: '🔗'
 
 const zone = () => document.getElementById('equipe');
 let equipe = creerEquipe();
+let skins = []; // personnages en images disponibles sur le serveur
+
+/** L'état général a changé : les skins disponibles (pour la prochaine équipe). */
+export function definirSkins(liste) {
+  skins = Array.isArray(liste) ? liste : [];
+}
+
+/** Fichier du skin pour un état affiché. */
+const IMAGE_ETAT = { pret: 'idle', travaille: 'working', ecrit: 'working', reflechit: 'thinking', attend: 'waiting', besoin: 'needs-you', bloque: 'blocked', fini: 'done', erreur: 'error' };
+/** Une image, ou une vidéo en boucle (muette, sans contrôles) pour un skin animé. */
+const media = (src) => (/\.(mp4|webm)$/i.test(src)
+  ? h('video.scene-img', { src, autoplay: true, muted: true, loop: true, playsInline: true, disablePictureInPicture: true })
+  : h('img.scene-img', { src, alt: '' }));
+const imageSkin = (skin, etat) => `/skins/${skin.nom}/${skin.images[IMAGE_ETAT[etat] || 'idle']}`;
 let sessionId = '';
 let personnalises = {};
 let ouvert = false;
@@ -75,9 +89,12 @@ const duree = (ms) => {
 export function nouvelleEquipe(sig, session = '') {
   sessionId = session || '';
   try { personnalises = JSON.parse(lire(`devworkshop.equipe.${sessionId}`) || '{}'); } catch { personnalises = {}; }
-  equipe = creerEquipe({ session: sessionId, principal: sig ? { nom: sig.nom, compte: sig.compte } : null, personnalises });
+  equipe = creerEquipe({ session: sessionId, principal: sig ? { nom: sig.nom, compte: sig.compte } : null, personnalises, skins });
+  // Les images des skins se chargent d'avance : changer d'état ne fait pas clignoter la tuile.
+  if (typeof Image !== 'undefined') for (const s of skins) for (const f of Object.values(s.images)) new Image().src = `/skins/${s.nom}/${f}`;
   epingle = null;
   etatsVus.clear();
+  zone()?.replaceChildren();
 
   window.speechSynthesis?.cancel();
   redessiner();
@@ -154,9 +171,10 @@ function fenetrePartagee(m, genre) {
 }
 
 // --- Prénom et fonction modifiables (liste des agents, arbre) ---
-function editable(m, champ, valeur) {
+function editable(m, champ, affiche) {
   return h('span.editable', { title: t('eq_renommer'), tabIndex: 0, onclick: (ev) => {
     ev.stopPropagation();
+    const valeur = champ === 'prenom' ? m.prenom : equipe.fonctionDe(m);
     const cible = ev.currentTarget;
     fige = true;
     const saisie = h('input.saisie-equipe', { type: 'text', value: valeur, maxLength: 40 });
@@ -181,7 +199,7 @@ function editable(m, champ, valeur) {
     cible.replaceWith(saisie);
     saisie.focus();
     saisie.select();
-  } }, valeur);
+  } }, affiche);
 }
 
 function phraseEtat(m, v) {
@@ -201,13 +219,14 @@ function tuile(m, { vedette = false, incrustee = false } = {}) {
   const classes = ['tuile-appel', `etat-${v.etat}`, parle === m.cle ? 'parle' : '', fete ? 'fete' : '', sursaut ? 'sursaut' : '', vedette ? 'vedette' : '', incrustee ? 'incrustee' : '', epingle === m.cle ? 'epinglee' : ''].filter(Boolean).join('.');
   return h('article.' + classes, {
     style: `--couleur-membre: ${couleurDe(m.style)}`,
+    dataset: { cle: m.cle + (incrustee ? ':incrustee' : '') },
     onclick: () => {
-      if (v.etat === 'besoin') return montrerEquipe(false); // il t'attend : retour à la conversation pour répondre
+      if (equipe.vue(m).etat === 'besoin') return montrerEquipe(false); // il t'attend : retour à la conversation pour répondre
       epingle = epingle === m.cle ? null : m.cle;
       redessiner();
     },
   },
-  scene(m.style),
+  m.skin ? media(imageSkin(m.skin, v.etat)) : scene(m.style),
   h('span.puce-etat', {}, `${ICONE[v.etat] || ''} ${phraseEtat(m, v)}`),
   m.echecs ? h('span.puce-echecs', {}, `✕ ${m.echecs}`) : null,
   v.commandeLongue || m.boucle ? h('span.puce-alerte', {}, v.commandeLongue ? '⏱ ' + t('eq_longue') : '↻ ' + t('eq_boucle')) : null,
@@ -252,7 +271,7 @@ function salleAppel() {
 function arbre() {
   return h('div.arbre-equipe', {}, equipe.liste().map(({ m, niveau }) => {
     const v = equipe.vue(m);
-    return h('div.ligne-arbre.etat-' + v.etat, { style: `--niveau: ${niveau}; --couleur-membre: ${couleurDe(m.style)}` },
+    return h('div.ligne-arbre.etat-' + v.etat, { style: `--niveau: ${niveau}; --couleur-membre: ${couleurDe(m.style)}`, dataset: { cle: m.cle } },
       h('span.point-membre'),
       h('strong', {}, editable(m, 'prenom', m.prenom)), h('span.fonction', {}, editable(m, 'fonction', equipe.fonctionDe(m))),
       h('span.ia-arbre', {}, pastilleLogo(m.ia.compte, m.ia.nom), m.ia.nom),
@@ -268,7 +287,7 @@ function listeAgents() {
     h('h3', {}, t('agents_n', { n: membres.length })),
     membres.map((m) => {
       const v = equipe.vue(m);
-      return h('div.carte-agent.etat-' + v.etat + (epingle === m.cle ? '.epinglee' : ''), { style: `--couleur-membre: ${couleurDe(m.style)}`, onclick: () => { epingle = epingle === m.cle ? null : m.cle; redessiner(); } },
+      return h('div.carte-agent.etat-' + v.etat + (epingle === m.cle ? '.epinglee' : ''), { style: `--couleur-membre: ${couleurDe(m.style)}`, dataset: { cle: m.cle }, onclick: () => { epingle = epingle === m.cle ? null : m.cle; redessiner(); } },
         h('div.ligne-carte', {}, h('span.point-membre'), h('strong', {}, editable(m, 'prenom', m.prenom)), h('span.fonction', {}, editable(m, 'fonction', equipe.fonctionDe(m)), m.parent && equipe.membres.get(m.parent) ? ` · ${t('eq_de', { qui: equipe.membres.get(m.parent).prenom })}` : '')),
         h('div.etat-carte', {}, `${ICONE[v.etat] || ''} ${phraseEtat(m, v)}`));
     }));
@@ -299,6 +318,32 @@ function entete() {
     h('button', { type: 'button', onclick: () => montrerEquipe(false) }, '← ' + t('equipe_retour')));
 }
 
+/**
+ * Met `ancien` à jour d'après `nouveau` en gardant les éléments qui n'ont pas changé de nature : leurs animations
+ * (personnages, images, vidéos) continuent au lieu de repartir de zéro à chaque mise à jour (une par seconde). Un
+ * élément qui change de membre (data-cle) ou de balise est remplacé, avec ses actions au clic.
+ */
+function morpher(ancien, nouveau) {
+  if (ancien.nodeType !== nouveau.nodeType || ancien.nodeName !== nouveau.nodeName || ancien.dataset?.cle !== nouveau.dataset?.cle) {
+    ancien.replaceWith(nouveau);
+    return;
+  }
+  if (ancien.nodeType === 3) {
+    if (ancien.data !== nouveau.data) ancien.data = nouveau.data;
+    return;
+  }
+  if (ancien.nodeType !== 1) return;
+  for (const a of [...ancien.attributes]) if (!nouveau.hasAttribute(a.name)) ancien.removeAttribute(a.name);
+  for (const a of [...nouveau.attributes]) if (ancien.getAttribute(a.name) !== a.value) ancien.setAttribute(a.name, a.value);
+  morpherEnfants(ancien, [...nouveau.childNodes]);
+}
+
+function morpherEnfants(parent, nouveaux) {
+  const anciens = [...parent.childNodes];
+  nouveaux.forEach((n, i) => (i < anciens.length ? morpher(anciens[i], n) : parent.append(n)));
+  for (let i = nouveaux.length; i < anciens.length; i += 1) anciens[i].remove();
+}
+
 function redessiner(force = false) {
   if (!ouvert || (fige && !force) || prevu) return;
   prevu = true;
@@ -306,7 +351,7 @@ function redessiner(force = false) {
     prevu = false;
     const z = zone();
     if (!z || !ouvert || fige) return;
-    z.replaceChildren(entete(), h('div.corps-appel', {}, listeAgents(), h('main.centre-appel', {}, vueCourante === 'arbre' ? arbre() : salleAppel())));
+    morpherEnfants(z, [entete(), h('div.corps-appel', {}, listeAgents(), h('main.centre-appel', {}, vueCourante === 'arbre' ? arbre() : salleAppel()))]);
   });
 }
 

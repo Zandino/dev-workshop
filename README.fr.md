@@ -265,6 +265,14 @@ l'agrandir ; elle partage la colonne de l'aperçu : ouvrir l'un ferme l'autre).
   (commande puis sortie), la dernière capture de son navigateur (connecteur « navigateur »).
 - **La voix** du système lit ce qu'ils disent, un à la fois (rien ne part vers un service extérieur).
 
+**Skins** (personnages en images) : un dossier par personnage dans le dossier des réglages du serveur,
+, avec une image par état : , , , , , ,
+,  (JPEG, PNG, WebP ou GIF ; une vidéo en boucle  ou  l'emporte sur l'image du même état), et
+ facultatif (). Un skin n'est proposé que complet ; il va au premier
+membre venu, qui prend son prénom ; les autres gardent les personnages dessinés. Les images restent sur le serveur (jamais
+dans le dépôt) et bougent selon l'état (respiration, travail, main levée, sursaut…). Ce sont tes créations, faites par
+exemple avec un générateur d'images : décris le même personnage dans les huit états, même cadrage 16:10, sans texte.
+
 Tout vient des événements de la discussion : aucun appel de plus à une IA. Les captures (PNG, JPEG, GIF, WebP, 3 Mo au
 plus) ne vont qu'aux écrans qui regardent : elles ne sont pas gardées dans l'historique, qu'elles alourdiraient.
 

@@ -132,6 +132,34 @@ noter('Échap ramène à la conversation', document.getElementById('equipe').hid
 document.getElementById('ouvrir-direct').click();
 noter('le bouton la rouvre', !document.getElementById('equipe').hidden);
 
+// Skins : un personnage en images va au premier membre venu, qui prend son prénom ; l'image suit son état.
+const lea = { nom: 'lea', prenom: 'Léa', feminin: true, images: Object.fromEntries(['idle', 'working', 'thinking', 'waiting', 'needs-you', 'blocked', 'done', 'error'].map((e) => [e, `${e}.jpg`])) };
+const eqSkin = creerEquipe({ session: 's-skin', skins: [lea] });
+eqSkin.recevoir(outil('k1', 'Edit', { file_path: 'a' }));
+eqSkin.recevoir(outil('k2', 'Agent', { subagent_type: 'Explore', description: 'x' }));
+const avecSkin = [...eqSkin.membres.values()].filter((x) => x.skin);
+noter('skin : donné à un seul membre, qui prend son prénom', avecSkin.length === 1 && avecSkin[0].prenom === 'Léa' && [...eqSkin.membres.values()].filter((x) => x.prenom === 'Léa').length === 1);
+noter('skin : sa fonction s’accorde (féminin)', /Développeuse|Exploratrice|Assistante|Analyste/.test(eqSkin.fonctionDe(avecSkin[0])), eqSkin.fonctionDe(avecSkin[0]));
+const { definirSkins } = await import('../public/js/equipe.js');
+definirSkins([lea]);
+nouvelleEquipe({ nom: 'Claude', compte: { id: 'defaut', type: 'claude' } }, 'sess-skin');
+surEvenementEquipe(outil('k3', 'Bash', { command: 'npm test' }));
+await image();
+[...document.querySelectorAll('.vues-appel button')].find((b) => b.textContent === 'Appel').click();
+await image();
+noter('skin : la tuile montre l’image de l’état (au travail)', $$('img.scene-img').some((i) => i.getAttribute('src') === '/skins/lea/working.jpg'));
+surEvenementEquipe({ t: 'permission', id: 'k9', outil: 'Bash', entree: {} });
+await image();
+noter('skin : a besoin de toi → main levée', $$('img.scene-img').some((i) => i.getAttribute('src') === '/skins/lea/needs-you.jpg'));
+
+// Mise à jour sur place : d'une seconde à l'autre, le même personnage reste (son animation continue).
+const media1 = document.querySelector('.tuile-appel .scene-img, .tuile-appel .scene-svg');
+surEvenementEquipe({ t: 'delta', genre: 'texte', texte: '…' });
+await image();
+await image();
+noter('mise à jour sur place : le personnage n’est pas recréé', media1 && document.contains(media1));
+noter('chaque carte reste attachée à son membre (data-cle)', $$('.carte-agent').every((c) => c.dataset.cle));
+
 const echecs = bilan.filter((x) => !x).length;
 console.log(`\n${bilan.length - echecs}/${bilan.length} vérifications réussies.`);
 process.exit(echecs ? 1 : 0);

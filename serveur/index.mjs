@@ -11,6 +11,7 @@ import { annulerToutes } from './connexion.mjs';
 import { purgerCorbeille } from './projets.mjs';
 import { servirApercu } from './apercu.mjs';
 import { servirMcp } from './mcp-http.mjs';
+import { servirSkin } from './skins.mjs';
 import { purgerSessions } from './corbeille-sessions.mjs';
 
 // La corbeille garde un projet 30 jours : on la passe en revue au démarrage, puis toutes les 6 heures.
@@ -65,6 +66,7 @@ const serveur = http.createServer((req, res) => {
   if (servirMcp(chemin, req, res)) return; // outils des IA entre discussions (POST, jeton propre à chaque IA)
   if (req.method !== 'GET' && req.method !== 'HEAD') return repondre(405, 'Méthode refusée');
   if (servirApercu(chemin, req, res)) return;
+  if (servirSkin(chemin, req, res)) return; // personnages en images de l'équipe en direct
   const fichier = fichierDemande(chemin);
   try {
     if (!fichier || !statSync(fichier).isFile()) throw new Error('absent');
