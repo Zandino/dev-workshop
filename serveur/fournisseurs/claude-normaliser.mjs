@@ -53,6 +53,7 @@ export function assistantVersEvenement(m) {
     usage: usageNormalise(m.message?.usage),
     modele: m.message?.model || null,
     sousAgent: Boolean(m.parent_tool_use_id),
+    parent: m.parent_tool_use_id || null, // l'appel qui a lancé le sous-agent (équipe en direct)
   };
 }
 
@@ -75,6 +76,7 @@ export function utilisateurVersEvenements(m, { avecTexte }) {
         id: b.tool_use_id,
         contenu: texteDeResultat(b.content),
         erreur: Boolean(b.is_error),
+        parent: m.parent_tool_use_id || null,
         ...(imageDeResultat(b.content) ? { image: imageDeResultat(b.content) } : {}),
       });
     } else if (b.type === 'text' && avecTexte && saisieReelle(b.text) && !m.isSynthetic && !m.isMeta) {

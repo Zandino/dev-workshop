@@ -244,17 +244,28 @@ accord ou une question t'attend, puis un échec pas encore lu, puis une IA au tr
   nouvelle demande). La page n'ayant aucun accès au poste, elle l'annonce dans son titre (« ✋ 2 · Dev Workshop »),
   que le logiciel lit.
 
-## Bureau en direct
+## Équipe en direct
 
-Bouton écran, à droite de la conversation (il partage la colonne de l'aperçu : ouvrir l'un ferme l'autre) : une carte
-par IA, qui montre ce qu'elle fait à l'instant, en trois onglets :
+Bouton « Équipe en direct » de l'en-tête : la discussion comme un appel d'équipe, à droite de la conversation (⤢ pour
+l'agrandir ; elle partage la colonne de l'aperçu : ouvrir l'un ferme l'autre).
 
-- **Fichier** : le fichier qu'elle modifie, avec les lignes changées ;
-- **Terminal** : la commande qu'elle lance, puis sa sortie ;
-- **Navigateur** : la dernière capture d'écran de son navigateur (connecteur « navigateur »).
+- **Chacun son personnage** : chaque IA, et chaque sous-agent (ceux que Claude lance lui-même avec son outil Task ou
+  Agent, et ceux de l'orchestre), a son personnage à son bureau, dessiné par Dev Workshop, avec :
+  - un **prénom**, le même tout au long de la discussion ;
+  - un **style** : couleur, coiffure, teint, accessoire ;
+  - une **fonction** : le rôle donné par l'orchestre, sinon le type du sous-agent (Exploratrice, Architecte…), sinon
+    ce qu'il fait le plus (Développeur, Testeuse, Analyste…).
+  Un clic sur le prénom ou la fonction les change, pour cette discussion.
+- **Son état** : réfléchit, écrit, travaille (« Lance npm test »), attend (qui), a besoin de toi ✋, sans nouvelles
+  depuis 3 min, a fini, en échec ; des badges pour une commande de plus d'une minute, les échecs, et une même action
+  répétée trois fois (« tourne en rond ? »). Un sous-agent arrive avec sa mission, en retrait sous celui qui l'a
+  lancé, et repart 2 min après son compte rendu.
+- **Au premier plan** : celui qui a besoin de toi, sinon celui qui vient d'agir (un clic sur une tuile la garde au
+  premier plan), avec sa bulle et son écran partagé : le fichier qu'il modifie (lignes changées), son terminal
+  (commande puis sortie), la dernière capture de son navigateur (connecteur « navigateur »).
+- **La voix** du système lit ce qu'ils disent, un à la fois (rien ne part vers un service extérieur).
 
-L'onglet suit sa dernière action ; un clic en garde un, un second clic le laisse de nouveau suivre l'IA. Tout vient des
-événements de la discussion : rien de plus ne tourne sur le serveur. Les captures (PNG, JPEG, GIF, WebP, 3 Mo au
+Tout vient des événements de la discussion : aucun appel de plus à une IA. Les captures (PNG, JPEG, GIF, WebP, 3 Mo au
 plus) ne vont qu'aux écrans qui regardent : elles ne sont pas gardées dans l'historique, qu'elles alourdiraient.
 
 ## Dictée

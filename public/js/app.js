@@ -13,8 +13,7 @@ import { initSalon, majComptesSalon, ouvrirSalon } from './salon.js';
 import { prendrePieces } from './pieces.js';
 import { ouvrirProjet, majCorbeille, ouvrirRetenir } from './projet.js';
 import { initDiscussions, ouvrirDiscussions, ouvrirRanger, majProjetsDiscussions } from './discussions.js';
-import { nouvelAppel, surEvenementDirect } from './direct.js';
-import { initBureau, nouveauBureau, surEvenementBureau } from './bureau.js';
+import { initEquipe, nouvelleEquipe, surEvenementEquipe } from './equipe.js';
 import { pastilleLogo } from './logos.js';
 import { brancherAjouts } from './ajouts.js';
 import { initAlertes } from './alertes.js';
@@ -69,8 +68,7 @@ function quitterSession() {
   Object.assign(ecran, { session: null, salon: false, etat: {}, journal: [], titre: '', retenir: null, resume: null });
   if ($('compte').value === 'salon') $('compte').value = 'defaut'; // « Plusieurs IA » ne s'ouvre que par 👥
   definirSignature(null);
-  nouvelAppel(null);
-  nouveauBureau(null);
+  nouvelleEquipe(null);
   viderPermissions();
   razJauge();
   viderFil(ecran.projet ? t('accueil', { projet: ecran.projet }) : t('choisir_projet'));
@@ -158,8 +156,7 @@ function surRejouer(m) {
   const c = ecran.general?.comptes.find((x) => x.id === m.resume.compte);
   const signature = !ecran.salon && c ? { compte: c, nom: libelleCompte(c) } : null;
   definirSignature(signature);
-  nouvelAppel(signature);
-  nouveauBureau(signature);
+  nouvelleEquipe(signature, m.session);
   viderPermissions();
   razJauge();
   viderFil();
@@ -176,8 +173,7 @@ function surRejouer(m) {
 }
 
 function surEvenement(m) {
-  surEvenementDirect(m, ecran.rejeu);
-  surEvenementBureau(m);
+  surEvenementEquipe(m, ecran.rejeu);
   if (m.t === 'utilisateur' && !ecran.titre && !m.de) ecran.titre = m.texte.slice(0, 80);
   if (m.t === 'etat') {
     Object.assign(ecran.etat, m);
@@ -333,7 +329,7 @@ function demarrer() {
     nouvelle: () => ecran.projet && choisirProjet(ecran.projet),
   });
   initDiscussions({ reprendre: (d) => reprendreDiscussion(d, d.projet) });
-  initBureau();
+  initEquipe();
   initAlertes({ ecran, libelle: libelleCompte, rejoindre: (id) => id !== ecran.session && dire({ t: 'attacher', session: id }) });
   razJauge();
   majEntete();

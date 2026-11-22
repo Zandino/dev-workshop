@@ -3,7 +3,6 @@
 import { initPieces } from './pieces.js';
 import { initProjet } from './projet.js';
 import { initConnecteurs } from './connecteurs.js';
-import { basculerDirect } from './direct.js';
 import { versMarkdown, telecharger, nomExport } from './export.js';
 import { dire, ecouter } from './canal.js';
 import { definirCommandes } from './commandes.js';
@@ -25,7 +24,6 @@ export function brancherAjouts({ ecran, compte, libelle, projetSupprime }) {
     telecharger(nomExport(ecran.titre || ecran.projet), versMarkdown({ titre: ecran.titre, projet: ecran.projet, compte: nom, evenements: ecran.journal }));
     return true;
   };
-  document.getElementById('ouvrir-direct').addEventListener('click', basculerDirect);
 
   // Commandes « / » dès le choix d'un projet ou d'un compte, sans attendre la première réponse d'une session
   // (avant, la palette restait vide tant que rien n'avait été envoyé).
