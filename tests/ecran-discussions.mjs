@@ -69,7 +69,7 @@ noter('second clic : repliées', await attendre(() => !$('.sous-liste')) && doss
 cliquer(dossier('alpha'));
 noter('troisième clic : dépliées', await attendre(() => sousTitres().length === 2));
 
-// Glisser-déposer : « intervizio essai » lâchée sur le projet « beta ».
+// Glisser-déposer : « boutique essai » lâchée sur le projet « beta ».
 const transfert = { donnees: {}, types: [], setData(type, v) { this.donnees[type] = v; this.types.push(type); }, getData(type) { return this.donnees[type]; } };
 const evenement = (nom, cible) => {
   const e = new window.Event(nom, { bubbles: true, cancelable: true });
@@ -77,7 +77,7 @@ const evenement = (nom, cible) => {
   cible.dispatchEvent(e);
   return e;
 };
-const aGlisser = $$('.sous-liste .avec-poubelle').find((d) => d.querySelector('.titre')?.textContent === 'intervizio essai');
+const aGlisser = $$('.sous-liste .avec-poubelle').find((d) => d.querySelector('.titre')?.textContent === 'boutique essai');
 noter('discussion glissable, ⇄ visible', aGlisser?.draggable === true && window.getComputedStyle(aGlisser.querySelector('.ranger')).opacity !== '0');
 evenement('dragstart', aGlisser);
 noter('son propre projet refuse le dépôt', !evenement('dragover', dossier('alpha')).defaultPrevented);

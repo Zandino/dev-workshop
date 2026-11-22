@@ -86,10 +86,10 @@ window.localStorage.setItem('devworkshop.voix', 'oui');
 noter('ancien réglage « oui » : tout dire', modeVoix() === 'tout');
 window.localStorage.removeItem('devworkshop.voix');
 noter('par défaut : tout dire', modeVoix() === 'tout');
-const accord = { t: 'alerte', id: 'autre', genre: 'accord', projet: 'intervizio', auteur: 'GPT' };
-noter('phrases : besoin de toi, terminé, arrêté', phraseAnnonce(accord) === 'GPT a besoin de toi sur intervizio.'
-  && phraseAnnonce({ genre: 'fini', projet: 'intervizio' }) === 'Travail terminé sur intervizio.'
-  && phraseAnnonce({ genre: 'echec', projet: 'intervizio' }) === 'Le travail s’est arrêté sur intervizio.'
+const accord = { t: 'alerte', id: 'autre', genre: 'accord', projet: 'boutique', auteur: 'GPT' };
+noter('phrases : besoin de toi, terminé, arrêté', phraseAnnonce(accord) === 'GPT a besoin de toi sur boutique.'
+  && phraseAnnonce({ genre: 'fini', projet: 'boutique' }) === 'Travail terminé sur boutique.'
+  && phraseAnnonce({ genre: 'echec', projet: 'boutique' }) === 'Le travail s’est arrêté sur boutique.'
   && phraseAnnonce({ genre: 'accord', projet: 'p' }, { ici: true, prenom: 'Léa' }) === 'Léa a besoin de toi sur p.');
 noter('pas d’annonce pour la mémoire ou les échanges', phraseAnnonce({ genre: 'memoire' }) === null && !aAnnoncer({ genre: 'echange' }, { mode: 'essentiel' }));
 noter('l’essentiel : annoncé même pour la discussion affichée', aAnnoncer(accord, { mode: 'essentiel', ici: true, equipeVisible: true }));
@@ -102,9 +102,9 @@ choisirMoteur('naturelle');
 initAnnonces({ session: () => 'affichee' });
 choisirModeVoix('essentiel');
 const avantAnnonce = envois.length;
-recevoir({ t: 'alerte', id: 'autre', genre: 'fini', projet: 'intervizio' });
+recevoir({ t: 'alerte', id: 'autre', genre: 'fini', projet: 'boutique' });
 const annonce = envois.slice(avantAnnonce).find((e) => e.t === 'voix_dire');
-noter('l’essentiel : « Travail terminé sur intervizio » part à la voix', annonce?.texte === 'Travail terminé sur intervizio.', annonce?.texte);
+noter('l’essentiel : « Travail terminé sur boutique » part à la voix', annonce?.texte === 'Travail terminé sur boutique.', annonce?.texte);
 choisirVolume(0.3);
 recevoir({ t: 'voix_audio', id: annonce?.id, taux: 22050, pcm });
 noter('volume : la voix part au volume choisi', gains.at(-1)?.gain.value === 0.3 && volumeVoix() === 0.3);
@@ -116,7 +116,7 @@ lectures.at(-1)?.onended?.();
 choisirModeVoix('non');
 const avantMuet = envois.length;
 const systemeAvantMuet = phrasesSysteme.length;
-recevoir({ t: 'alerte', id: 'autre', genre: 'accord', projet: 'intervizio' });
+recevoir({ t: 'alerte', id: 'autre', genre: 'accord', projet: 'boutique' });
 parlerMembre(hugo, 'Je parle quand même ?', quiParle);
 noter('muet : ni annonce ni parole', envois.length === avantMuet && phrasesSysteme.length === systemeAvantMuet);
 

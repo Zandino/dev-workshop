@@ -1,6 +1,6 @@
 // Essai des copies d'une discussion : rouverte depuis la liste du projet après un redémarrage du serveur, une
 // discussion reprend sa copie interrompue (avec tout ce qui s'y est fait) au lieu d'en créer une nouvelle, et une
-// seule copie apparaît dans « Discussions interrompues ». Vécu le 21/11/2026 : cinq « Intervizio ».
+// seule copie apparaît dans « Discussions interrompues ». Vécu le 21/11/2026 : cinq « Boutique ».
 // Lance lui-même le serveur (deux fois). Usage, avec un HOME jetable préparé par `node tests/discussions.mjs prepare` :
 //   HOME=/tmp/x/home DEVWORKSHOP_CONFIG=… DEVWORKSHOP_ROOT=/tmp/x/projets DEVWORKSHOP_PORT=5346 node tests/copies.mjs
 import { spawn } from 'node:child_process';
@@ -44,7 +44,7 @@ let serveur = await demarrer();
 let c = await connexion();
 await c.attendre((m) => m.t === 'general');
 c.dire({ t: 'historique', projet: 'alpha' });
-const petite = (await c.attendre((m) => m.t === 'historique'))?.sessions.find((s) => s.titre === 'intervizio essai');
+const petite = (await c.attendre((m) => m.t === 'historique'))?.sessions.find((s) => s.titre === 'boutique essai');
 noter('discussion enregistrée trouvée', petite);
 c.dire({ t: 'ouvrir', projet: 'alpha', compte: 'defaut', reprise: petite.id, titre: petite.titre });
 const rejeu = await c.attendre((m) => m.t === 'rejouer');
@@ -87,7 +87,7 @@ async function voir(condition, ms = 15000) {
   while (Date.now() < fin) { const v = condition(); if (v) return v; await pause(100); }
   return null;
 }
-const ligne = await voir(() => $$('.sous-liste .ligne').find((l) => l.querySelector('.titre')?.textContent === 'intervizio essai'));
+const ligne = await voir(() => $$('.sous-liste .ligne').find((l) => l.querySelector('.titre')?.textContent === 'boutique essai'));
 noter('la discussion est dans la liste du projet', ligne);
 noter('une seule copie dans « Discussions interrompues »', $$('#liste-interrompues .ligne').length === 1);
 ligne.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));

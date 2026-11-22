@@ -293,8 +293,8 @@ principale, se ferme avec elle, et ⇱ l'y remet. Dans le logiciel de bureau, la
   de la même façon.
 - **Réglage « Voix »** (en-tête de l'équipe, ou bas de la barre des projets) : *Tout dire* (l'équipe affichée lit ce
   que disent les IA, et les autres discussions sont annoncées), *L'essentiel* (seulement les annonces, pour toutes
-  les discussions ouvertes, même équipe fermée : « Léa a besoin de toi sur intervizio », « Travail terminé sur
-  intervizio », « Le travail s'est arrêté sur intervizio »), ou *Muet* ; et un curseur de volume.
+  les discussions ouvertes, même équipe fermée : « Léa a besoin de toi sur boutique », « Travail terminé sur
+  boutique », « Le travail s'est arrêté sur boutique »), ou *Muet* ; et un curseur de volume.
 
 **Skins** (personnages en images) : un dossier par personnage dans le dossier des réglages du serveur,
 `skins/<nom>/`, avec une image par état : `idle`, `working`, `thinking`, `waiting`, `needs-you`, `blocked`,

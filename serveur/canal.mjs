@@ -29,7 +29,7 @@ const MAX_TEXTE = 200_000;
 /**
  * Le dépôt dont un dossier est une copie de travail git (worktree : son « .git » est un fichier « gitdir: … »), ou
  * null. Les IA en créent une par branche à côté du projet ; ce ne sont pas des projets à part (vécu le 22/11/2026 :
- * quatorze « intervizio-… » dans la liste).
+ * quatorze « mon-projet-… » dans la liste).
  */
 function depotDeLaCopie(nom) {
   try {

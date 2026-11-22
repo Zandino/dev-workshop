@@ -77,7 +77,7 @@ function fabriquerReprise(projet, titre) {
 
 if (process.argv[2] === 'prepare') {
   for (const p of ['alpha', 'beta']) mkdirSync(path.join(RACINE, p), { recursive: true });
-  const ids = { grande: fabriquer('alpha', 'proxmox essai', 3000), petite: fabriquer('alpha', 'intervizio essai'), autre: fabriquer('beta', 'beta essai'), reprise: fabriquerReprise('beta', 'reprise essai') };
+  const ids = { grande: fabriquer('alpha', 'proxmox essai', 3000), petite: fabriquer('alpha', 'boutique essai'), autre: fabriquer('beta', 'beta essai'), reprise: fabriquerReprise('beta', 'reprise essai') };
   writeFileSync(ETAT, JSON.stringify(ids));
   console.log('Discussions fabriquées :', Object.keys(ids).join(', '));
   process.exit(0);

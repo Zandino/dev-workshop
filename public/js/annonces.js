@@ -1,5 +1,5 @@
 // Annonces à voix haute, pour toutes les discussions ouvertes, même équipe fermée : « Léa a besoin de toi sur
-// intervizio », « Travail terminé sur intervizio », « Le travail s'est arrêté sur intervizio ». Elles suivent les
+// boutique », « Travail terminé sur boutique », « Le travail s'est arrêté sur boutique ». Elles suivent les
 // alertes du serveur (serveur/veille.mjs). Réglage « Voix » (bas de la barre, ou en-tête de l'équipe) :
 //   tout      : l'équipe affichée lit ce que disent les IA, et les autres discussions sont annoncées ;
 //   essentiel : seulement ces annonces (besoin de toi, terminé, arrêté) ;
