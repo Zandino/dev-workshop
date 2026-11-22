@@ -1,12 +1,13 @@
-// Adresse locale /mcp : les outils « entre discussions » (entre-discussions.mjs) pour les IA qui ne tournent pas
+// Adresse locale /mcp : les outils « entre discussions » (outils-discussions.mjs) pour les IA qui ne tournent pas
 // dans le serveur même (Codex, Gemini, Copilot, Qwen). Protocole MCP, transport HTTP « streamable » dans sa forme
 // la plus simple : une requête JSON-RPC par POST, une réponse JSON, sans flux ni session côté serveur.
 // Chaque IA a son propre jeton (en-tête Authorization) : il dit quelle discussion appelle. Une page web ne peut pas
 // s'en servir (en-tête Origin refusé), et le serveur n'écoute que sur 127.0.0.1.
 import { EN_TETES_SECURITE } from './securite.mjs';
-import { contexteDe, outilsDe, descriptionMcp, appelerOutil, NOM_SERVEUR } from './entre-discussions.mjs';
+import { contexteDe, outilsDe, descriptionMcp, appelerOutil, NOM_SERVEUR } from './outils-discussions.mjs';
 
 const MAX_CORPS = 1024 * 1024;
+const MAX_LOT = 10; // requêtes par lot : une IA n'a aucune raison d'en envoyer davantage d'un coup
 const VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05'];
 
 async function traiter(ctx, m) {
@@ -69,6 +70,7 @@ export function servirMcp(chemin, req, res) {
       return fin(400, { jsonrpc: '2.0', id: null, error: { code: -32700, message: 'JSON illisible' } });
     }
     const lot = Array.isArray(lu) ? lu : [lu];
+    if (lot.length > MAX_LOT) return fin(400, { jsonrpc: '2.0', id: null, error: { code: -32600, message: 'Lot trop grand' } });
     const reponses = [];
     for (const m of lot) {
       if (!m || typeof m !== 'object' || m.id === undefined || m.id === null) continue; // notification : rien à rendre

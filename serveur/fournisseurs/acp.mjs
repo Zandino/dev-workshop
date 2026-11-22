@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { lier } from './jsonrpc.mjs';
 import { versAcp } from '../connecteurs.mjs';
 import { decisionAuto } from '../regles-accord.mjs';
-import { NOM_SERVEUR } from '../entre-discussions.mjs';
+import { NOM_SERVEUR, NOMS_OUTILS } from '../outils-discussions.mjs';
 
 /**
  * Fiche d'un outil : { nom, binaire(), args(modele), env(compte), preparer?(compte), modes: {nos modes -> les
@@ -76,9 +76,11 @@ export function ouvrirAcp(fiche, { compte, dossier, modele, mode, consigne, conn
       const option = (genre) => (p.options || []).find((o) => o.kind === genre)?.optionId;
       const genre = p.toolCall?.kind;
       const brut = p.toolCall?.rawInput || {};
-      // Nos outils (titre de Gemini : « outil (devworkshop MCP Server) ») passent sans demande, comme pour Claude.
-      // Titre exact seulement : un autre connecteur ne doit pas pouvoir s'en faire passer pour nous.
-      if (outilsDw && (p.toolCall?.title || '').endsWith(` (${NOM_SERVEUR} MCP Server)`) && option('allow_once')) {
+      // Nos outils (titre de Gemini : « outil (serveur MCP Server) », type « other ») passent sans demande, comme pour
+      // Claude. Titre exact d'un de nos outils ET type « other » : le titre d'une commande shell est une description
+      // écrite par l'IA elle-même, qui pourrait imiter le nôtre (audit du 22/11/2026).
+      const notre = NOMS_OUTILS.some((n) => p.toolCall?.title === `${n} (${NOM_SERVEUR} MCP Server)`);
+      if (outilsDw && notre && genre === 'other' && option('allow_once')) {
         return Promise.resolve({ outcome: { outcome: 'selected', optionId: option('allow_once') } });
       }
       const auto = genre === 'delete'
@@ -95,7 +97,7 @@ export function ouvrirAcp(fiche, { compte, dossier, modele, mode, consigne, conn
           resoudre(retenu ? { outcome: { outcome: 'selected', optionId: retenu } } : { outcome: { outcome: 'cancelled' } });
         });
         vider();
-        emettre({ t: 'permission', id, outil: p.toolCall?.title || genre || fiche.nom, entree: brut, titre: p.toolCall?.title || null, description: texteDe(p.toolCall?.content || []) || null, toujours: Boolean(option('allow_always')) });
+        emettre({ t: 'permission', id, outil: String(p.toolCall?.title || genre || fiche.nom).replace(/^AskUserQuestion$/, 'AskUserQuestion (outil)'), entree: brut, titre: p.toolCall?.title || null, description: texteDe(p.toolCall?.content || []) || null, toujours: Boolean(option('allow_always')) });
       });
     },
     surNotification(methode, p) {
@@ -190,6 +192,7 @@ export function ouvrirAcp(fiche, { compte, dossier, modele, mode, consigne, conn
     },
     fermer() {
       ferme = true;
+      outilsDw?.oublier?.(); // son jeton ne vaut plus rien
       l.fermer();
     },
   };

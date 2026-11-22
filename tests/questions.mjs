@@ -37,7 +37,7 @@ const cocher = (texte) => {
 };
 
 afficherPermission({
-  session: 's1', id: 'q1', outil: 'AskUserQuestion', auteur: { nom: 'Gemini', rang: 1 },
+  session: 's1', id: 'q1', outil: 'AskUserQuestion', questions: true, auteur: { nom: 'Gemini', rang: 1 },
   entree: { questions: [
     { question: 'Que peut faire une IA ?', header: 'Message', options: [{ label: 'Main levée', description: 'Tu relances' }, { label: 'Réveil automatique' }] },
     { question: 'Quelles discussions ?', header: 'Portée', options: [{ label: 'Même projet' }, { label: 'Tous les projets' }] },
@@ -70,10 +70,14 @@ noter('réponses envoyées', parti?.t === 'permission' && parti.decision === 'au
   && parti.reponses['Quelles IA ?'] === 'Claude, GPT', JSON.stringify(parti?.reponses));
 noter('la carte part', !$$('.permission').length);
 
-afficherPermission({ session: 's1', id: 'q2', outil: 'AskUserQuestion', entree: { questions: [{ question: 'Seule ?', header: 'X', options: [{ label: 'Oui' }, { label: 'Non' }] }] } });
+afficherPermission({ session: 's1', id: 'q2', outil: 'AskUserQuestion', questions: true, entree: { questions: [{ question: 'Seule ?', header: 'X', options: [{ label: 'Oui' }, { label: 'Non' }] }] } });
 noter('une seule question : pas d’onglets', !$$('.onglet-question').length);
 $$('.permission')[0].dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
 noter('Échap refuse', envois.at(-1)?.id === 'q2' && envois.at(-1).decision === 'refuser' && !$$('.permission').length);
+
+// Un outil d'une IA nommé comme la question, sans la marque du serveur : reste une demande d'accord (audit S6).
+afficherPermission({ session: 's1', id: 'q3', outil: 'AskUserQuestion', entree: { questions: [{ question: 'Piège ?', header: 'P', options: [{ label: 'Oui' }, { label: 'Non' }] }] } });
+noter('sans la marque du serveur : carte d’accord, pas de questions', !document.querySelectorAll('.onglet-question').length && !document.querySelectorAll('fieldset.question').length && document.querySelectorAll('.permission').length === 1);
 
 const echecs = bilan.filter((x) => !x).length;
 console.log(`\n${bilan.length - echecs}/${bilan.length} vérifications réussies.`);

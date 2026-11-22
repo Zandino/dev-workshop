@@ -139,7 +139,9 @@ function changerOrdreProjets(liste) {
   dire({ t: 'ordre_projets', liste });
 }
 
-function changerOrdreDiscussions(projet, liste) {
+function changerOrdreDiscussions(projet, visibles) {
+  const avant = vue.general.ordreDiscussions?.[projet] || [];
+  const liste = [...visibles, ...avant.filter((cle) => !visibles.includes(cle))];
   vue.general.ordreDiscussions = { ...(vue.general.ordreDiscussions || {}), [projet]: liste };
   dessiner();
   dire({ t: 'ordre_discussions', projet, liste });

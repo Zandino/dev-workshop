@@ -11,7 +11,8 @@ import { ecrireSession, oublierSession, listerInterrompues } from './sauvegarde-
 import { alerteDe, changeLaBarre, signaler } from './veille.mjs';
 import { verifierPlace, surveillerMemoire, enMo, tuerLesPlusGros, aLibererPour } from './memoire.mjs';
 import { libererDictee } from './dictee.mjs';
-import { brancherDiscussions, suivreEvenement, oublierJetons } from './entre-discussions.mjs';
+import { brancherDiscussions, suivreEvenement, fermetureDe, oublierDemandes, remettreTours } from './entre-discussions.mjs';
+import { oublierJetons } from './outils-discussions.mjs';
 
 const MAX_JOURNAL = 4000;
 const MAX_SESSIONS = 8;
@@ -145,6 +146,9 @@ async function ouvrirNouvelle({ compte, participants, dossier, modele, mode, rep
     suivreEvenement(s, e); // messages entre discussions (entre-discussions.mjs)
     if (e.t === 'etat') Object.assign(s.etat, { ...e, t: undefined });
     if (e.t === 'pret') Object.assign(s.etat, { sessionId: e.sessionId || s.etat.sessionId, mode: e.mode });
+    // Le Claude du serveur : sa propre session devient l'origine de la discussion, une clé qui ne bouge plus (ordre
+    // choisi dans la barre, copie interrompue, rangement).
+    if (e.t === 'pret' && !s.origine && s.compte === 'defaut' && e.sessionId) s.origine = e.sessionId;
     if (e.t === 'permission') s.attente.add(e.id);
     if (e.t === 'permission_fin') s.attente.delete(e.id);
     if (e.t === 'utilisateur' && !s.titre && !e.de) s.titre = e.texte.slice(0, 80);
@@ -261,8 +265,8 @@ export function changerEquipe(id, equipe, { ailleurs = null, note = null } = {})
   const ancien = s.pilote;
   const ouvrir = () => {
     if (salon) return ouvrirSalon({ session: s.id, participants: equipe.participants, dossier, mode, echanges: equipe.echanges, histoire }, emettre);
-    if (equipe.orchestre) return ouvrirOrchestre({ session: s.id, compte: c, dossier, mode, effort, histoire, reprise: memeClaude ? sessionId : undefined }, emettre);
-    return piloteAvecRelais({ s, compte: c, dossier, mode, effort, consigneReprise: histoire }, emettre);
+    if (equipe.orchestre) return ouvrirOrchestre({ session: s.id, compte: c, dossier, modele: equipe.modele, mode, effort, histoire, reprise: memeClaude ? sessionId : undefined }, emettre);
+    return piloteAvecRelais({ s, compte: c, dossier, modele: equipe.modele, mode, effort, consigneReprise: histoire }, emettre);
   };
   let pilote;
   if (memeClaude) {
@@ -285,7 +289,7 @@ export function changerEquipe(id, equipe, { ailleurs = null, note = null } = {})
 
   s.pilote = pilote;
   s.dossier = dossier;
-  Object.assign(s.etat, { sessionId: memeClaude ? sessionId : null, modele: 'default' });
+  Object.assign(s.etat, { sessionId: memeClaude ? sessionId : null, modele: equipe.modele || 'default' });
   if (salon) {
     Object.assign(s, {
       compte: null, orchestre: false, avecOutils: true, echanges: equipe.echanges,
@@ -295,7 +299,11 @@ export function changerEquipe(id, equipe, { ailleurs = null, note = null } = {})
   } else {
     Object.assign(s, { compte: c.id, orchestre: Boolean(equipe.orchestre), avecOutils: c.type !== 'api', participants: null, participantsComplets: null, echanges: null });
   }
-  s.attente.clear(); // les demandes d'accord de l'ancienne équipe ne valent plus
+  // Les demandes d'accord et questions de l'ancienne équipe ne valent plus : elles quittent l'écran.
+  for (const idDemande of [...s.attente]) s.emettre({ t: 'permission_fin', id: idDemande });
+  s.attente.clear();
+  oublierDemandes(s.id);
+  remettreTours(s);
   s.emettre(note || { t: 'info', code: s.orchestre ? 'equipe_orchestre' : 'equipe', qui: s.participants ? s.participants.join(', ') : nomDe(s.compte) });
   enPlace = true;
   for (const e of enAttente.splice(0)) emettre(e);
@@ -323,6 +331,7 @@ export function fermerSession(id, { oublier = true } = {}) {
   s.pilote.fermer();
   s.etat.ferme = true;
   sessions.delete(id);
+  fermetureDe(s); // les discussions qui attendaient sa réponse sont prévenues
   oublierJetons(id);
   if (oublier) oublierSession(id);
   signaler();

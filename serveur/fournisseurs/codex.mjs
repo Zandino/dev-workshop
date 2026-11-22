@@ -8,11 +8,12 @@ import { lier, binaire } from './jsonrpc.mjs';
 import { consigneComplete } from './regles.mjs';
 import { versCodexToml } from '../connecteurs.mjs';
 import { decisionAuto } from '../regles-accord.mjs';
-import { NOM_SERVEUR } from '../entre-discussions.mjs';
+import { NOM_SERVEUR, NOMS_OUTILS } from '../outils-discussions.mjs';
 
 // Le jeton des outils « entre discussions » passe par l'environnement du processus, propre à chaque session :
 // config.toml, lui, est partagé par toutes les sessions du compte et ne contient que l'adresse.
-const VARIABLE_JETON = 'DEVWORKSHOP_MCP_JETON';
+// « TOKEN » dans le nom : Codex retire d'office ces variables de l'environnement des commandes qu'il lance.
+const VARIABLE_JETON = 'DEVWORKSHOP_MCP_TOKEN';
 const env = (compte, jeton) => ({ ...process.env, CODEX_HOME: compte.dossier, ...(jeton ? { [VARIABLE_JETON]: jeton } : {}) });
 const DEBUT = '# >>> dev-workshop : connecteurs partagés (bloc géré par Dev Workshop, réécrit à chaque session)';
 const FIN = '# <<< dev-workshop';
@@ -216,6 +217,7 @@ export function ouvrir({ compte, dossier, modele, mode, consigne, connecteurs, o
     },
     fermer() {
       ferme = true;
+      outilsDw?.oublier?.(); // son jeton ne vaut plus rien
       l.fermer();
     },
   };

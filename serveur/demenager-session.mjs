@@ -13,7 +13,9 @@ import { deplacerSession } from './deplacer-session.mjs';
 import { dossierDeClaude } from './sessions-claude.mjs';
 import { piloteAvecRelais } from './relais.mjs';
 import { ouvrirOrchestre } from './orchestre.mjs';
-import { compte } from './comptes.mjs';
+import { compte, listerComptes } from './comptes.mjs';
+
+const existe = (id) => listerComptes().some((v) => v.id === id);
 import { preparerParticipants } from './salon.mjs';
 import { signaler } from './veille.mjs';
 import { RACINE_PROJETS } from './securite.mjs';
@@ -69,9 +71,13 @@ async function natif(s, c, sessionId, vers, note) {
 
 async function avecHistorique(s, c, vers, note) {
   const de = s.dossier;
-  const equipe = s.participants
-    ? { participants: preparerParticipants(s.participantsComplets), echanges: s.echanges }
-    : s.orchestre ? { orchestre: c } : { compte: c };
+  const modele = s.etat.modele && s.etat.modele !== 'default' ? s.etat.modele : undefined;
+  // Un compte supprimé depuis quitte l'équipe ; s'il ne reste qu'une IA, elle continue seule.
+  const restants = (s.participantsComplets || []).filter((p) => existe(p.compte));
+  const equipe = restants.length > 1
+    ? { participants: preparerParticipants(restants), echanges: s.echanges }
+    : s.participants ? { compte: compte(restants[0]?.compte || 'defaut') }
+      : s.orchestre ? { orchestre: c, modele } : { compte: c, modele };
   changerEquipe(s.id, equipe, { ailleurs: vers, note }); // en cas d'échec, l'équipe en place continue, intacte
   // Puis la discussion Claude Code dont celle-ci est partie la suit (sinon l'ancien projet en garderait la copie).
   // Au mieux : si elle ne peut pas suivre, la discussion est rangée quand même.

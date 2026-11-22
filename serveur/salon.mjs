@@ -5,7 +5,7 @@
 import { fournisseurDe } from './fournisseurs/index.mjs';
 import { consigneDeProjet } from './projets.mjs';
 import { connecteursPour } from './connecteurs.mjs';
-import { outilsPour } from './entre-discussions.mjs';
+import { outilsPour } from './outils-discussions.mjs';
 import { compte, listerComptes } from './comptes.mjs';
 import { assezPour, REGLE_MEMOIRE } from './memoire.mjs';
 

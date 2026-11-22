@@ -6,7 +6,8 @@ import { etatDuCompte, fournisseurDe } from './fournisseurs/index.mjs';
 import { estLimite } from './fournisseurs/claude-normaliser.mjs';
 import { consigneDeProjet } from './projets.mjs';
 import { connecteursPour } from './connecteurs.mjs';
-import { outilsPour } from './entre-discussions.mjs';
+import { outilsPour } from './outils-discussions.mjs';
+import { ligneDeMessage } from './entre-discussions.mjs';
 
 const ORDRE = { claude: 0, codex: 1, copilot: 1, gemini: 2, qwen: 3, api: 4 };
 const MAX_HISTOIRE = 20_000;
@@ -28,7 +29,7 @@ export async function choisirRelais(essayes) {
 function histoire(journal) {
   const lignes = [];
   for (const e of journal) {
-    if (e.t === 'utilisateur') lignes.push(e.de ? `[Message de la discussion « ${e.de.titre} » (${e.de.qui})]\n${e.texte}` : `[Utilisateur]\n${e.texte}`);
+    if (e.t === 'utilisateur') lignes.push(e.de ? ligneDeMessage(e) : `[Utilisateur]\n${e.texte}`);
     else if (e.t === 'assistant' && !e.sousAgent) {
       const texte = (e.blocs || []).filter((b) => b.type === 'texte').map((b) => b.texte).join('\n');
       const outils = (e.blocs || []).filter((b) => b.type === 'outil').map((b) => b.nom);

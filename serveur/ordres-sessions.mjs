@@ -72,8 +72,8 @@ export function ordresSessions(envoyer, general, corbeille, attacher) {
       if (!titre) throw new Error('titre_invalide');
       if (m.session) {
         const s = renommerSession(String(m.session), titre);
-        const id = s.origine || s.etat.sessionId;
-        if (id) await renameSession(id, titre, { dir: s.dossier }).catch(() => {}); // pas une discussion Claude Code
+        const id = s.origine || (s.compte === 'defaut' ? s.etat.sessionId : null);
+        if (/^[0-9a-f-]{36}$/.test(id || '')) await renameSession(id, titre, { dir: s.dossier }).catch(() => {}); // pas une discussion Claude Code
         general();
         return;
       }

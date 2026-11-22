@@ -2,7 +2,7 @@
 import { randomUUID } from 'node:crypto';
 import { optionsDeCompte } from './claude-compte.mjs';
 import { versClaude } from '../connecteurs.mjs';
-import { NOM_SERVEUR } from '../entre-discussions.mjs';
+import { NOM_SERVEUR, NOMS_OUTILS } from '../outils-discussions.mjs';
 import { marquerInterne, estInterne } from '../sessions-internes.mjs';
 import { decisionAuto, interditsClaude, MOTIF_REFUS } from '../regles-accord.mjs';
 import { query, listSessions, getSessionMessages } from '@anthropic-ai/claude-agent-sdk';
@@ -61,7 +61,7 @@ export function ouvrir({ dossier, modele, mode, reprise, compte, consigne, conne
 
   const canUseTool = (outil, saisie, o) =>
     new Promise((resoudre) => {
-      if (outilsDw && outil.startsWith(`mcp__${NOM_SERVEUR}__`)) return resoudre({ behavior: 'allow', updatedInput: saisie });
+      if (outilsDw && NOMS_OUTILS.some((n) => outil === `mcp__${NOM_SERVEUR}__${n}`)) return resoudre({ behavior: 'allow', updatedInput: saisie });
       // Règles d'accord du projet : ce qui est permis passe sans demande, ce qui est interdit est refusé.
       const auto = decisionAuto(dossier, outil, saisie);
       if (auto === 'autoriser') return resoudre({ behavior: 'allow', updatedInput: saisie });
@@ -79,6 +79,7 @@ export function ouvrir({ dossier, modele, mode, reprise, compte, consigne, conne
         t: 'permission',
         id,
         outil,
+        ...(outil === 'AskUserQuestion' ? { questions: true } : {}), // fenêtre de questions (permissions.js)
         entree: saisie,
         titre: o.title || null,
         description: o.description || o.decisionReason || null,

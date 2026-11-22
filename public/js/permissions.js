@@ -98,7 +98,9 @@ function carteAccord(e) {
 
 export function afficherPermission(e) {
   if (ouvertes.has(e.id)) return;
-  const questions = e.outil === 'AskUserQuestion' && Array.isArray(e.entree?.questions);
+  // Le serveur marque les vraies questions (Claude, ou « poser_question ») : un autre outil d'une IA qui porterait ce
+  // nom resterait une demande d'accord, et « Répondre » n'autorise jamais rien par erreur (audit du 22/11/2026).
+  const questions = e.questions === true && Array.isArray(e.entree?.questions);
   const carte = questions ? carteQuestions(e) : carteAccord(e);
   ouvertes.set(e.id, carte);
   quai().append(carte);

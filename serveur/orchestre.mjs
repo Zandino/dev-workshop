@@ -10,7 +10,7 @@ import { listerComptes, compte as compteDe } from './comptes.mjs';
 import { assezPour, REGLE_MEMOIRE } from './memoire.mjs';
 import { consigneDeProjet } from './projets.mjs';
 import { connecteursPour } from './connecteurs.mjs';
-import { outilsPour } from './entre-discussions.mjs';
+import { outilsPour } from './outils-discussions.mjs';
 
 const MAX_EN_PARALLELE = 3;
 const MAX_RESULTAT = 40_000;
