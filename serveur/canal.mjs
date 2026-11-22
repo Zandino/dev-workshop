@@ -24,11 +24,36 @@ import { listerSkins } from './skins.mjs';
 const NOM_PROJET = /^[A-Za-z0-9][A-Za-z0-9._-]{0,60}$/;
 const MAX_TEXTE = 200_000;
 
+/**
+ * Le dépôt dont un dossier est une copie de travail git (worktree : son « .git » est un fichier « gitdir: … »), ou
+ * null. Les IA en créent une par branche à côté du projet ; ce ne sont pas des projets à part (vécu le 22/11/2026 :
+ * quatorze « intervizio-… » dans la liste).
+ */
+function depotDeLaCopie(nom) {
+  try {
+    const lien = readFileSync(path.join(RACINE_PROJETS, nom, '.git'), 'utf8');
+    const depot = /^gitdir:\s*(.+?)[\\/]\.git[\\/]worktrees[\\/]/m.exec(lien)?.[1];
+    return depot ? path.basename(depot) : null;
+  } catch {
+    return null; // pas de fichier .git (dossier, ou pas de git) : un projet ordinaire
+  }
+}
+
 function projets() {
   return readdirSync(RACINE_PROJETS, { withFileTypes: true })
-    .filter((d) => d.isDirectory() && !d.name.startsWith('.'))
+    .filter((d) => d.isDirectory() && !d.name.startsWith('.') && !depotDeLaCopie(d.name))
     .map((d) => d.name)
     .sort((a, b) => a.localeCompare(b));
+}
+
+/** Nombre de copies de travail git par projet (affiché au survol du projet). */
+function copiesDeTravail() {
+  const copies = {};
+  for (const d of readdirSync(RACINE_PROJETS, { withFileTypes: true })) {
+    const depot = d.isDirectory() ? depotDeLaCopie(d.name) : null;
+    if (depot) copies[depot] = (copies[depot] || 0) + 1;
+  }
+  return copies;
 }
 
 /** Version affichée dans le pied de page de l'écran. */
@@ -36,7 +61,7 @@ const VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.u
 
 function etatGeneral() {
   const ordre = lireOrdre(); // ordre choisi dans la barre (ordre.mjs)
-  return { t: 'general', version: VERSION, comptes: listerComptes(), projets: trier(projets(), ordre.projets), ordreDiscussions: ordre.discussions, skins: listerSkins(), vivantes: listerVivantes(), modes: MODES, corbeille: listerCorbeille().length + listerSessionsCorbeille().length, interrompues: interrompues() };
+  return { t: 'general', version: VERSION, comptes: listerComptes(), projets: trier(projets(), ordre.projets), copiesDeTravail: copiesDeTravail(), ordreDiscussions: ordre.discussions, skins: listerSkins(), vivantes: listerVivantes(), modes: MODES, corbeille: listerCorbeille().length + listerSessionsCorbeille().length, interrompues: interrompues() };
 }
 
 export function brancher(ws, jeton) {

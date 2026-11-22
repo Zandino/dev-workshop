@@ -9,8 +9,8 @@ import { differer, fleches, rendreOrdonnable, figer, liberer } from './ordre-bar
 import { rendreRenommable } from './renommer.js';
 
 ajouterTextes({
-  fr: { etat_main: 'Elle a besoin de toi : un accord t’attend', etat_occupe: 'L’IA travaille', etat_libre: 'Prête, elle attend ton message', etat_non_lu: 'Terminée, pas encore lue', etat_echec: 'Tour interrompu, pas encore lu', etat_attente: 'Interrompue par un redémarrage', glisser_aide: 'Glisse-la sur un autre projet pour l’y ranger', rangement_vers: 'Rangement dans « {projet} »…', ranger_titre_court: 'Ranger dans un autre projet', voir_toutes: 'Voir les {n} discussions du projet', interrompues: 'Discussions interrompues', oublier_interrompue: 'Oublier cette discussion', confirmer_oublier: 'Oublier la discussion interrompue « {titre} » ? Elle ne pourra plus être reprise d’ici.' },
-  en: { etat_main: 'It needs you: an approval is waiting', etat_occupe: 'The AI is working', etat_libre: 'Ready, waiting for your message', etat_non_lu: 'Finished, not read yet', etat_echec: 'Turn interrupted, not read yet', etat_attente: 'Interrupted by a restart', glisser_aide: 'Drag it onto another project to move it there', rangement_vers: 'Moving to “{projet}”…', ranger_titre_court: 'Move to another project', voir_toutes: 'See all {n} conversations of this project', interrompues: 'Interrupted conversations', oublier_interrompue: 'Forget this conversation', confirmer_oublier: 'Forget the interrupted conversation “{titre}”? It can no longer be resumed from here.' },
+  fr: { etat_main: 'Elle a besoin de toi : un accord t’attend', etat_occupe: 'L’IA travaille', etat_libre: 'Prête, elle attend ton message', etat_non_lu: 'Terminée, pas encore lue', etat_echec: 'Tour interrompu, pas encore lu', etat_attente: 'Interrompue par un redémarrage', glisser_aide: 'Glisse-la sur un autre projet pour l’y ranger', rangement_vers: 'Rangement dans « {projet} »…', ranger_titre_court: 'Ranger dans un autre projet', voir_toutes: 'Voir les {n} discussions du projet', copies_travail: '{n} copie(s) de travail git (worktrees), masquée(s) de la liste', interrompues: 'Discussions interrompues', oublier_interrompue: 'Oublier cette discussion', confirmer_oublier: 'Oublier la discussion interrompue « {titre} » ? Elle ne pourra plus être reprise d’ici.' },
+  en: { etat_main: 'It needs you: an approval is waiting', etat_occupe: 'The AI is working', etat_libre: 'Ready, waiting for your message', etat_non_lu: 'Finished, not read yet', etat_echec: 'Turn interrupted, not read yet', etat_attente: 'Interrupted by a restart', glisser_aide: 'Drag it onto another project to move it there', rangement_vers: 'Moving to “{projet}”…', ranger_titre_court: 'Move to another project', voir_toutes: 'See all {n} conversations of this project', copies_travail: '{n} git working cop(ies) (worktrees), hidden from the list', interrompues: 'Interrupted conversations', oublier_interrompue: 'Forget this conversation', confirmer_oublier: 'Forget the interrupted conversation “{titre}”? It can no longer be resumed from here.' },
 });
 
 let actions = {};
@@ -178,7 +178,7 @@ function dessiner() {
       const actif = p === vue.projet;
       const deplie = actif && !replie;
       const ligne = h('button.ligne.dossier' + (actif ? '.actif' : ''), {
-        type: 'button', title: p, 'aria-expanded': String(deplie),
+        type: 'button', title: g.copiesDeTravail?.[p] ? `${p} · ${t('copies_travail', { n: g.copiesDeTravail[p] })}` : p, 'aria-expanded': String(deplie),
         onclick: () => {
           if (!actif) {
             replie = false;
