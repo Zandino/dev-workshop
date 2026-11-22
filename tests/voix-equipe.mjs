@@ -11,6 +11,8 @@ for (const nom of ['document', 'location', 'history', 'localStorage', 'Node', 'E
   Object.defineProperty(globalThis, nom, { value: window[nom], configurable: true });
 }
 globalThis.window = window;
+// Textes attendus en français, quelle que soit la langue de la machine (GitHub tourne en anglais).
+window.localStorage.setItem('devworkshop.langue', 'fr');
 globalThis.atob = (s) => Buffer.from(s, 'base64').toString('binary');
 const envois = [];
 let auMessage = null;
