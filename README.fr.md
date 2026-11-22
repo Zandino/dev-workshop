@@ -154,13 +154,17 @@ Chaque IA qui a des outils (Claude, Codex, Gemini, Copilot) reçoit quatre outil
 
 À l'écran, un message venu d'une autre discussion est à gauche, signé de son origine (« ↪ De « titre » · projet ·
 IA ») ; l'IA qui le reçoit sait qu'il vient d'une IA collègue, pas de toi. Garde-fou : au plus 6 messages entre
-discussions par demande de ta part ; au-delà, l'échange s'arrête, le message ne part pas et une alerte ✋ te prévient.
-⚠ Une discussion réglée sur « tout autoriser » exécute sans demander ce qu'une autre lui demande, quel que soit le
-projet d'où vient la demande. Les messages en attente ne survivent pas à un redémarrage du serveur.
+discussions par demande de ta part ; au-delà, l'échange s'arrête, le message ne part pas et une alerte te prévient.
+Une discussion réglée sur « tout autoriser » ou en automatique, qui agit sans demander, ne traite un message venu
+d'ailleurs qu'après ton accord (✋ « Message de … : le traiter ? ») ; refusé, l'envoyeuse en est prévenue. Le texte
+d'un message est cité dans les historiques : il ne peut pas s'y faire passer pour toi. Une discussion fermée prévient
+celles qui attendaient sa réponse. Les messages en attente ne survivent pas à un redémarrage du serveur.
 
 Claude reçoit ces outils dans le serveur même ; les autres IA par l'adresse locale `/mcp` (127.0.0.1 seulement), avec
-un jeton propre à chaque IA lancée, oublié à la fermeture de la discussion (pour Codex, il passe par l'environnement
-de son processus, jamais par `config.toml`). Qwen Code ne sait pas joindre cette adresse : il s'en passe.
+un jeton propre à chaque IA lancée, oublié quand elle s'arrête (pour Codex, il passe par l'environnement de son
+processus, sous un nom que Codex retire des commandes qu'il lance, jamais par `config.toml`). Seuls ces outils-là
+passent sans demande d'accord ; le nom de leur serveur est tiré au hasard à chaque démarrage, pour qu'un dépôt ne
+puisse pas s'en faire passer. Qwen Code ne sait pas joindre cette adresse : il s'en passe.
 
 ## Sécurité
 

@@ -40,7 +40,8 @@ Free software, built by the Deltinfo Studio team and published under the Apache 
   conversations of all projects, read them and send them a message. A free conversation handles it on its own (a
   busy one as soon as it is free), and its answer comes back to the sender as a new message; nothing waits, so two
   conversations writing to each other never block. Messages are signed with the conversation they come from. At most
-  6 messages per request of yours: beyond that the exchange stops, the message is not sent, and an alert tells you. The AIs other than Claude
+  6 messages per request of yours: beyond that the exchange stops, the message is not sent, and an alert tells you. A
+  conversation set to allow everything (or automatic) handles a message from elsewhere only after your approval. The AIs other than Claude
   can also ask you questions in the same tabbed question window as Claude. See README.fr.md, "Entre discussions".
 - **Dictation** (🎤): click to talk, click to stop; the text lands in the message box for you to review. Engine:
   Whisper on your server (open source, free, the voice stays on the server; installed on demand, ~750 MB plus the
