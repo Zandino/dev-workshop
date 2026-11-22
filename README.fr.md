@@ -265,8 +265,8 @@ l'agrandir ; elle partage la colonne de l'aperçu : ouvrir l'un ferme l'autre).
   (commande puis sortie), la dernière capture de son navigateur (connecteur « navigateur »).
 - **Leurs voix** : chacun parle avec sa voix, accordée à son genre et à son débit, un seul à la fois ; des ondes sur
   sa tuile montrent qui parle. Voix naturelles (Piper, libre, sur ce serveur : rien ne part ailleurs), à installer une
-  fois depuis l'en-tête de l'équipe : environ 480 Mo dans le dossier des réglages (environnement Python, Piper sous
-  GPL-3 téléchargé depuis PyPI, cinq voix françaises ou quatre anglaises depuis Hugging Face), 0,6 s pour une phrase,
+  fois depuis l'en-tête de l'équipe : environ 360 Mo dans le dossier des réglages (environnement Python, Piper sous
+  GPL-3 téléchargé depuis PyPI, trois voix françaises ou quatre anglaises depuis Hugging Face), 0,6 s pour une phrase,
   ~240 Mo le temps de la dire (rien n'est dit quand la mémoire est juste). Sans elles, les voix du système, réparties
   de la même façon.
 

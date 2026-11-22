@@ -86,6 +86,8 @@ function jouer(x) {
     for (let i = 0; i < pcm.length; i += 1) canal[i] = pcm[i] / 32768;
     const source = contexteAudio.createBufferSource();
     source.buffer = tampon;
+    // Peu de voix d'homme en français : une hauteur à peine différente (±4 %) distingue deux membres sur la même voix.
+    source.playbackRate.value = 0.96 + (hachage(`${x.m.cle}|hauteur`) % 9) / 100;
     source.connect(contexteAudio.destination);
     source.onended = fini;
     rappel(x.m.cle);

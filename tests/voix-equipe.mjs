@@ -25,7 +25,7 @@ const lectures = [];
 globalThis.AudioContext = class {
   get destination() { return {}; }
   createBuffer(_, n, taux) { return { n, taux, getChannelData: () => new Float32Array(n) }; }
-  createBufferSource() { const s = { connect() {}, start() { lectures.push(s); }, stop() {} }; return s; }
+  createBufferSource() { const s = { playbackRate: { value: 1 }, connect() {}, start() { lectures.push(s); }, stop() {} }; return s; }
 };
 const phrasesSysteme = [];
 window.speechSynthesis = { getVoices: () => [{ name: 'Microsoft Hortense', lang: 'fr-FR' }, { name: 'Microsoft Paul', lang: 'fr-FR' }], speak: (u) => { phrasesSysteme.push(u); u.onstart?.(); }, cancel() {} };
@@ -44,7 +44,7 @@ const noter = (nom, ok, detail = '') => {
 
 definirEtatVoix({ installee: true, installation: null, voix: [
   { cle: 'siwis', langue: 'fr', genre: 'f' }, { cle: 'jessica', langue: 'fr', genre: 'f' },
-  { cle: 'pierre', langue: 'fr', genre: 'm' }, { cle: 'tom', langue: 'fr', genre: 'm' }, { cle: 'gilles', langue: 'fr', genre: 'm' },
+  { cle: 'pierre', langue: 'fr', genre: 'm' },
 ] });
 choisirMoteur('naturelle');
 const parlent = [];
@@ -54,7 +54,7 @@ const hugo = { cle: 'sous:t1', feminin: false };
 parlerMembre(lea, 'Bonjour, je suis Léa.', quiParle);
 parlerMembre(hugo, 'Et moi Hugo.', quiParle);
 const [d1, d2] = envois.filter((e) => e.t === 'voix_dire');
-noter('voix accordée au genre (Léa : voix de femme, Hugo : voix d’homme)', ['siwis', 'jessica'].includes(d1?.voix) && ['pierre', 'tom', 'gilles'].includes(d2?.voix), `${d1?.voix} / ${d2?.voix}`);
+noter('voix accordée au genre (Léa : voix de femme, Hugo : voix d’homme)', ['siwis', 'jessica'].includes(d1?.voix) && d2?.voix === 'pierre', `${d1?.voix} / ${d2?.voix}`);
 noter('débit propre à chacun (0,92 à 1,08)', d1.vitesse >= 0.92 && d1.vitesse <= 1.08 && d2.vitesse >= 0.92 && d2.vitesse <= 1.08);
 const pcm = Buffer.alloc(200).toString('base64');
 recevoir({ t: 'voix_audio', id: d2.id, taux: 22050, pcm }); // la voix de Hugo arrive avant celle de Léa

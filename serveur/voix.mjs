@@ -26,9 +26,8 @@ export const VOIX = [
   { cle: 'siwis', modele: 'fr_FR-siwis-medium', chemin: 'fr/fr_FR/siwis/medium', langue: 'fr', genre: 'f' },
   { cle: 'jessica', modele: 'fr_FR-upmc-medium', chemin: 'fr/fr_FR/upmc/medium', locuteur: 0, langue: 'fr', genre: 'f' },
   { cle: 'pierre', modele: 'fr_FR-upmc-medium', chemin: 'fr/fr_FR/upmc/medium', locuteur: 1, langue: 'fr', genre: 'm' },
-  // « tom » parle deux fois plus lentement que les autres (relevé le 22/11/2026 : 8,2 s contre 4 s) : débit corrigé.
-  { cle: 'tom', modele: 'fr_FR-tom-medium', chemin: 'fr/fr_FR/tom/medium', langue: 'fr', genre: 'm', debit: 0.6 },
-  { cle: 'gilles', modele: 'fr_FR-gilles-low', chemin: 'fr/fr_FR/gilles/low', langue: 'fr', genre: 'm' },
+  // Écartées le 22/11/2026 à l'écoute : « tom » (très grave, 82 Hz, et deux fois plus lent) et « gilles » (modèle
+  // « low » en 16 kHz, nasillard). Les voix d'homme se distinguent par une légère variation de hauteur (voix-equipe.js).
   { cle: 'amy', modele: 'en_US-amy-medium', chemin: 'en/en_US/amy/medium', langue: 'en', genre: 'f' },
   { cle: 'kristin', modele: 'en_US-kristin-medium', chemin: 'en/en_US/kristin/medium', langue: 'en', genre: 'f' },
   { cle: 'ryan', modele: 'en_US-ryan-medium', chemin: 'en/en_US/ryan/medium', langue: 'en', genre: 'm' },

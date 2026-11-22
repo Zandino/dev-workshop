@@ -37,16 +37,18 @@ noter('avant l’installation : voix absente', (await attendre((m) => m.t === 'v
 
 const debut = Date.now();
 dire({ t: 'voix_installer', langue: 'fr' });
-const pret = await attendre((m) => m.t === 'voix_etat' && m.installee && m.voix.length >= 5 && !m.installation, 15 * 60_000);
-noter('installation depuis zéro : Piper et 5 voix françaises', pret, `${Math.round((Date.now() - debut) / 1000)} s · ${pret?.voix.map((v) => v.cle).join(', ')}`);
+const pret = await attendre((m) => m.t === 'voix_etat' && m.installee && m.voix.length >= 3 && !m.installation, 15 * 60_000);
+noter('installation depuis zéro : Piper et 3 voix françaises', pret, `${Math.round((Date.now() - debut) / 1000)} s · ${pret?.voix.map((v) => v.cle).join(', ')}`);
 
-for (const cle of ['siwis', 'jessica', 'pierre', 'tom', 'gilles']) {
+for (const cle of ['siwis', 'jessica', 'pierre']) {
   const t0 = Date.now();
   dire({ t: 'voix_dire', id: cle, texte: 'Bonjour, je travaille sur le point trente-huit, les tests passent.', voix: cle, vitesse: 1 });
   const r = await attendre((m) => m.t === 'voix_audio' && m.id === cle, 60_000);
   const secondes = r?.pcm ? Buffer.from(r.pcm, 'base64').length / 2 / r.taux : 0;
   noter(`voix « ${cle} » : de la parole`, secondes > 1.5 && secondes < 15, `${secondes.toFixed(1)} s d’audio en ${Date.now() - t0} ms, ${r?.taux} Hz${r?.erreur ? ' · ' + r.erreur : ''}`);
 }
+dire({ t: 'voix_dire', id: 'tom', texte: 'x', voix: 'tom' });
+noter('voix écartée (tom) : plus proposée', (await attendre((m) => m.t === 'voix_audio' && m.id === 'tom', 10_000))?.erreur === 'voix_absente');
 dire({ t: 'voix_dire', id: 'inconnue', texte: 'x', voix: 'zorglub' });
 noter('voix inconnue : refusée', (await attendre((m) => m.t === 'voix_audio' && m.id === 'inconnue', 10_000))?.erreur === 'voix_absente');
 
