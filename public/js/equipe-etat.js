@@ -132,8 +132,14 @@ export function creerEquipe({ session = '', principal = null, personnalises = {}
       const sous = membre(`sous:${b.id}`, { ia: { nom: `sous-agent de ${m.prenom}`, compte: m.ia.compte }, parent: m.cle, fonction: fonctionDuType(e.subagent_type), ordre: e.description || e.prompt || '' });
       sous.action = String(e.description || '').slice(0, 60);
       signe(sous, 'travaille');
-      m.attendQui.add(sous.cle);
       appels.set(b.id, { cle: m.cle, genre: 'tache', sous: sous.cle });
+      // En arrière-plan, le chef continue sans l'attendre ; la suite du sous-agent arrive par « tache ».
+      if (e.run_in_background === true) {
+        sous.enFond = true;
+        signe(m, 'travaille');
+        return;
+      }
+      m.attendQui.add(sous.cle);
       signe(m, 'attend');
       return;
     }
@@ -167,6 +173,45 @@ export function creerEquipe({ session = '', principal = null, personnalises = {}
       }
     }
     if (!appels.has(b.id)) appels.set(b.id, { cle: m.cle, genre: 'autre' });
+  }
+
+  /**
+   * Suivi d'un sous-agent de Claude par le SDK (serveur : tacheVersEvenement) : début (en arrière-plan ou non), progrès
+   * (dernier outil, résumé, jetons), fin (terminé, en échec, arrêté) avec son compte rendu. Rend le membre à sa fin.
+   */
+  function surTache(e) {
+    let sous = membres.get(`sous:${e.id}`);
+    if (!sous && e.etape === 'debut') {
+      // L'appel de l'outil n'a pas été vu (écran ouvert après) : le sous-agent arrive quand même, rattaché à l'IA seule.
+      const chef = membre('principal');
+      sous = membre(`sous:${e.id}`, { ia: { nom: `sous-agent de ${chef.prenom}`, compte: chef.ia.compte }, parent: chef.cle, fonction: fonctionDuType(e.type), ordre: e.description || '' });
+      sous.action = String(e.description || '').slice(0, 60);
+    }
+    if (!sous) return null;
+    if (e.etape === 'debut') {
+      if (e.enFond) sous.enFond = true;
+      if (!sous.finiLe) signe(sous, 'travaille');
+      return null;
+    }
+    if (e.etape === 'progres') {
+      if (e.resume) sous.action = e.resume;
+      else if (e.outil) sous.action = actionDe(e.outil, {});
+      if (typeof e.jetons === 'number') sous.jetons = Math.max(sous.jetons, e.jetons);
+      signe(sous, 'travaille');
+      return null;
+    }
+    if (e.etape === 'fin') {
+      sous.etat = e.statut === 'failed' ? 'erreur' : 'fini';
+      if (e.resume) sous.parole = e.resume;
+      if (typeof e.jetons === 'number') sous.jetons = Math.max(sous.jetons, e.jetons);
+      sous.finiLe = equipe.maintenant();
+      sous.dernierSigne = equipe.maintenant();
+      sous.sequence = ++sequence;
+      const chef = membres.get(sous.parent);
+      chef?.attendQui.delete(sous.cle);
+      return sous.enFond ? sous : null; // en arrière-plan, sa fin se dit (rien ne l'a annoncée ailleurs)
+    }
+    return null;
   }
 
   /** Un événement de la discussion. Rend le membre concerné (pour la voix), ou null. */
@@ -219,8 +264,15 @@ export function creerEquipe({ session = '', principal = null, personnalises = {}
       m.sequence = ++sequence;
       if (e.erreur) m.echecs += 1;
       if (a.genre === 'tache') {
-        // Le sous-agent a rendu son compte rendu : il a fini, son chef ne l'attend plus.
         const sous = membres.get(a.sous);
+        // Lancé en arrière-plan : l'outil rend aussitôt « lancé », le sous-agent travaille encore (fin par « tache »).
+        if (sous && !e.erreur && (sous.enFond || /^Async agent launched/i.test(String(e.contenu || '')))) {
+          sous.enFond = true;
+          m.attendQui.delete(a.sous);
+          if (!m.attendQui.size && m.etat === 'attend') m.etat = 'travaille';
+          return null;
+        }
+        // Le sous-agent a rendu son compte rendu : il a fini, son chef ne l'attend plus.
         if (sous) {
           sous.etat = e.erreur ? 'erreur' : 'fini';
           sous.parole = String(e.contenu || '').slice(0, 2000);
@@ -240,6 +292,7 @@ export function creerEquipe({ session = '', principal = null, personnalises = {}
       }
       return null;
     }
+    if (e.t === 'tache') return surTache(e);
     if (e.t === 'permission') {
       const m = auteurDe(e);
       m.besoin = true;
@@ -271,6 +324,7 @@ export function creerEquipe({ session = '', principal = null, personnalises = {}
     }
     if (e.t === 'etat' && e.occupe === false && !e.auteur) {
       for (const m of membres.values()) {
+        if (m.enFond && !m.finiLe) continue; // un sous-agent en arrière-plan survit à la fin du tour de son chef
         if (m.parent && m.etat !== 'fini' && m.etat !== 'erreur') { m.etat = 'fini'; m.finiLe = equipe.maintenant(); }
         else if (!m.parent && !['erreur', 'besoin'].includes(m.etat)) m.etat = 'pret';
         m.attendQui.clear();

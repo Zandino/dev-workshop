@@ -280,7 +280,8 @@ principale, se ferme avec elle, et ⇱ l'y remet. Dans le logiciel de bureau, la
 - **Son état** : réfléchit, écrit, travaille (« Lance npm test »), attend (qui), a besoin de toi ✋, sans nouvelles
   depuis 3 min, a fini, en échec ; des badges pour une commande de plus d'une minute, les échecs, et une même action
   répétée trois fois (« tourne en rond ? »). Un sous-agent arrive avec sa mission, en retrait sous celui qui l'a
-  lancé, et repart 2 min après son compte rendu.
+  lancé, et repart 2 min après son compte rendu. Lancé en arrière-plan, il reste au travail après la fin du tour de
+  son chef (dernier outil, résumé d'étape, jetons, suivis par le SDK de Claude), et sa fin s'affiche dans le fil.
 - **Au premier plan** : celui qui a besoin de toi, sinon celui qui vient d'agir (un clic sur une tuile la garde au
   premier plan), avec sa bulle et son écran partagé : le fichier qu'il modifie (lignes changées), son terminal
   (commande puis sortie), la dernière capture de son navigateur (connecteur « navigateur »).

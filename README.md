@@ -56,7 +56,7 @@ Free software, built by the Deltinfo Studio team and published under the Apache 
   sub-agent (Claude's own, and the orchestra's) has a drawn character at its desk, a first name, a style and a role
   (from its sub-agent type, the orchestra's role, or what it mostly does; both editable), and its state: thinking,
   working ("Runs npm test"), waiting for whom, needs you, no news for 3 minutes, done, failed; badges for long
-  commands, failures and going in circles. The one who needs you, else the one who just acted, comes to the front
+  commands, failures and going in circles. Sub-agents launched in the background stay visible while they work. The one who needs you, else the one who just acted, comes to the front
   with its shared screen (edited file, terminal, browser screenshot). A voice reads what they say, one at a time.
   Voice setting: say everything, essentials only (spoken announcements for every open conversation, even with the
   team closed: "… needs you on <project>", "work finished on <project>", "work stopped on <project>"), or muted;

@@ -163,8 +163,9 @@ export function surEvenementEquipe(e, rejeu = false) {
   if (m && !rejeu) {
     if (e.t === 'assistant') parler(m, m.parole);
     else if (e.t === 'permission') parler(m, t('dit_accord', { nom: m.prenom }));
+    else if (e.t === 'tache') parler(m, m.parole); // sous-agent en arrière-plan qui rend son compte rendu
   }
-  if (['delta', 'assistant', 'resultat_outil', 'permission', 'permission_fin', 'tour', 'etat', 'delegation', 'contexte'].includes(e.t)) redessiner();
+  if (['delta', 'assistant', 'resultat_outil', 'permission', 'permission_fin', 'tour', 'etat', 'delegation', 'contexte', 'tache'].includes(e.t)) redessiner();
 }
 
 // --- Écran partagé ---

@@ -14,6 +14,7 @@ import {
   resultatVersEvenement,
   limiteVersEvenement,
   historiqueVersEvenements,
+  tacheVersEvenement,
 } from './claude-normaliser.mjs';
 
 /**
@@ -58,6 +59,7 @@ export function ouvrir({ dossier, modele, mode, reprise, compte, consigne, conne
   let fenetre = null;
   let ferme = false;
   let dejaUnResultat = false; // voir « anterieur » à la fin d'un tour
+  const taches = new Map(); // sous-agents en cours (tacheVersEvenement)
 
   const canUseTool = (outil, saisie, o) =>
     new Promise((resoudre) => {
@@ -154,6 +156,9 @@ export function ouvrir({ dossier, modele, mode, reprise, compte, consigne, conne
       if (m.status === 'compacting') emettre({ t: 'info', code: 'compactage' });
     } else if (m.type === 'system' && m.subtype === 'compact_boundary') {
       emettre({ t: 'info', code: 'compacte' });
+    } else if (m.type === 'system' && m.subtype?.startsWith('task_')) {
+      const e = tacheVersEvenement(m, taches);
+      if (e) emettre(e);
     } else if (m.type === 'assistant') {
       const e = assistantVersEvenement(m);
       emettre(e);

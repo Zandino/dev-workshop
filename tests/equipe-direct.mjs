@@ -93,6 +93,32 @@ const gpt = eq.membres.get('auteur:GPT');
 noter('prénom et fonction choisis à la main', gpt.prenom === 'Sacha' && eq.fonctionDe(gpt) === 'Testeuse en chef');
 noter('prénoms tous différents', new Set([...eq.membres.values()].map((x) => x.prenom)).size === eq.membres.size);
 
+// Sous-agent lancé en arrière-plan : l'outil rend aussitôt « lancé », la suite arrive par « tache » (vu le 22/11/2026 :
+// il était marqué fini dès son lancement).
+{
+  const eq = neuve();
+  eq.recevoir(outil('bg1', 'Agent', { subagent_type: 'general-purpose', description: 'Relecture des commits', prompt: 'Relis…', run_in_background: true }));
+  const sous = eq.membres.get('sous:bg1');
+  const chef = eq.membres.get('principal');
+  noter('arrière-plan : le sous-agent arrive, le chef continue sans l’attendre', sous && eq.vue(sous).etat === 'travaille' && eq.vue(chef).etat !== 'attend', eq.vue(chef).etat);
+  eq.recevoir({ t: 'resultat_outil', id: 'bg1', contenu: 'Async agent launched successfully.\nagentId: a1' });
+  noter('« lancé » ne le termine pas', eq.vue(sous).etat === 'travaille' && !sous.finiLe);
+  eq.recevoir({ t: 'tache', etape: 'progres', id: 'bg1', outil: 'Grep', resume: null, jetons: 12000 });
+  noter('progrès : ce qu’il fait, ses jetons', sous.action.startsWith('Cherche') && sous.jetons === 12000, sous.action);
+  eq.recevoir({ t: 'tache', etape: 'progres', id: 'bg1', outil: 'Read', resume: 'Relit le 2e commit', jetons: 30000 });
+  noter('… son résumé d’étape quand il y en a un', sous.action === 'Relit le 2e commit' && sous.jetons === 30000);
+  eq.recevoir({ t: 'etat', occupe: false });
+  noter('la fin du tour du chef ne le termine pas', eq.vue(sous).etat === 'travaille');
+  const dit = eq.recevoir({ t: 'tache', etape: 'fin', id: 'bg1', enFond: true, statut: 'completed', resume: 'Trois commits relus, un bug trouvé.' });
+  noter('fin : terminé, avec son compte rendu (que sa voix lit)', eq.vue(sous).etat === 'fini' && sous.parole.includes('bug trouvé') && dit === sous);
+  eq.recevoir({ t: 'tache', etape: 'debut', id: 'bg2', enFond: true, description: 'Audit', type: 'Explore' });
+  eq.recevoir({ t: 'tache', etape: 'fin', id: 'bg2', enFond: true, statut: 'failed', resume: 'Dossier introuvable.' });
+  noter('appel jamais vu (écran ouvert après) : il arrive quand même ; échec montré', eq.membres.get('sous:bg2') && eq.vue(eq.membres.get('sous:bg2')).etat === 'erreur');
+  eq.recevoir(outil('fg1', 'Agent', { subagent_type: 'Explore', description: 'Au premier plan' }));
+  eq.recevoir({ t: 'tache', etape: 'debut', id: 'fg1', enFond: false, description: 'Au premier plan' });
+  noter('au premier plan : le chef l’attend toujours', eq.vue(chef).etat === 'attend');
+}
+
 // --- Vue (appel plein écran) ---
 const image = () => new Promise((r) => window.requestAnimationFrame(() => r()));
 const $$ = (s) => [...document.querySelectorAll(s)];

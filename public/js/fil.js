@@ -9,8 +9,10 @@ ajouterTextes({
   fr: {
     message_de_discussion: '↪ De « {titre} » · {projet} · {qui}', reponse_de_discussion: '↩ Réponse de « {titre} » · {projet} · {qui}',
     info_echange_limite: 'Échanges avec les autres discussions arrêtés ({n} messages pour cette demande) : le message pour « {vers} » n’est pas parti. Relance toi-même si tu veux continuer.',
+    tache_finie: '🤖 Sous-agent « {description} » : terminé (il travaillait en arrière-plan)', tache_echec: '🤖 Sous-agent « {description} » : en échec', tache_arretee: '🤖 Sous-agent « {description} » : arrêté',
   },
   en: {
+    tache_finie: '🤖 Sub-agent “{description}”: done (it was working in the background)', tache_echec: '🤖 Sub-agent “{description}”: failed', tache_arretee: '🤖 Sub-agent “{description}”: stopped',
     message_de_discussion: '↪ From “{titre}” · {projet} · {qui}', reponse_de_discussion: '↩ Reply from “{titre}” · {projet} · {qui}',
     info_echange_limite: 'Exchanges with other conversations stopped ({n} messages for this request): the message for “{vers}” was not sent. Start again yourself if you want to go on.',
   },
@@ -154,6 +156,12 @@ const TRAITEMENTS = {
     signe = false;
     ajouter(messageUtilisateur(e));
     if (e.memoireRedonnee) ajouter(h('div.fin-tour', {}, t('fil_memoire_redonnee')));
+  },
+  // Un sous-agent lancé en arrière-plan a fini (son outil n'avait rendu que « lancé »).
+  tache: (e) => {
+    if (e.etape !== 'fin' || !e.enFond) return;
+    const quoi = t(e.statut === 'failed' ? 'tache_echec' : e.statut === 'stopped' ? 'tache_arretee' : 'tache_finie', { description: e.description || '…' });
+    ajouter(h('div.fin-tour' + (e.statut === 'failed' ? '.echec' : ''), {}, quoi + (e.resume ? ` — ${e.resume.slice(0, 300)}` : '')));
   },
   // La mémoire de la discussion a changé (memoire-discussion.js).
   memoire: (e) => ajouter(h('div.fin-tour', {}, texteFilMemoire(e))),
