@@ -266,9 +266,9 @@ l'agrandir ; elle partage la colonne de l'aperçu : ouvrir l'un ferme l'autre).
 - **La voix** du système lit ce qu'ils disent, un à la fois (rien ne part vers un service extérieur).
 
 **Skins** (personnages en images) : un dossier par personnage dans le dossier des réglages du serveur,
-, avec une image par état : , , , , , ,
-,  (JPEG, PNG, WebP ou GIF ; une vidéo en boucle  ou  l'emporte sur l'image du même état), et
- facultatif (). Un skin n'est proposé que complet ; il va au premier
+`skins/<nom>/`, avec une image par état : `idle`, `working`, `thinking`, `waiting`, `needs-you`, `blocked`,
+`done`, `error` (JPEG, PNG, WebP ou GIF ; une vidéo en boucle `.mp4` ou `.webm` l'emporte sur l'image du même état), et
+`skin.json` facultatif (`{ "prenom": "Léa", "feminin": true }`). Un skin n'est proposé que complet ; il va au premier
 membre venu, qui prend son prénom ; les autres gardent les personnages dessinés. Les images restent sur le serveur (jamais
 dans le dépôt) et bougent selon l'état (respiration, travail, main levée, sursaut…). Ce sont tes créations, faites par
 exemple avec un générateur d'images : décris le même personnage dans les huit états, même cadrage 16:10, sans texte.
