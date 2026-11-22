@@ -7,7 +7,7 @@ import { dire, ecouter } from './canal.js';
 
 ajouterTextes({
   fr: {
-    memoire_bouton: 'Mémoire de la discussion', memoire_titre: 'Mémoire de cette discussion',
+    memoire_court: 'Mémoire', memoire_bouton: 'Mémoire de la discussion : tes instructions et ce que l’IA retient', memoire_titre: 'Mémoire de cette discussion',
     memoire_aide: 'Donnée à toutes les IA de cette discussion, et elle la suit : redémarrage, autre IA, autre projet. Une modification leur est transmise avec ton message suivant.',
     memoire_instructions: 'Tes instructions — l’IA les suit (elle peut proposer de les changer : tu acceptes ou non)',
     memoire_instructions_exemple: 'Ex. : Réponds en français. Ne touche pas au dossier « legacy ». Fais valider chaque migration avant de la lancer.',
@@ -24,7 +24,7 @@ ajouterTextes({
     fil_memoire_refusees: '🧠 Tu as refusé les nouvelles instructions proposées', fil_memoire_redonnee: '🧠 mémoire à jour transmise avec ce message',
   },
   en: {
-    memoire_bouton: 'Conversation memory', memoire_titre: 'This conversation’s memory',
+    memoire_court: 'Memory', memoire_bouton: 'Conversation memory: your instructions and what the AI remembers', memoire_titre: 'This conversation’s memory',
     memoire_aide: 'Given to every AI of this conversation, and it follows it: restart, other AI, other project. A change reaches them with your next message.',
     memoire_instructions: 'Your instructions — the AI follows them (it may suggest a change: you accept or not)',
     memoire_instructions_exemple: 'E.g.: Answer in English. Do not touch the “legacy” folder. Have every migration approved before running it.',

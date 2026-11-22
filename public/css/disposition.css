@@ -207,3 +207,6 @@ body.mode-libre #mode { color: var(--rouge); border-color: var(--rouge); backgro
   .scene { height: auto; min-height: 66vh; }
   .commande { grid-template-columns: 1fr; gap: 0; }
 }
+
+/* Mémoire de la discussion : un bouton nommé (une icône seule passait inaperçue, relevé le 22/11/2026). */
+.bouton-memoire { height: 34px; padding: 0 12px; border-radius: 9px; box-shadow: none; font-size: 13.5px; white-space: nowrap; flex-shrink: 0; }
