@@ -186,6 +186,16 @@ Adding another agent is described in [README.fr.md](README.fr.md), "Brancher une
 
 ## Tests
 
+Every check that needs no AI and no account (about 330: fake AIs in `tests/faux`, simulated browser, a server started
+in throwaway folders) runs in one go, in a bit over a minute; GitHub also runs it on every pull request
+(`.github/workflows/essais.yml`):
+
+```bash
+bash tests/tout.sh
+```
+
+The checks below need a running server.
+
 The tests talk to a running server and open real sessions, so run them on a small model and with
 `DEVWORKSHOP_CONFIG` pointing at a scratch folder, on both the server and the test:
 

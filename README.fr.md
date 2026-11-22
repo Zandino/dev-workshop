@@ -325,7 +325,15 @@ plus) ne vont qu'aux écrans qui regardent : elles ne sont pas gardées dans l'h
 
 ## Essais
 
-Le serveur doit tourner. Chaque essai fait un tour réel sur le petit modèle :
+Tous les essais qui se passent d'IA et de compte (environ 330 vérifications : fausses IA de `tests/faux`, navigateur
+simulé, serveur lancé dans des dossiers jetables) se lancent d'un coup, en un peu plus d'une minute ; GitHub les
+lance aussi à chaque demande de fusion (`.github/workflows/essais.yml`) :
+
+```bash
+bash tests/tout.sh
+```
+
+Les essais suivants demandent un serveur qui tourne. Chacun fait un tour réel sur le petit modèle :
 
 ```bash
 DEVWORKSHOP_PORT=5330 node tests/parcours.mjs <projet>
