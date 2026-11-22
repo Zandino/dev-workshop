@@ -110,6 +110,7 @@ export function ouvrirOrchestre({ session, compte, dossier, modele, mode, effort
         mode,
         consigne: [consigneDeProjet(dossier), consigneSousAgent(role)].filter(Boolean).join('\n\n'),
         connecteurs: connecteursPour(c),
+        interne: true, // sa session Claude Code n'est pas une discussion à part (sessions-internes.mjs)
       }, recevoir);
       sousAgents.add(pilote);
       pilote.envoyer(String(tache));

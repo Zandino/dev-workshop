@@ -93,11 +93,17 @@ function reprendreDiscussion(d, projet = ecran.projet) {
   if (ouverte) return ouverte.id !== ecran.session && dire({ t: 'attacher', session: ouverte.id });
   // Une copie interrompue (redémarrage) en est partie : on la reprend, avec tout ce qui s'y est fait depuis,
   // au lieu d'en créer une nouvelle à partir de la seule version de Claude Code (liste triée, la plus récente d'abord).
+  // Une longue discussion met quelques secondes à s'ouvrir : un clic de plus entre-temps ne renvoie rien (le serveur,
+  // de son côté, ne la reprend qu'une fois).
+  if (ecran.enOuverture === d.id && Date.now() - ecran.enOuvertureDepuis < 30_000) return null;
+  ecran.enOuverture = d.id;
+  ecran.enOuvertureDepuis = Date.now();
   const copie = (ecran.general?.interrompues || []).find(issue);
   if (copie) return dire({ t: 'reprendre_interrompue', id: copie.id });
   if (projet !== ecran.projet) choisirProjet(projet);
   else quitterSession();
   ouvrir({ reprise: d.id, titre: d.titre, compte: 'defaut' });
+  return null;
 }
 
 /** « Retenir pour le projet » : la réponse de l'IA à la consigne, proposée à la relecture avant la fiche. */
@@ -130,6 +136,7 @@ function envoyer(texte) {
 }
 
 function surRejouer(m) {
+  ecran.enOuverture = null; // une discussion s'est ouverte : un nouveau clic compte de nouveau
   if (ecran.session && ecran.session !== m.session) dire({ t: 'detacher', session: ecran.session });
   // Rejoindre une discussion d'un autre projet : la liste de la barre suit ce projet.
   if (m.resume.projet !== ecran.projet) {
@@ -234,6 +241,7 @@ ecouter((m) => {
   else if (m.t === 'connexion') surConnexion(m);
   else if (m.t === 'refus') {
     ecran.enAttente = null;
+    ecran.enOuverture = null;
     const texte = aTexte('refus_' + m.code) ? t('refus_' + m.code) : t('refus', { code: m.code });
     // Un panneau ouvert cache le fil : la notification, elle, se voit toujours.
     if (m.session) noteFil(texte, true);

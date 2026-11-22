@@ -165,6 +165,7 @@ export function ouvrirSalon({ session, participants, dossier, mode, echanges, hi
       consigne: [consigneDeProjet(dossier), consigne(m, membres), histoire, reprise ? '' : dejaDit(m)].filter(Boolean).join('\n\n'),
       connecteurs: connecteursPour(m.p.compte),
       outilsDw: outilsPour(m.p.compte, { session, auteur: m.auteur }),
+      interne: true, // sa session Claude Code n'est pas une discussion à part (sessions-internes.mjs)
     }, recevoirPour(m, g));
   }
 

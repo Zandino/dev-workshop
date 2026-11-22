@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { optionsDeCompte } from './claude-compte.mjs';
 import { versClaude } from '../connecteurs.mjs';
 import { NOM_SERVEUR } from '../entre-discussions.mjs';
+import { marquerInterne, estInterne } from '../sessions-internes.mjs';
 import { decisionAuto, interditsClaude, MOTIF_REFUS } from '../regles-accord.mjs';
 import { query, listSessions, getSessionMessages } from '@anthropic-ai/claude-agent-sdk';
 import { discussionsNonListees } from '../sessions-claude.mjs';
@@ -50,7 +51,8 @@ function fileEntree() {
   };
 }
 
-export function ouvrir({ dossier, modele, mode, reprise, compte, consigne, connecteurs, serveursMcp, outilsPermis, effort, outilsDw }, emettre) {
+/** `interne` : session ouverte pour une discussion à plusieurs ou un sous-agent, à ne pas lister (sessions-internes.mjs). */
+export function ouvrir({ dossier, modele, mode, reprise, compte, consigne, connecteurs, serveursMcp, outilsPermis, effort, outilsDw, interne }, emettre) {
   const entree = fileEntree();
   const permissions = new Map();
   let fenetre = null;
@@ -144,6 +146,7 @@ export function ouvrir({ dossier, modele, mode, reprise, compte, consigne, conne
       return;
     }
     if (m.type === 'system' && m.subtype === 'init') {
+      if (interne) marquerInterne(m.session_id);
       emettre({ t: 'pret', sessionId: m.session_id, modele: m.model, mode: m.permissionMode, dossier: m.cwd });
     } else if (m.type === 'system' && m.subtype === 'status') {
       if (m.permissionMode) emettre({ t: 'etat', mode: m.permissionMode });
@@ -234,14 +237,15 @@ export function ouvrir({ dossier, modele, mode, reprise, compte, consigne, conne
 export async function historique(dossier) {
   const liste = await listSessions({ dir: dossier, limit: 1000, includeWorktrees: false });
   // Une session archivée est à la corbeille : elle n'apparaît plus parmi les discussions.
-  const vues = liste.filter((s) => !s.archived).map((s) => ({
+  // Une session interne (Claude d'une discussion à plusieurs, sous-agent) n'est pas une discussion à part.
+  const vues = liste.filter((s) => !s.archived && !estInterne(s.sessionId)).map((s) => ({
     id: s.sessionId,
     titre: (s.customTitle || s.summary || s.firstPrompt || '').slice(0, 120),
     modifieLe: s.lastModified,
   }));
   // Celles que le SDK ne liste pas (reprises après un résumé automatique), trouvées dans son dossier.
   const ecartees = new Set([...liste.map((s) => s.sessionId), ...listerSessionsCorbeille().map((s) => s.id)]);
-  const oubliees = await discussionsNonListees(dossier, ecartees).catch(() => []);
+  const oubliees = (await discussionsNonListees(dossier, ecartees).catch(() => [])).filter((s) => !estInterne(s.id));
   return [...vues, ...oubliees].sort((a, b) => b.modifieLe - a.modifieLe);
 }
 

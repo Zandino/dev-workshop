@@ -3,7 +3,7 @@
 .direct { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; padding: 18px max(20px, calc((100% - 1000px) / 2)); }
 .barre-direct { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .barre-direct select { max-width: 240px; }
-.en-direct { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--rouge); padding: 3px 10px; border-radius: 99px; background: var(--rouge-doux); }
+span.en-direct { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--rouge); padding: 3px 10px; border-radius: 99px; background: var(--rouge-doux); }
 
 .ecran-partage { border-radius: 16px; background: var(--code-fond); color: var(--code-texte); border: 1px solid var(--trait); box-shadow: var(--ombre-haute); overflow: hidden; min-height: 220px; display: flex; flex-direction: column; }
 .ecran-partage header { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); font-size: 13px; }

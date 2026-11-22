@@ -87,11 +87,32 @@ export function listerVivantes() {
   return [...sessions.values()].filter((s) => !s.etat.ferme).map(resume);
 }
 
+// Reprises en cours d'ouverture, par session Claude Code reprise (voir ouvrirSession).
+const reprisesEnCours = new Map();
+
 /**
  * Ouvre une session : un seul compte, ou un salon quand `participants` en nomme plusieurs
  * ([{ compte, modele, nom, externe }], comptes déjà résolus par l'appelant).
+ * Une discussion Claude Code ne se reprend qu'une fois : déjà ouverte (ou en train de l'être), c'est celle-là qui
+ * est rendue. Vécu le 22/11/2026 : une longue discussion met quelques secondes à s'ouvrir, chaque clic de plus en
+ * faisait une copie (quatre d'un coup), et deux copies écriraient dans la même session.
  */
-export async function ouvrirSession({ compte, participants, dossier, modele, mode, reprise, titre, echanges, orchestre, effort, journalInitial, consigneReprise, equipeChangee, origine }) {
+export async function ouvrirSession(options) {
+  const { reprise } = options;
+  if (!reprise) return ouvrirNouvelle(options);
+  const deja = [...sessions.values()].find((x) => !x.etat.ferme && (x.etat.sessionId === reprise || x.origine === reprise));
+  if (deja) return deja;
+  if (reprisesEnCours.has(reprise)) return reprisesEnCours.get(reprise);
+  const ouverture = ouvrirNouvelle(options);
+  reprisesEnCours.set(reprise, ouverture);
+  try {
+    return await ouverture;
+  } finally {
+    reprisesEnCours.delete(reprise);
+  }
+}
+
+async function ouvrirNouvelle({ compte, participants, dossier, modele, mode, reprise, titre, echanges, orchestre, effort, journalInitial, consigneReprise, equipeChangee, origine }) {
   if (listerVivantes().length >= MAX_SESSIONS) throw new Error('trop_de_sessions');
   const salon = Array.isArray(participants) && participants.length > 1;
   const pilotes = listerVivantes().reduce((n, x) => n + (x.participants?.length || 1), 0);
