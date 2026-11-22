@@ -18,6 +18,7 @@ import { definirEtatVoix } from './voix-equipe.js';
 import { pastilleLogo } from './logos.js';
 import { brancherAjouts } from './ajouts.js';
 import { initAlertes } from './alertes.js';
+import { initAnnonces } from './annonces.js';
 
 ajouterTextes({
   fr: {
@@ -334,6 +335,7 @@ function demarrer() {
   initDiscussions({ reprendre: (d) => reprendreDiscussion(d, d.projet) });
   initEquipe();
   initAlertes({ ecran, libelle: libelleCompte, rejoindre: (id) => id !== ecran.session && dire({ t: 'attacher', session: id }) });
+  initAnnonces({ session: () => ecran.session });
   razJauge();
   majEntete();
   if (jetonInitial()) connecter();

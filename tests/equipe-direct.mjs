@@ -7,6 +7,8 @@ import { JSDOM } from 'jsdom';
 
 const dom = new JSDOM('<!doctype html><button id="ouvrir-direct"></button><aside id="equipe" hidden></aside>', { url: 'http://127.0.0.1/', pretendToBeVisual: true });
 const { window } = dom;
+// Node charge son MessageEvent (pour BroadcastChannel) à la demande, sur l'Event global : avant qu'il soit celui de jsdom.
+void globalThis.MessageEvent;
 for (const nom of ['document', 'location', 'history', 'localStorage', 'Node', 'Element', 'HTMLElement', 'DocumentFragment', 'NodeFilter', 'DOMParser', 'CustomEvent', 'Event', 'KeyboardEvent']) {
   Object.defineProperty(globalThis, nom, { value: window[nom], configurable: true });
 }
@@ -94,14 +96,25 @@ noter('prénoms tous différents', new Set([...eq.membres.values()].map((x) => x
 // --- Vue (appel plein écran) ---
 const image = () => new Promise((r) => window.requestAnimationFrame(() => r()));
 const $$ = (s) => [...document.querySelectorAll(s)];
+// La fenêtre détachée, vue d'ici : une autre page sur la même liaison (BroadcastChannel).
+const autrePage = new BroadcastChannel('devworkshop-equipe');
+const recusAutre = [];
+autrePage.onmessage = (e) => recusAutre.push(e.data);
+const attendreLiaison = () => new Promise((r) => setTimeout(r, 30));
 initEquipe();
 montrerEquipe(true);
+const zoneEq = () => document.getElementById('equipe');
+const bouton = (titre) => [...document.querySelectorAll('.boutons-appel button')].find((b) => b.title === titre);
 nouvelleEquipe({ nom: 'Claude', compte: { id: 'defaut', type: 'claude' } }, 'sess-vue');
+await attendreLiaison();
+noter('la fenêtre détachée apprend quelle discussion suivre', recusAutre.some((m) => m.t === 'session' && m.session === 'sess-vue' && m.signature?.nom === 'Claude'));
 surEvenementEquipe({ t: 'contexte', pourcent: 11.4, le: Date.now() - 34_000 });
 surEvenementEquipe({ ...outil('v0', 'Read', { file_path: '/p/a.ts' }), usage: { entree: 12000, sortie: 3400 } });
 surEvenementEquipe(outil('v2', 'Task', { subagent_type: 'Plan', description: 'Plan de la migration' }));
 surEvenementEquipe(outil('v1', 'Bash', { command: 'npm run profile -- login' }, { sousAgent: true, parent: 'v2' }));
 await image();
+noter('par défaut, à droite du fil : panneau avec sa poignée', zoneEq().classList.contains('panneau') && document.body.classList.contains('avec-equipe') && !document.body.classList.contains('equipe-grande') && $$('.poignee-equipe').length === 1);
+noter('voix : tout dire / l’essentiel / muet', $$('select.mode-voix option').map((o) => o.value).join(',') === 'tout,essentiel,non');
 noter('en-tête : jetons, contexte, au travail, durée', $$('.compteur.jetons')[0]?.textContent.includes('15k') && $$('.compteur.ctx')[0]?.textContent === 'ctx 11%' && $$('.compteur.travail').length === 1 && /00:3\d/.test($$('.compteur.membres')[0]?.textContent || ''), $$('.compteurs')[0]?.textContent);
 noter('liste des agents (2), triée par urgence', $$('.carte-agent').length === 2 && document.querySelector('.liste-agents h3').textContent.includes('2'));
 noter('partage d’écran : la fenêtre du terminal, « … partage son écran »', $$('.fenetre-partagee').length === 1 && $$('.puce-partage')[0]?.textContent.includes('partage son écran') && $$('.fenetre-partagee .terminal-equipe')[0]?.textContent.includes('npm run profile'));
@@ -111,9 +124,12 @@ noter('le sous-agent dit de qui il dépend', $$('.carte-agent .fonction').some((
 surEvenementEquipe({ t: 'permission', id: 'p9', outil: 'Bash', entree: { command: 'rm -rf build' } });
 await image();
 noter('quelqu’un a besoin de toi : la tuile « Toi » s’allume et propose de répondre', $$('.tuile-appel.toi.attendu').length === 1 && $$('.repondre-toi').length === 1);
+bouton('Agrandir').click();
+await image();
+noter('« Agrandir » : par-dessus la conversation, avec la liste des agents', zoneEq().classList.contains('grand') && document.body.classList.contains('equipe-grande') && bouton('Remettre à droite du fil'));
 $$('.repondre-toi')[0].click();
-noter('« Répondre » ramène à la conversation', document.getElementById('equipe').hidden);
-document.getElementById('ouvrir-direct').click();
+await image();
+noter('« Répondre » remet la conversation à côté (l’équipe reste à droite)', !zoneEq().hidden && zoneEq().classList.contains('panneau') && !document.body.classList.contains('equipe-grande'));
 surEvenementEquipe({ t: 'permission_fin', id: 'p9' });
 await image();
 const prenom = $$('.carte-agent .editable')[0];
@@ -127,10 +143,46 @@ noter('prénom changé à la main, gardé pour cette discussion', $$('.carte-age
 [...document.querySelectorAll('.vues-appel button')].find((b) => b.textContent === 'Arbre').click();
 await image();
 noter('vue Arbre : le chef puis son sous-agent en retrait, avec sa mission', $$('.ligne-arbre').length === 2 && $$('.ligne-arbre')[1].style.getPropertyValue('--niveau') === '1' && $$('.mission-arbre').length === 1);
+bouton('Agrandir').click();
 document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-noter('Échap ramène à la conversation', document.getElementById('equipe').hidden && !document.body.classList.contains('avec-equipe'));
+noter('Échap (en grand) la remet à droite du fil', !zoneEq().hidden && zoneEq().classList.contains('panneau') && !document.body.classList.contains('equipe-grande'));
+document.dispatchEvent(new window.CustomEvent('colonne-droite', { detail: 'apercu' }));
+noter('l’aperçu prend la colonne de droite : l’équipe s’efface', zoneEq().hidden && !document.body.classList.contains('avec-equipe'));
 document.getElementById('ouvrir-direct').click();
-noter('le bouton la rouvre', !document.getElementById('equipe').hidden);
+noter('le bouton la rouvre, à droite du fil', !zoneEq().hidden && zoneEq().classList.contains('panneau'));
+document.getElementById('ouvrir-direct').click();
+noter('… et la ferme', zoneEq().hidden);
+document.getElementById('ouvrir-direct').click();
+
+// Détacher : sans fenêtre possible (logiciel de bureau ancien), on le dit et rien ne change ; sinon l'équipe passe
+// dans sa fenêtre et quitte celle-ci.
+await image();
+window.open = () => null;
+bouton('Détacher dans une fenêtre').click();
+noter('fenêtre impossible : message, l’équipe reste à droite', /mis à jour/.test(document.getElementById('notifications')?.textContent || '') && !zoneEq().hidden);
+const ouvertures = [];
+window.open = (...a) => { ouvertures.push(a); return {}; };
+await image();
+bouton('Détacher dans une fenêtre').click();
+noter('détachée : equipe.html dans sa fenêtre, plus rien ici', ouvertures[0]?.[0] === '/equipe.html' && zoneEq().hidden && document.body.classList.contains('equipe-detachee') && window.localStorage.getItem('devworkshop.equipe') === 'detache');
+recusAutre.length = 0;
+autrePage.postMessage({ t: 'qui' });
+await attendreLiaison();
+noter('la fenêtre détachée demande quoi suivre : réponse', recusAutre.some((m) => m.t === 'session' && m.session === 'sess-vue'));
+document.getElementById('ouvrir-direct').click();
+await attendreLiaison();
+noter('le bouton montre la fenêtre détachée (au lieu de rouvrir ici)', recusAutre.some((m) => m.t === 'montrer') && zoneEq().hidden);
+autrePage.postMessage({ t: 'rattacher' });
+await attendreLiaison();
+noter('« Remettre dans la fenêtre principale » : de nouveau à droite du fil', !zoneEq().hidden && zoneEq().classList.contains('panneau') && !document.body.classList.contains('equipe-detachee'));
+autrePage.postMessage({ t: 'presente' });
+await attendreLiaison();
+noter('une fenêtre détachée déjà ouverte (page rechargée) reprend la main', zoneEq().hidden && document.body.classList.contains('equipe-detachee'));
+autrePage.postMessage({ t: 'fermee' });
+await attendreLiaison();
+noter('fenêtre détachée fermée : plus rien de marqué', !document.body.classList.contains('equipe-detachee') && window.localStorage.getItem('devworkshop.equipe') === 'non');
+document.getElementById('ouvrir-direct').click();
+autrePage.close();
 
 // Skins : un personnage en images va au premier membre venu, qui prend son prénom ; l'image suit son état.
 const lea = { nom: 'lea', prenom: 'Léa', feminin: true, images: Object.fromEntries(['idle', 'working', 'thinking', 'waiting', 'needs-you', 'blocked', 'done', 'error'].map((e) => [e, `${e}.jpg`])) };

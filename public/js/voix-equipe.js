@@ -1,6 +1,7 @@
 // Voix de l'équipe en direct : chaque membre a sa voix (accordée à son genre, avec son propre débit), et un seul parle à
 // la fois. Deux moteurs : les voix naturelles du serveur (Piper, serveur/voix.mjs : l'audio revient en PCM et se joue
-// ici), et à défaut celles du système (synthèse du navigateur), réparties de la même façon.
+// ici), et à défaut celles du système (synthèse du navigateur), réparties de la même façon. Les annonces (annonces.js)
+// passent par la même file : jamais deux voix à la fois.
 import { dire, ecouter } from './canal.js';
 import { langue } from './i18n.js';
 
@@ -15,17 +16,44 @@ const FEMININS = /\b(hortense|julie|denise|eloise|vivienne|brigitte|celeste|cora
 
 let etatServeur = { installee: false, voix: [], installation: null };
 let moteur = lire('devworkshop.voix.moteur') || 'naturelle';
-const file = []; // { m, texte, id, audio?, pret }
+const file = []; // { m, texte, id, quiParle, audio?, pret }
 let enCours = null;
 let contexteAudio = null;
 let numero = 0;
-let rappel = () => {}; // (cle qui parle, ou null) -> l'écran met la tuile en avant
 
 function lire(cle) {
   try { return localStorage.getItem(cle); } catch { return null; }
 }
 function ecrire(cle, v) {
   try { localStorage.setItem(cle, v); } catch { /* stockage indisponible */ }
+}
+
+/**
+ * Ce que la voix dit : « tout » (l'équipe affichée parle, et les annonces des autres discussions), « essentiel »
+ * (seulement les annonces : quelqu'un a besoin de toi, un travail est terminé ou arrêté), « non » (muet). Réglage
+ * commun à la fenêtre principale et à la fenêtre détachée de l'équipe (même stockage).
+ */
+export const MODES_VOIX = ['tout', 'essentiel', 'non'];
+const ecouteursMode = new Set();
+export function modeVoix() {
+  const v = lire('devworkshop.voix');
+  if (v === 'oui' || !v) return 'tout'; // « oui » : l'ancien interrupteur
+  return MODES_VOIX.includes(v) ? v : 'tout';
+}
+export function choisirModeVoix(mode) {
+  if (!MODES_VOIX.includes(mode)) return;
+  ecrire('devworkshop.voix', mode);
+  if (mode === 'non') taire();
+  ecouteursMode.forEach((f) => f(mode));
+}
+export const surModeVoix = (f) => ecouteursMode.add(f);
+// Changé dans l'autre fenêtre (principale ou détachée) : celle-ci suit.
+if (typeof window !== 'undefined') {
+  window.addEventListener?.('storage', (e) => {
+    if (e.key !== 'devworkshop.voix') return;
+    if (modeVoix() === 'non') taire();
+    ecouteursMode.forEach((f) => f(modeVoix()));
+  });
 }
 
 export const etatVoix = () => etatServeur;
@@ -72,13 +100,15 @@ function suivant() {
 function fini() {
   const x = enCours;
   enCours = null;
-  if (x) rappel(null);
+  x?.quiParle(null);
   suivant();
 }
 
 function jouer(x) {
   try {
     contexteAudio ??= new AudioContext();
+    // Fenêtre restée sans clic depuis son ouverture : le navigateur a pu mettre le son en pause.
+    if (contexteAudio.state === 'suspended') contexteAudio.resume?.().catch?.(() => {});
     const brut = Uint8Array.from(atob(x.audio.pcm), (c) => c.charCodeAt(0));
     const pcm = new Int16Array(brut.buffer, 0, brut.length >> 1);
     const tampon = contexteAudio.createBuffer(1, pcm.length, x.audio.taux);
@@ -90,7 +120,7 @@ function jouer(x) {
     source.playbackRate.value = 0.96 + (hachage(`${x.m.cle}|hauteur`) % 9) / 100;
     source.connect(contexteAudio.destination);
     source.onended = fini;
-    rappel(x.m.cle);
+    x.quiParle(x.m.cle);
     source.start();
     x.source = source;
   } catch {
@@ -106,17 +136,19 @@ function parlerSysteme(x) {
   // Même voix pour deux membres : le timbre et le débit les distinguent.
   u.pitch = 0.85 + (hachage(`${x.m.cle}|timbre`) % 31) / 100;
   u.rate = vitesseDe(x.m);
-  u.onstart = () => rappel(x.m.cle);
+  u.onstart = () => x.quiParle(x.m.cle);
   u.onend = fini;
   u.onerror = fini;
   s.speak(u);
 }
 
-/** Met une phrase en file pour le membre `m`. `quiParle(cle|null)` : l'écran suit qui parle. */
-export function parlerMembre(m, texte, quiParle) {
-  rappel = quiParle;
-  if (!texte) return;
-  const x = { m, texte, id: `v${++numero}`, pret: false };
+/**
+ * Met une phrase en file pour le membre `m`. `quiParle(cle|null)` : l'écran suit qui parle (propre à chaque phrase :
+ * une annonce et l'équipe partagent la même file sans se voler ce rappel).
+ */
+export function parlerMembre(m, texte, quiParle = () => {}) {
+  if (!texte || modeVoix() === 'non') return;
+  const x = { m, texte, id: `v${++numero}`, quiParle, pret: false };
   file.push(x);
   if (moteurVoix() === 'naturelle') {
     dire({ t: 'voix_dire', id: x.id, texte, voix: voixNaturelle(m), vitesse: vitesseDe(m) });
@@ -132,8 +164,9 @@ export function taire() {
   file.length = 0;
   try { enCours?.source?.stop(); } catch { /* déjà fini */ }
   window.speechSynthesis?.cancel();
-  if (enCours) rappel(null);
+  const x = enCours;
   enCours = null;
+  x?.quiParle(null);
 }
 
 ecouter((msg) => {

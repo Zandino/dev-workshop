@@ -1,4 +1,4 @@
-// Essai des voix de l'équipe (voix-equipe.js) dans un navigateur simulé : voix naturelle accordée au genre et propre à
+// Essai des voix de l'équipe (voix-equipe.js) et des annonces (annonces.js) dans un navigateur simulé : voix naturelle accordée au genre et propre à
 // chacun, un seul membre parle à la fois (dans l'ordre), relais par la voix du système quand les voix naturelles
 // manquent (timbre propre à chacun). Canal, audio et synthèse du système sont factices.
 //   node tests/voix-equipe.mjs
@@ -76,6 +76,40 @@ choisirMoteur('systeme');
 const avant = envois.length;
 parlerMembre(hugo, 'Voix du système choisie.', quiParle);
 noter('moteur « système » choisi : rien ne part au serveur, voix d’homme', envois.length === avant && phrasesSysteme.at(-1)?.voice?.name === 'Microsoft Paul');
+
+// Réglage « Voix » : tout dire / l'essentiel / muet, et les annonces (annonces.js).
+const { modeVoix, choisirModeVoix } = await import('../public/js/voix-equipe.js');
+const { phraseAnnonce, aAnnoncer, initAnnonces } = await import('../public/js/annonces.js');
+window.localStorage.setItem('devworkshop.voix', 'oui');
+noter('ancien réglage « oui » : tout dire', modeVoix() === 'tout');
+window.localStorage.removeItem('devworkshop.voix');
+noter('par défaut : tout dire', modeVoix() === 'tout');
+const accord = { t: 'alerte', id: 'autre', genre: 'accord', projet: 'intervizio', auteur: 'GPT' };
+noter('phrases : besoin de toi, terminé, arrêté', phraseAnnonce(accord) === 'GPT a besoin de toi sur intervizio.'
+  && phraseAnnonce({ genre: 'fini', projet: 'intervizio' }) === 'Travail terminé sur intervizio.'
+  && phraseAnnonce({ genre: 'echec', projet: 'intervizio' }) === 'Le travail s’est arrêté sur intervizio.'
+  && phraseAnnonce({ genre: 'accord', projet: 'p' }, { ici: true, prenom: 'Léa' }) === 'Léa a besoin de toi sur p.');
+noter('pas d’annonce pour la mémoire ou les échanges', phraseAnnonce({ genre: 'memoire' }) === null && !aAnnoncer({ genre: 'echange' }, { mode: 'essentiel' }));
+noter('l’essentiel : annoncé même pour la discussion affichée', aAnnoncer(accord, { mode: 'essentiel', ici: true, equipeVisible: true }));
+noter('tout dire : l’équipe visible le dit déjà, pas de doublon ; les autres discussions, si', !aAnnoncer(accord, { mode: 'tout', ici: true, equipeVisible: true }) && aAnnoncer(accord, { mode: 'tout', ici: false, equipeVisible: true }));
+noter('muet : rien', !aAnnoncer(accord, { mode: 'non', ici: false }));
+choisirModeVoix('naturelle'); // valeur inconnue : ignorée
+noter('valeur inconnue ignorée', modeVoix() === 'tout');
+choisirMoteur('naturelle');
+initAnnonces({ session: () => 'affichee' });
+choisirModeVoix('essentiel');
+const avantAnnonce = envois.length;
+recevoir({ t: 'alerte', id: 'autre', genre: 'fini', projet: 'intervizio' });
+const annonce = envois.slice(avantAnnonce).find((e) => e.t === 'voix_dire');
+noter('l’essentiel : « Travail terminé sur intervizio » part à la voix', annonce?.texte === 'Travail terminé sur intervizio.', annonce?.texte);
+recevoir({ t: 'voix_audio', id: annonce?.id, taux: 22050, pcm });
+lectures.at(-1)?.onended?.();
+choisirModeVoix('non');
+const avantMuet = envois.length;
+const systemeAvantMuet = phrasesSysteme.length;
+recevoir({ t: 'alerte', id: 'autre', genre: 'accord', projet: 'intervizio' });
+parlerMembre(hugo, 'Je parle quand même ?', quiParle);
+noter('muet : ni annonce ni parole', envois.length === avantMuet && phrasesSysteme.length === systemeAvantMuet);
 
 const echecs = bilan.filter((x) => !x).length;
 console.log(`\n${bilan.length - echecs}/${bilan.length} vérifications réussies.`);

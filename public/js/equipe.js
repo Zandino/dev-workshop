@@ -1,24 +1,25 @@
-// Équipe en direct : la discussion comme un appel vidéo, en plein écran par-dessus la conversation. En haut, les
-// compteurs (jetons, contexte, au travail, en attente, terminés, durée) et les vues Appel / Arbre ; à gauche, les
-// agents par urgence ; au centre, une tuile par membre (son personnage à son bureau, dans son décor), le premier plan
-// pour celui qui a besoin de toi ou qui vient d'agir, avec sa bulle ; quand il travaille sur un fichier, un terminal ou
-// un navigateur, il « partage son écran » en grand et sa tuile passe en incrustation. Une voix (celle du système :
-// rien ne part ailleurs) lit ce qu'ils disent, un à la fois.
-// Modèle : equipe-etat.js ; personnages et décors : avatars.js.
-import { h } from './dom.js';
+// Équipe en direct : la discussion comme un appel vidéo. Trois façons de l'afficher : en panneau à droite du fil
+// (par défaut, largeur réglable à la poignée), en grand par-dessus la conversation, ou détachée dans sa propre
+// fenêtre (equipe.html + equipe-fenetre.js, à poser sur un autre écran). En haut, les compteurs (jetons, contexte, au
+// travail, en attente, terminés, durée) et les vues Appel / Arbre ; à gauche (en grand), les agents par urgence ; au
+// centre, une tuile par membre (son personnage à son bureau, dans son décor), le premier plan pour celui qui a besoin
+// de toi ou qui vient d'agir, avec sa bulle ; quand il travaille sur un fichier, un terminal ou un navigateur, il
+// « partage son écran » en grand et sa tuile passe en incrustation. Une voix lit ce qu'ils disent, un à la fois.
+// Modèle : equipe-etat.js ; personnages et décors : avatars.js ; voix : voix-equipe.js.
+import { h, notifier } from './dom.js';
 import { t, ajouterTextes, langue } from './i18n.js';
 import { pastilleLogo } from './logos.js';
 import { detailOutil } from './outils.js';
 import { scene, couleurDe } from './avatars.js';
 import { creerEquipe } from './equipe-etat.js';
-import { parlerMembre, taire, etatVoix, moteurVoix, choisirMoteur, installerVoix } from './voix-equipe.js';
+import { parlerMembre, taire, etatVoix, moteurVoix, choisirMoteur, installerVoix, modeVoix, choisirModeVoix, surModeVoix, MODES_VOIX } from './voix-equipe.js';
 
 ajouterTextes({
   fr: {
-    equipe: 'Équipe en direct', equipe_retour: 'Retour à la conversation', vue_appel: 'Appel', vue_arbre: 'Arbre',
+    equipe: 'Équipe en direct', vue_appel: 'Appel', vue_arbre: 'Arbre',
     equipe_vide: 'L’équipe apparaîtra ici dès que l’IA travaille : chacun avec son prénom, sa fonction, ce qu’il fait et son écran.',
     agents_n: 'Agents · {n}', jetons_n: '{n} jetons', au_travail_n: '{n} au travail', en_attente_n: '{n} en attente', termines_n: '{n} terminés',
-    voix_oui: 'Voix activée', voix_non: 'Voix coupée', voix_choix: 'Voix', parle: 'parle',
+    voix_choix: 'Voix', parle: 'parle',
     voix_naturelles: 'Voix naturelles', voix_installer: 'Voix naturelles : installer (~300 Mo)', voix_installation: 'Installation des voix… ({fait}/{total})', voix_systeme: 'Voix du système',
     eq_pret: 'à l’écoute', eq_reflechit: 'réfléchit…', eq_ecrit: 'écrit…', eq_travaille: 'travaille', eq_attend: 'attend {qui}',
     eq_besoin: 'a besoin de toi', eq_bloque: 'sans nouvelles depuis 3 min', eq_fini: 'terminé', eq_erreur: 'en échec',
@@ -27,12 +28,18 @@ ajouterTextes({
     toi: 'Toi', humain: 'Humain', toi_attendu: '{qui} t’attend', repondre_conversation: 'Répondre',
     rien_fichier: 'Aucun fichier modifié pour l’instant.', rien_terminal: 'Aucune commande pour l’instant.', rien_navigateur: 'Pas de navigateur pour l’instant.',
     capture_non_gardee: 'Capture non gardée (elle ne s’affiche qu’en direct).', en_cours: 'en cours…', dit_accord: '{nom} a besoin de toi.',
+    voix_mode_tout: '🔊 Tout dire', voix_mode_essentiel: '🔔 L’essentiel', voix_mode_non: '🔇 Muet',
+    voix_mode_aide: 'L’essentiel : seulement « … a besoin de toi » et « travail terminé », pour toutes les discussions',
+    equipe_agrandir: 'Agrandir', equipe_reduire: 'Remettre à droite du fil', equipe_detacher: 'Détacher dans une fenêtre',
+    equipe_rattacher: 'Remettre dans la fenêtre principale', equipe_fermer: 'Fermer l’équipe', equipe_largeur: 'Glisser pour changer la largeur (double-clic : largeur d’origine)',
+    detacher_impossible: 'La fenêtre détachée n’a pas pu s’ouvrir : le logiciel de bureau doit être mis à jour (ou le navigateur bloque les fenêtres). En attendant, « Agrandir » montre l’équipe en grand.',
+    fenetre_sans_jeton: 'Ouvre d’abord Dev Workshop dans la fenêtre principale, puis détache l’équipe depuis elle.',
   },
   en: {
-    equipe: 'Live team', equipe_retour: 'Back to the conversation', vue_appel: 'Call', vue_arbre: 'Tree',
+    equipe: 'Live team', vue_appel: 'Call', vue_arbre: 'Tree',
     equipe_vide: 'The team will show here as soon as the AI works: each one with a first name, a role, what it is doing and its screen.',
     agents_n: 'Agents · {n}', jetons_n: '{n} tokens', au_travail_n: '{n} working', en_attente_n: '{n} waiting', termines_n: '{n} done',
-    voix_oui: 'Voice on', voix_non: 'Voice off', voix_choix: 'Voice', parle: 'speaking',
+    voix_choix: 'Voice', parle: 'speaking',
     voix_naturelles: 'Natural voices', voix_installer: 'Natural voices: install (~300 MB)', voix_installation: 'Installing voices… ({fait}/{total})', voix_systeme: 'System voices',
     eq_pret: 'listening', eq_reflechit: 'thinking…', eq_ecrit: 'writing…', eq_travaille: 'working', eq_attend: 'waiting for {qui}',
     eq_besoin: 'needs you', eq_bloque: 'no news for 3 min', eq_fini: 'done', eq_erreur: 'failed',
@@ -41,6 +48,12 @@ ajouterTextes({
     toi: 'You', humain: 'Human', toi_attendu: '{qui} is waiting for you', repondre_conversation: 'Answer',
     rien_fichier: 'No file edited yet.', rien_terminal: 'No command yet.', rien_navigateur: 'No browser yet.',
     capture_non_gardee: 'Screenshot not kept (it only shows live).', en_cours: 'running…', dit_accord: '{nom} needs you.',
+    voix_mode_tout: '🔊 Say everything', voix_mode_essentiel: '🔔 Essentials', voix_mode_non: '🔇 Muted',
+    voix_mode_aide: 'Essentials: only “… needs you” and “work finished”, for every conversation',
+    equipe_agrandir: 'Enlarge', equipe_reduire: 'Back to the right of the thread', equipe_detacher: 'Detach into a window',
+    equipe_rattacher: 'Back into the main window', equipe_fermer: 'Close the team', equipe_largeur: 'Drag to change the width (double-click: original width)',
+    detacher_impossible: 'The detached window could not open: the desktop app needs an update (or the browser blocks windows). Meanwhile, “Enlarge” shows the team full size.',
+    fenetre_sans_jeton: 'Open Dev Workshop in the main window first, then detach the team from there.',
   },
 });
 
@@ -80,15 +93,22 @@ const media = (src) => (/\.(mp4|webm)$/i.test(src)
   : h('img.scene-img', { src, alt: '' }));
 const imageSkin = (skin, etat) => `/skins/${skin.nom}/${skin.images[IMAGE_ETAT[etat] || 'idle']}`;
 let sessionId = '';
+let signatureCourante = null;
 let personnalises = {};
-let ouvert = false;
+// 'ferme', 'panneau' (à droite du fil), 'grand' (par-dessus la conversation) ou 'fenetre' (la page détachée elle-même).
+let affichage = 'ferme';
+let ouvert = false; // cette page montre l'équipe
+let enFenetre = false; // cette page EST la fenêtre détachée
+let detachee = false; // (page principale) la fenêtre détachée est ouverte : c'est elle qui montre l'équipe et parle
 let vueCourante = 'appel';
 let prevu = false;
 let fige = false; // un prénom ou une fonction en cours de saisie
 let epingle = null; // clé du membre gardé au premier plan
 let parle = null; // clé du membre dont la voix est en cours
 const etatsVus = new Map(); // pour la fête (fini) et le sursaut (échec), une seule fois
-let voixActive = lire('devworkshop.voix') !== 'non';
+// Entre la page principale et la fenêtre détachée (même origine) : quelle discussion suivre, qui est ouvert.
+const liaison = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('devworkshop-equipe');
+const poster = (m) => { try { liaison?.postMessage(m); } catch { /* fenêtre fermée */ } };
 
 function lire(cle) {
   try { return localStorage.getItem(cle); } catch { return null; }
@@ -106,6 +126,8 @@ const duree = (ms) => {
 /** Une autre discussion s'affiche : l'équipe repart de zéro (prénoms et fonctions choisis à la main restent). */
 export function nouvelleEquipe(sig, session = '') {
   sessionId = session || '';
+  signatureCourante = sig || null;
+  if (!enFenetre) poster({ t: 'session', session: sessionId, signature: signatureCourante }); // la fenêtre détachée suit
   try { personnalises = JSON.parse(lire(`devworkshop.equipe.${sessionId}`) || '{}'); } catch { personnalises = {}; }
   equipe = creerEquipe({ session: sessionId, principal: sig ? { nom: sig.nom, compte: sig.compte } : null, personnalises, skins });
   // Les images des skins se chargent d'avance : changer d'état ne fait pas clignoter la tuile.
@@ -128,7 +150,7 @@ function pourLaVoix(texte) {
 
 /** Chaque membre parle avec sa voix, un à la fois (voix-equipe.js) ; sa tuile le montre pendant qu'il parle. */
 function parler(m, texte) {
-  if (!voixActive || !ouvert) return;
+  if (modeVoix() !== 'tout' || !ouvert) return; // « l'essentiel » : annonces.js s'en charge, pour toutes les discussions
   parlerMembre(m, pourLaVoix(texte), (cle) => {
     parle = cle;
     redessiner();
@@ -230,7 +252,7 @@ function tuile(m, { vedette = false, incrustee = false } = {}) {
     style: `--couleur-membre: ${couleurDe(m.style)}`,
     dataset: { cle: m.cle + (incrustee ? ':incrustee' : '') },
     onclick: () => {
-      if (equipe.vue(m).etat === 'besoin') return montrerEquipe(false); // il t'attend : retour à la conversation pour répondre
+      if (equipe.vue(m).etat === 'besoin') return allerRepondre(); // il t'attend : vers la conversation pour répondre
       epingle = epingle === m.cle ? null : m.cle;
       redessiner();
     },
@@ -251,10 +273,10 @@ function tuile(m, { vedette = false, incrustee = false } = {}) {
 
 function tuileToi() {
   const attendu = [...equipe.membres.values()].filter((m) => equipe.vue(m).etat === 'besoin').map((m) => m.prenom);
-  return h('article.tuile-appel.toi' + (attendu.length ? '.attendu' : ''), { onclick: () => attendu.length && montrerEquipe(false) },
+  return h('article.tuile-appel.toi' + (attendu.length ? '.attendu' : ''), { onclick: () => attendu.length && allerRepondre() },
     h('div.scene-toi', {}, h('span.icone-toi', {}, attendu.length ? '✋' : '🙂')),
     attendu.length ? h('span.puce-etat', {}, `✋ ${t('toi_attendu', { qui: attendu.join(', ') })}`) : null,
-    attendu.length ? h('button.principal.repondre-toi', { type: 'button', onclick: (e) => { e.stopPropagation(); montrerEquipe(false); } }, t('repondre_conversation')) : null,
+    attendu.length ? h('button.principal.repondre-toi', { type: 'button', onclick: (e) => { e.stopPropagation(); allerRepondre(); } }, t('repondre_conversation')) : null,
     h('footer.puces-bas', {}, h('span.puce-nom', {}, t('toi')), h('span.puce', {}, t('humain'))));
 }
 
@@ -334,14 +356,57 @@ function entete() {
       c.finis ? puce('finis', '✓ ' + t('termines_n', { n: c.finis })) : null,
       puce('membres', `👥 ${c.membres}  ${duree(c.duree)}`)),
     h('nav.vues-appel', {}, ['appel', 'arbre'].map((nom) => h('button' + (vueCourante === nom ? '.actif' : ''), { type: 'button', onclick: () => { vueCourante = nom; redessiner(); } }, t('vue_' + nom)))),
-    h('button.discret', { type: 'button', title: voixActive ? t('voix_oui') : t('voix_non'), onclick: () => {
-      voixActive = !voixActive;
-      ecrire('devworkshop.voix', voixActive ? 'oui' : 'non');
-      if (!voixActive) taire();
-      redessiner();
-    } }, voixActive ? '🔊' : '🔇'),
-    choixMoteur(),
-    h('button', { type: 'button', onclick: () => montrerEquipe(false) }, '← ' + t('equipe_retour')));
+    choixModeVoix(),
+    modeVoix() === 'non' ? null : choixMoteur(),
+    boutonsAffichage());
+}
+
+/** Ce que la voix dit : tout, l'essentiel (annonces seulement), ou rien. */
+function choixModeVoix() {
+  const mode = modeVoix();
+  return h('select.mode-voix', { title: t('voix_mode_aide'), onchange: (ev) => {
+    choisirModeVoix(ev.target.value);
+    if (ev.target.value !== 'tout') taire();
+    redessiner();
+  } }, MODES_VOIX.map((m) => h('option', { value: m, selected: mode === m }, t('voix_mode_' + m))));
+}
+
+/** Agrandir / remettre à droite, détacher (ou rattacher, dans la fenêtre détachée), fermer. */
+function boutonsAffichage() {
+  const bouton = (icone, titre, faire) => h('button.icone-appel', { type: 'button', title: titre, 'aria-label': titre, onclick: faire }, icone);
+  if (enFenetre) return h('span.boutons-appel', {}, bouton('⇱', t('equipe_rattacher'), () => { poster({ t: 'rattacher' }); window.close(); }));
+  return h('span.boutons-appel', {},
+    affichage === 'grand' ? bouton('⤡', t('equipe_reduire'), () => afficher('panneau')) : bouton('⤢', t('equipe_agrandir'), () => afficher('grand')),
+    bouton('⧉', t('equipe_detacher'), detacher),
+    bouton('✕', t('equipe_fermer'), () => afficher('ferme')));
+}
+
+/** La poignée du panneau : glisser change sa largeur (gardée), double-clic la remet d'origine. */
+function poignee() {
+  return h('div.poignee-equipe', { dataset: { cle: 'poignee' }, title: t('equipe_largeur'), ondblclick: () => {
+    document.body.style.removeProperty('--largeur-equipe');
+    ecrire('devworkshop.equipe.largeur', '');
+  }, onpointerdown: (e) => {
+    e.preventDefault();
+    const el = e.currentTarget;
+    el.setPointerCapture?.(e.pointerId);
+    el.classList.add('tire');
+    const bouger = (ev) => {
+      // Au moins 320 px pour l'équipe, et 360 px pour le fil à côté de la barre des projets.
+      const largeur = Math.round(Math.max(320, Math.min(window.innerWidth - ev.clientX, window.innerWidth - 620)));
+      document.body.style.setProperty('--largeur-equipe', `${largeur}px`);
+    };
+    const finir = () => {
+      el.classList.remove('tire');
+      el.removeEventListener('pointermove', bouger);
+      el.removeEventListener('pointerup', finir);
+      el.removeEventListener('pointercancel', finir);
+      ecrire('devworkshop.equipe.largeur', document.body.style.getPropertyValue('--largeur-equipe'));
+    };
+    el.addEventListener('pointermove', bouger);
+    el.addEventListener('pointerup', finir);
+    el.addEventListener('pointercancel', finir);
+  } });
 }
 
 /**
@@ -384,29 +449,120 @@ function redessiner(force = false) {
     prevu = false;
     const z = zone();
     if (!z || !ouvert || fige) return;
-    morpherEnfants(z, [entete(), h('div.corps-appel', {}, listeAgents(), h('main.centre-appel', {}, vueCourante === 'arbre' ? arbre() : salleAppel()))]);
+    morpherEnfants(z, [poignee(), entete(), h('div.corps-appel', {}, listeAgents(), h('main.centre-appel', {}, vueCourante === 'arbre' ? arbre() : salleAppel()))]);
   });
 }
 
-/** L'équipe s'ouvre en plein écran, par-dessus la conversation (et l'aperçu). */
+/** Quelqu'un attend ta réponse : la conversation (où est sa demande) passe devant. */
+function allerRepondre() {
+  if (enFenetre) return poster({ t: 'repondre' }); // la fenêtre principale se met au premier plan
+  if (affichage === 'grand') afficher('panneau');
+  document.getElementById('permissions')?.scrollIntoView?.({ block: 'nearest' });
+  return null;
+}
+
+/** Change l'affichage de cette page : 'ferme', 'panneau', 'grand' (ou 'fenetre', fixé dans la page détachée). */
+function afficher(mode) {
+  if (enFenetre) mode = 'fenetre';
+  affichage = mode;
+  ouvert = mode !== 'ferme';
+  const z = zone();
+  z.hidden = !ouvert;
+  z.classList.toggle('panneau', mode === 'panneau');
+  z.classList.toggle('grand', mode === 'grand' || mode === 'fenetre');
+  document.body.classList.toggle('avec-equipe', ouvert);
+  document.body.classList.toggle('equipe-grande', mode === 'grand');
+  // À droite du fil, l'équipe prend la place de l'aperçu (apercu.js se ferme), et inversement.
+  if (mode === 'panneau') document.dispatchEvent(new CustomEvent('colonne-droite', { detail: 'equipe' }));
+  if (!ouvert) taire();
+  if (!enFenetre) ecrire('devworkshop.equipe', detachee ? 'detache' : mode === 'ferme' ? 'non' : mode);
+  redessiner(true);
+}
+
+/** Compatibilité : vrai ouvre l'équipe (à droite du fil, ou là où elle était), faux la ferme. */
 export function montrerEquipe(oui) {
-  ouvert = oui;
-  zone().hidden = !oui;
-  document.body.classList.toggle('avec-equipe', oui);
-  if (!oui) taire();
-  ecrire('devworkshop.equipe', oui ? 'oui' : 'non');
-  redessiner();
+  if (!oui) return afficher('ferme');
+  if (detachee) return poster({ t: 'montrer' });
+  return afficher(affichage === 'ferme' ? 'panneau' : affichage);
 }
 
-export const basculerEquipe = () => montrerEquipe(!ouvert);
+export const basculerEquipe = () => (detachee ? poster({ t: 'montrer' }) : afficher(ouvert ? 'ferme' : 'panneau'));
+/** L'équipe se voit quelque part (ici ou dans la fenêtre détachée) : annonces.js n'y répète pas ce qu'elle dit. */
+export const equipeAffichee = () => ouvert || detachee;
+/** Le prénom donné au membre (celui d'une IA d'un salon, ou l'IA principale), pour les annonces. */
+export const prenomMembre = (auteur) => equipe.membres.get(auteur ? `auteur:${auteur}` : 'principal')?.prenom || null;
 
-export function initEquipe() {
-  document.getElementById('ouvrir-direct')?.addEventListener('click', basculerEquipe);
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && ouvert && !fige) montrerEquipe(false);
-  });
+function marquerDetachee(oui) {
+  detachee = oui;
+  document.body.classList.toggle('equipe-detachee', oui);
+  if (oui && ouvert) afficher('ferme'); // la fenêtre détachée montre l'équipe et parle : pas les deux
+  else if (!enFenetre) ecrire('devworkshop.equipe', oui ? 'detache' : affichage === 'ferme' ? 'non' : affichage);
+}
+
+/** Ouvre l'équipe dans sa propre fenêtre ; sans elle (logiciel de bureau ancien, fenêtres bloquées), on le dit. */
+function detacher() {
+  let fenetre = null;
+  try { fenetre = window.open('/equipe.html', 'devworkshop-equipe', 'popup=yes,width=1180,height=780'); } catch { fenetre = null; }
+  if (!fenetre) return notifier(t('detacher_impossible'), { echec: true, duree: 12000 });
+  marquerDetachee(true);
+  return null;
+}
+
+/** Messages de l'autre fenêtre. Page principale : la détachée s'annonce, demande quoi suivre, se ferme. */
+function surLiaison(m) {
+  if (enFenetre) {
+    if (m.t === 'appel') poster({ t: 'presente' });
+    else if (m.t === 'montrer') window.focus();
+    else if (m.t === 'session') surSessionSuivie?.(m.session, m.signature);
+    return;
+  }
+  if (m.t === 'qui') poster({ t: 'session', session: sessionId, signature: signatureCourante });
+  else if (m.t === 'presente') marquerDetachee(true);
+  else if (m.t === 'fermee') marquerDetachee(false);
+  else if (m.t === 'rattacher') {
+    marquerDetachee(false);
+    afficher('panneau');
+  } else if (m.t === 'repondre') {
+    window.focus();
+    document.getElementById('permissions')?.scrollIntoView?.({ block: 'nearest' });
+  }
+}
+
+let surSessionSuivie = null;
+
+/**
+ * `fenetre` : cette page est la fenêtre détachée ; `suivre(session, signature)` est appelé quand la page principale
+ * change de discussion.
+ */
+export function initEquipe({ fenetre = false, suivre = null } = {}) {
+  enFenetre = fenetre;
+  surSessionSuivie = suivre;
+  liaison?.addEventListener('message', (e) => surLiaison(e.data || {}));
+  surModeVoix(() => redessiner(true));
   window.speechSynthesis?.addEventListener?.('voiceschanged', () => redessiner());
   // Ce qui dépend du temps (durée, silence, commande longue, départ d'un sous-agent, partage récent) se recalcule.
   setInterval(() => redessiner(), 1000);
-  if (lire('devworkshop.equipe') === 'oui') montrerEquipe(true);
+  const largeur = lire('devworkshop.equipe.largeur');
+  if (/^\d{3,4}px$/.test(largeur || '')) document.body.style.setProperty('--largeur-equipe', largeur);
+  if (enFenetre) {
+    afficher('fenetre');
+    poster({ t: 'presente' });
+    poster({ t: 'qui' });
+    window.addEventListener('pagehide', () => poster({ t: 'fermee' }));
+    return;
+  }
+  document.getElementById('ouvrir-direct')?.addEventListener('click', basculerEquipe);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && affichage === 'grand' && !fige) afficher('panneau');
+  });
+  document.addEventListener('colonne-droite', (e) => {
+    if (e.detail !== 'equipe' && affichage === 'panneau') afficher('ferme');
+  });
+  const avant = lire('devworkshop.equipe');
+  if (avant === 'detache') {
+    // Rechargée pendant que la fenêtre détachée est ouverte : elle répond ; sinon, l'équipe revient à droite du fil.
+    poster({ t: 'appel' });
+    setTimeout(() => { if (!detachee) afficher('panneau'); }, 800);
+  } else if (avant === 'grand') afficher('grand');
+  else if (avant === 'oui' || avant === 'panneau') afficher('panneau');
 }

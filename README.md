@@ -43,12 +43,15 @@ Free software, built by the Deltinfo Studio team and published under the Apache 
   6 messages per request of yours: beyond that the exchange stops, the message is not sent, and an alert tells you. A
   conversation that acts without asking (allow everything, automatic, accept edits) handles a message from elsewhere only after your approval. The AIs other than Claude
   can also ask you questions in the same tabbed question window as Claude. See README.fr.md, "Entre discussions".
-- **Live team** (right of the conversation, or enlarged): the conversation as a team call. Each AI and each
+- **Live team** (right of the conversation, resizable; enlarged over it; or detached into its own window for another
+  screen, following the conversation shown in the main window): the conversation as a team call. Each AI and each
   sub-agent (Claude's own, and the orchestra's) has a drawn character at its desk, a first name, a style and a role
   (from its sub-agent type, the orchestra's role, or what it mostly does; both editable), and its state: thinking,
   working ("Runs npm test"), waiting for whom, needs you, no news for 3 minutes, done, failed; badges for long
   commands, failures and going in circles. The one who needs you, else the one who just acted, comes to the front
   with its shared screen (edited file, terminal, browser screenshot). A voice reads what they say, one at a time.
+  Voice setting: say everything, essentials only (spoken announcements for every open conversation, even with the
+  team closed: "… needs you on <project>", "work finished on <project>", "work stopped on <project>"), or muted.
   Built from the conversation's own events: no extra model call. Screenshots only show live.
 - **Dictation** (🎤): click to talk, click to stop; the text lands in the message box for you to review. Engine:
   Whisper on your server (open source, free, the voice stays on the server; installed on demand, ~750 MB plus the

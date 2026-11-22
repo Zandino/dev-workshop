@@ -1,12 +1,46 @@
-/* Équipe en direct : un appel vidéo sombre, en plein écran par-dessus la conversation (la barre des projets reste). */
-body.avec-equipe #ouvrir-direct { background: var(--accent-doux); color: var(--accent); border-color: transparent; }
+/* Équipe en direct : un appel vidéo sombre. En panneau à droite du fil (par défaut, largeur à la poignée), en grand
+   par-dessus la conversation (la barre des projets reste), ou seule dans sa fenêtre détachée (equipe.html). */
+body.avec-equipe #ouvrir-direct, body.equipe-detachee #ouvrir-direct { background: var(--accent-doux); color: var(--accent); border-color: transparent; }
+body.avec-equipe:not(.equipe-grande) .atelier { grid-template-columns: 260px minmax(0, 1fr) var(--largeur-equipe, minmax(380px, 38%)); }
+/* Le fil, plus étroit à côté de l'équipe : son en-tête passe à la ligne au lieu de cacher la jauge. */
+body.avec-equipe:not(.equipe-grande) .entete { flex-wrap: wrap; }
+@media (max-width: 1100px) { body.avec-equipe:not(.equipe-grande) .atelier { grid-template-columns: 220px minmax(0, 1fr) var(--largeur-equipe, minmax(340px, 45%)); } }
 
 .equipe {
   --appel-fond: #15171d; --appel-panneau: #1c1f27; --appel-carte: #232733; --appel-trait: #2e3342; --appel-texte: #e8ebf2; --appel-doux: #9aa3b5;
-  position: fixed; inset: 0 0 0 260px; z-index: 40; display: flex; flex-direction: column; background: var(--appel-fond); color: var(--appel-texte);
+  position: relative; min-width: 0; min-height: 0; height: 100vh; display: flex; flex-direction: column; background: var(--appel-fond); color: var(--appel-texte);
+  border-left: 1px solid var(--appel-trait);
 }
-@media (max-width: 1100px) { .equipe { left: 220px; } }
-@media (max-width: 760px) { .equipe { left: 0; } }
+.equipe.grand { position: fixed; inset: 0 0 0 260px; z-index: 40; border-left: 0; }
+.equipe.fenetre { inset: 0; }
+body.page-equipe { margin: 0; height: 100vh; overflow: hidden; background: #15171d; }
+@media (max-width: 1100px) { .equipe.grand:not(.fenetre) { left: 220px; } }
+/* Écran étroit : le fil n'a plus la place à côté, l'équipe passe par-dessus. */
+@media (max-width: 760px) { .equipe, .equipe.grand { position: fixed; inset: 0; z-index: 40; } }
+
+/* Poignée du panneau (bord gauche) : glisser pour changer la largeur. */
+.poignee-equipe { position: absolute; left: -4px; top: 0; bottom: 0; width: 8px; z-index: 3; cursor: col-resize; touch-action: none; }
+.poignee-equipe:hover, .poignee-equipe.tire { background: color-mix(in srgb, var(--accent, #4169e1) 55%, transparent); }
+.equipe:not(.panneau) .poignee-equipe { display: none; }
+
+/* En panneau : une seule colonne (la liste des agents se retrouve dans les tuiles), en-tête resserré : compteurs et
+   boutons sur la première ligne, vues et voix sur la seconde. */
+.equipe.panneau .boutons-appel { order: 1; }
+.equipe.panneau .vues-appel, .equipe.panneau .entete-appel > select { order: 2; }
+.equipe.panneau .titre-appel { display: none; }
+.equipe.panneau .entete-appel { padding: 8px 10px; gap: 6px; }
+.equipe.panneau .compteur { font-size: 12px; padding: 3px 8px; }
+.equipe.panneau .corps-appel { grid-template-columns: 1fr; }
+.equipe.panneau .liste-agents { display: none; }
+.equipe.panneau .centre-appel { padding: 12px; }
+.equipe.panneau .grille-appel { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.equipe.panneau .grille-appel > .vedette { grid-column: 1 / -1; grid-row: auto; }
+.equipe.panneau .rangee-tuiles { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+.equipe.panneau .fenetre-partagee { max-height: 45vh; min-height: 220px; }
+/* Format 16:10 + hauteur minimale = largeur minimale (224 px) : trop pour trois tuiles dans un panneau étroit. */
+.equipe.panneau .tuile-appel { min-height: 96px; }
+.boutons-appel { display: inline-flex; gap: 4px; }
+.icone-appel { min-width: 34px; padding: 4px 8px; font-size: 16px; line-height: 1; }
 
 /* En-tête : titre, compteurs, vues, voix, retour. */
 .entete-appel { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 14px; border-bottom: 1px solid var(--appel-trait); background: var(--appel-panneau); }
@@ -22,7 +56,7 @@ body.avec-equipe #ouvrir-direct { background: var(--accent-doux); color: var(--a
 .vues-appel { display: flex; padding: 3px; border-radius: 10px; background: var(--appel-carte); }
 .vues-appel button { border: 0; background: none; box-shadow: none; color: var(--appel-doux); padding: 4px 12px; min-height: 0; }
 .vues-appel button.actif { background: var(--appel-fond); color: var(--appel-texte); border-radius: 8px; }
-.entete-appel > button, .entete-appel select { background: var(--appel-carte); color: var(--appel-texte); border: 1px solid var(--appel-trait); }
+.entete-appel > button, .entete-appel select, .boutons-appel button { background: var(--appel-carte); color: var(--appel-texte); border: 1px solid var(--appel-trait); }
 
 .corps-appel { flex: 1; min-height: 0; display: grid; grid-template-columns: 250px 1fr; }
 @media (max-width: 900px) { .corps-appel { grid-template-columns: 1fr; } .liste-agents { display: none; } }

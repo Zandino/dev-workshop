@@ -246,8 +246,12 @@ accord ou une question t'attend, puis un échec pas encore lu, puis une IA au tr
 
 ## Équipe en direct
 
-Bouton « Équipe en direct » de l'en-tête : la discussion comme un appel d'équipe, à droite de la conversation (⤢ pour
-l'agrandir ; elle partage la colonne de l'aperçu : ouvrir l'un ferme l'autre).
+Bouton « Équipe en direct » de l'en-tête : la discussion comme un appel d'équipe, à droite de la conversation (sa
+largeur se règle en glissant son bord gauche ; double-clic pour la largeur d'origine). Elle partage cette colonne avec
+l'aperçu : ouvrir l'un ferme l'autre. ⤢ l'agrandit par-dessus la conversation (Échap la remet à droite) ; ⧉ la
+détache dans sa propre fenêtre, à poser sur un autre écran : elle suit la discussion affichée dans la fenêtre
+principale, se ferme avec elle, et ⇱ l'y remet. Dans le logiciel de bureau, la fenêtre détachée demande sa version
+0.7 (les versions plus anciennes refusent toute nouvelle fenêtre : un message le dit, ⤢ reste possible).
 
 - **Chacun son personnage** : chaque IA, et chaque sous-agent (ceux que Claude lance lui-même avec son outil Task ou
   Agent, et ceux de l'orchestre), a son personnage à son bureau, dessiné par Dev Workshop, avec :
@@ -269,13 +273,18 @@ l'agrandir ; elle partage la colonne de l'aperçu : ouvrir l'un ferme l'autre).
   GPL-3 téléchargé depuis PyPI, trois voix françaises ou quatre anglaises depuis Hugging Face), 0,6 s pour une phrase,
   ~240 Mo le temps de la dire (rien n'est dit quand la mémoire est juste). Sans elles, les voix du système, réparties
   de la même façon.
+- **Réglage « Voix »** (en-tête de l'équipe, ou bas de la barre des projets) : *Tout dire* (l'équipe affichée lit ce
+  que disent les IA, et les autres discussions sont annoncées), *L'essentiel* (seulement les annonces, pour toutes
+  les discussions ouvertes, même équipe fermée : « Léa a besoin de toi sur intervizio », « Travail terminé sur
+  intervizio », « Le travail s'est arrêté sur intervizio »), ou *Muet*.
 
 **Skins** (personnages en images) : un dossier par personnage dans le dossier des réglages du serveur,
 `skins/<nom>/`, avec une image par état : `idle`, `working`, `thinking`, `waiting`, `needs-you`, `blocked`,
 `done`, `error` (JPEG, PNG, WebP ou GIF ; une vidéo en boucle `.mp4` ou `.webm` l'emporte sur l'image du même état), et
-`skin.json` facultatif (`{ "prenom": "Léa", "feminin": true }`). Un skin n'est proposé que complet ; il va au premier
-membre venu, qui prend son prénom ; les autres gardent les personnages dessinés. Les images restent sur le serveur (jamais
-dans le dépôt) et bougent selon l'état (respiration, travail, main levée, sursaut…). Ce sont tes créations, faites par
+`skin.json` facultatif (`{ "prenom": "Léa", "feminin": true }`). Seule `idle` est obligatoire : un état sans image
+reprend celle-ci. Un skin va au premier membre venu, qui prend son prénom ; les autres gardent les personnages dessinés.
+Les images restent sur le serveur (jamais dans le dépôt) et ne bougent pas : de petits effets s'animent par-dessus selon
+l'état (points de frappe, bulle de pensée, main levée, z de sommeil, confettis, alerte). Ce sont tes créations, faites par
 exemple avec un générateur d'images : décris le même personnage dans les huit états, même cadrage 16:10, sans texte.
 
 Tout vient des événements de la discussion : aucun appel de plus à une IA. Les captures (PNG, JPEG, GIF, WebP, 3 Mo au

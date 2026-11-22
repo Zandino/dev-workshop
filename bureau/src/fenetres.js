@@ -62,8 +62,34 @@ function sessionDuServeur(id) {
   return s;
 }
 
+/** La seule nouvelle fenêtre permise : l'équipe en direct détachée (/equipe.html), sur le même serveur. */
+function estFenetreEquipe(url, origine) {
+  try {
+    const u = new URL(url);
+    return u.origin === origine && u.pathname === '/equipe.html';
+  } catch {
+    return false;
+  }
+}
+
+/** Les garde-fous d'une page du serveur : ni fenêtre, ni navigation ailleurs, ni webview. */
+function proteger(contenu, origine) {
+  contenu.setWindowOpenHandler(({ url }) => {
+    ouvrirDehors(url);
+    return { action: 'deny' };
+  });
+  contenu.on('will-navigate', (e, url) => {
+    if (new URL(url).origin === origine) return;
+    e.preventDefault();
+    ouvrirDehors(url);
+  });
+  contenu.on('will-attach-webview', (e) => e.preventDefault());
+}
+
 function creerAtelier(serveur, titre) {
   const origine = `http://localhost:${serveur.portLocal}`;
+  const sessionServeur = sessionDuServeur(serveur.id);
+  const preferences = { session: sessionServeur, contextIsolation: true, sandbox: true, nodeIntegration: false };
   const fenetre = new BrowserWindow({
     width: 1440,
     height: 920,
@@ -74,13 +100,7 @@ function creerAtelier(serveur, titre) {
     backgroundColor: fond(),
     icon: ICONE,
     autoHideMenuBar: true,
-    webPreferences: {
-      session: sessionDuServeur(serveur.id),
-      contextIsolation: true,
-      sandbox: true,
-      nodeIntegration: false,
-      spellcheck: true,
-    },
+    webPreferences: { ...preferences, spellcheck: true },
   });
   // La page change son titre (« Dev Workshop ») : on garde le nom du serveur dans la barre de titre. Elle y
   // annonce aussi les discussions qui attendent ton accord : main levée sur l'icône (main-levee.js).
@@ -89,16 +109,27 @@ function creerAtelier(serveur, titre) {
     e.preventDefault();
     besoins(titrePage);
   });
+  proteger(fenetre.webContents, origine);
+  // Sauf l'équipe détachée : sa propre fenêtre (à poser sur un autre écran), même session (donc même jeton), mêmes
+  // garde-fous. La page la ferme elle-même quand la fenêtre principale se ferme.
   fenetre.webContents.setWindowOpenHandler(({ url }) => {
+    if (estFenetreEquipe(url, origine)) {
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: {
+          width: 1180, height: 780, minWidth: 420, minHeight: 360, backgroundColor: '#15171d', icon: ICONE, autoHideMenuBar: true, webPreferences: preferences,
+        },
+      };
+    }
     ouvrirDehors(url);
     return { action: 'deny' };
   });
-  fenetre.webContents.on('will-navigate', (e, url) => {
-    if (new URL(url).origin === origine) return;
-    e.preventDefault();
-    ouvrirDehors(url);
+  fenetre.webContents.on('did-create-window', (enfant) => proteger(enfant.webContents, origine));
+  fenetre.on('closed', () => {
+    for (const autre of BrowserWindow.getAllWindows()) {
+      if (autre.webContents.getURL().startsWith(`${origine}/equipe.html`)) autre.close();
+    }
   });
-  fenetre.webContents.on('will-attach-webview', (e) => e.preventDefault());
   fenetre.once('ready-to-show', () => fenetre.show());
   return { fenetre, origine };
 }
