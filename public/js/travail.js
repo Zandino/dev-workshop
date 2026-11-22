@@ -20,8 +20,6 @@ ajouterTextes({
     info_changement_ia: '{vers} reprend la conversation à la place de {de}, avec son historique',
     refus_changement_impossible: 'On ne change pas d’IA dans une discussion à plusieurs ni dans l’orchestre.',
     refus_changement_occupe: 'Attends que l’IA ait fini son tour (ou arrête-la) avant de changer d’IA.',
-    orchestre_en_debut: 'L’orchestre se choisit au début d’une session : ouvre une « Nouvelle session ».',
-    notif_accord: '{nom} attend ton accord', notif_fini: 'Session terminée · {projet}', notif_echec: 'Tour interrompu · {projet}',
   },
   en: {
     puissance: 'Power', effort_default: 'Default power', effort_low: 'Low power', effort_medium: 'Medium power',
@@ -35,8 +33,6 @@ ajouterTextes({
     info_changement_ia: '{vers} takes over the conversation from {de}, with its history',
     refus_changement_impossible: 'The AI cannot be switched in a group discussion or in the orchestra.',
     refus_changement_occupe: 'Wait until the AI has finished its turn (or stop it) before switching AI.',
-    orchestre_en_debut: 'The orchestra is chosen when a session starts: open a “New session”.',
-    notif_accord: '{nom} is waiting for your approval', notif_fini: 'Session finished · {projet}', notif_echec: 'Turn interrupted · {projet}',
   },
 });
 
@@ -73,24 +69,8 @@ function dessiner() {
   ].filter(Boolean));
 }
 
-/** Notification du système quand la fenêtre n'est pas au premier plan (tour fini, accord attendu, relais). */
-function prevenir(titre, corps) {
-  if (document.hasFocus() || typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
-  try {
-    const n = new Notification(titre, { body: String(corps || '').slice(0, 180), tag: 'dev-workshop-' + (lire.ecran.session || '') });
-    n.onclick = () => window.focus();
-  } catch { /* notifications indisponibles */ }
-}
-
-function annoncer(m) {
-  const nom = m.auteur?.nom || etat.qui?.nom || (lire.compte() ? lire.libelle(lire.compte()) : 'IA');
-  const projet = lire.ecran.projet || '';
-  if (m.t === 'permission') prevenir(t('notif_accord', { nom }), `${projet} · ${m.outil || ''}`);
-  else if (m.t === 'tour' && !m.auteur) prevenir(m.ok ? t('notif_fini', { projet }) : t('notif_echec', { projet }), m.ok ? '' : m.message);
-}
-
+// Les notifications (accord attendu, tour fini) sont dans alertes.js : elles suivent toutes les discussions.
 function suivre(m) {
-  annoncer(m);
   const auteur = m.auteur ? { nom: m.auteur.nom, compte: m.auteur.compte } : null;
   if (m.t === 'pret' && m.modele) etat.modele = m.modele;
   else if (m.t === 'etat') {
@@ -142,22 +122,21 @@ export function initTravail(lecteurs) {
     precedent = mode.value;
     dessiner();
   }, true);
-  // En session, choisir un autre compte lui passe la main (avec l'historique) ; l'orchestre, lui, se choisit
-  // au début d'une session.
+  // En discussion, choisir une autre IA lui passe la main, avec l'historique : d'une IA à une autre, c'est un relais
+  // (changer_ia) ; vers l'orchestre, ou depuis l'orchestre ou plusieurs IA, l'équipe change (changer_equipe).
   $('compte').addEventListener('change', () => {
     const choix = $('compte').value;
-    if (!lire.ecran.session || lire.ecran.salon || choix === compteSession) return;
-    if (choix === 'orchestre') {
-      notifier(t('orchestre_en_debut'));
-      $('compte').value = compteSession;
-      return;
-    }
-    dire({ t: 'changer_ia', session: lire.ecran.session, compte: choix });
+    const session = lire.ecran.session;
+    if (!session || choix === compteSession || choix === 'salon') return;
+    if (choix === 'orchestre') dire({ t: 'changer_equipe', session, orchestre: true });
+    else if (compteSession === 'salon' || compteSession === 'orchestre') dire({ t: 'changer_equipe', session, compte: choix });
+    else dire({ t: 'changer_ia', session, compte: choix });
   });
   ecouter((m) => {
-    if (m.t === 'refus' && /^changement_/.test(m.code) && compteSession) $('compte').value = compteSession;
+    // Changement refusé (IA occupée, cheffe d'orchestre non Claude…) : la liste revient à l'équipe en place.
+    if (m.t === 'refus' && ['changer_ia', 'changer_equipe'].includes(m.ordre) && compteSession) $('compte').value = compteSession;
     if (m.t === 'rejouer') {
-      compteSession = m.resume.compte;
+      compteSession = m.resume.participants ? 'salon' : m.resume.orchestre ? 'orchestre' : m.resume.compte;
       Object.assign(etat, { occupe: Boolean(m.etat.occupe), debut: Date.now(), activite: 'reflechit', qui: null, modele: null, effort: m.etat.effort || 'default' });
       for (const e of m.evenements) if ((e.t === 'pret' || e.t === 'assistant') && e.modele) etat.modele = e.modele;
       effort.value = etat.effort;
@@ -167,8 +146,4 @@ export function initTravail(lecteurs) {
     dessiner();
   });
   setInterval(() => etat.occupe && dessiner(), 1000);
-  // Autorisation des notifications : demandée au premier clic (un navigateur la refuse sans geste de la personne).
-  if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
-    document.addEventListener('click', () => Notification.requestPermission().catch(() => {}), { once: true });
-  }
 }

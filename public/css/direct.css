@@ -3,7 +3,7 @@
 .direct { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; padding: 18px max(20px, calc((100% - 1000px) / 2)); }
 .barre-direct { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .barre-direct select { max-width: 240px; }
-.en-direct { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--rouge); padding: 3px 10px; border-radius: 99px; background: var(--rouge-doux); }
+span.en-direct { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--rouge); padding: 3px 10px; border-radius: 99px; background: var(--rouge-doux); }
 
 .ecran-partage { border-radius: 16px; background: var(--code-fond); color: var(--code-texte); border: 1px solid var(--trait); box-shadow: var(--ombre-haute); overflow: hidden; min-height: 220px; display: flex; flex-direction: column; }
 .ecran-partage header { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); font-size: 13px; }
@@ -15,7 +15,7 @@
 .vignette { position: relative; display: grid; justify-items: center; gap: 4px; padding: 18px 12px 14px; border-radius: 16px; background: var(--surface); border: 1px solid var(--trait); box-shadow: var(--ombre); transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s; }
 .vignette.parle { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-doux), var(--ombre-haute); transform: translateY(-2px); }
 .vignette.accord { border-color: var(--orange); box-shadow: 0 0 0 3px var(--orange-doux); }
-.vignette .visage { position: relative; width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(135deg, #6d4aff, #b06dff); color: #fff; margin-bottom: 6px; }
+.vignette .visage { position: relative; width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(135deg, #4169e1, #6f9bff); color: #fff; margin-bottom: 6px; }
 .vignette.rang-1 .visage { background: linear-gradient(135deg, #db2777, #f472b6); }
 .vignette.rang-2 .visage { background: linear-gradient(135deg, #0d9488, #5eead4); }
 .vignette.rang-3 .visage { background: linear-gradient(135deg, #d97706, #fbbf24); }
@@ -46,6 +46,15 @@
 .piece button { padding: 1px 7px; font-size: 11px; }
 .saisie .joindre { flex: none; width: 36px; height: 36px; padding: 0; border-radius: 10px; font-size: 20px; font-weight: 400; color: var(--texte-doux); box-shadow: none; }
 .saisie .joindre:hover:not(:disabled) { color: var(--accent); }
+/* Dictée : rouge qui pulse pendant l'écoute, avec les secondes ; atténué pendant la transcription. */
+.saisie .dicter { flex: none; min-width: 36px; height: 36px; padding: 0 9px; gap: 5px; color: var(--texte-doux); box-shadow: none; }
+.saisie .dicter svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.saisie .dicter:hover:not(:disabled) { color: var(--accent); }
+.saisie .dicter .temps { font-size: 12px; font-variant-numeric: tabular-nums; }
+.saisie .dicter .temps:empty { display: none; }
+.saisie .dicter.ecoute { background: var(--rouge); border-color: var(--rouge); color: #fff; animation: pouls 1.2s ease-in-out infinite; }
+.saisie .dicter.ecoute:hover { color: #fff; }
+.saisie .dicter.transcription { color: var(--accent); cursor: progress; animation: pouls 0.9s ease-in-out infinite; }
 .scene.depot::after {
   content: attr(data-depot);
   position: absolute; inset: 12px; z-index: 15; display: grid; place-items: center; pointer-events: none;
@@ -119,3 +128,69 @@ body.avec-apercu .atelier { grid-template-columns: 260px minmax(0, 1fr) minmax(3
 .liens-barre { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px; }
 .liens-barre button { font-size: 12.5px; }
 .nombre:not(:empty) { margin-left: 4px; padding: 0 6px; border-radius: 99px; background: var(--surface-3); font-size: 11px; }
+
+/* Liste « Discussions » du projet : « ranger » (⇄) à côté de la corbeille, lien « Tout voir » dans le titre. */
+.avec-poubelle.avec-ranger .ligne { padding-right: 66px; }
+.ranger {
+  position: absolute; right: 34px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; padding: 0;
+  border: 0; border-radius: 7px; background: transparent; box-shadow: none; font-size: 14px; color: var(--accent); opacity: 0; transition: opacity 0.15s, background 0.15s;
+}
+.avec-poubelle:hover .ranger, .ranger:focus-visible { opacity: 0.8; }
+.ranger:hover:not(:disabled) { opacity: 1; background: var(--accent-doux); }
+.barre h2.titre-bloc { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.lien-bloc { border: 0; background: transparent; box-shadow: none; padding: 0 2px; min-height: 0; font-size: 11.5px; font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--accent); }
+.lien-bloc:hover:not(:disabled) { text-decoration: underline; background: transparent; }
+.voir-plus { justify-self: start; margin: 4px 6px 0; font-size: 12.5px; }
+
+/* Panneau « Toutes les discussions » et « Ranger dans un projet ». */
+.filtres { display: flex; gap: 8px; flex-wrap: wrap; }
+.filtres input { flex: 1; min-width: 200px; }
+.liste-discussions { display: grid; border: 1px solid var(--trait); border-radius: 14px; overflow: hidden; }
+.discussion { display: flex; align-items: center; gap: 8px; padding: 4px 10px 4px 4px; border-bottom: 1px solid var(--trait); }
+.discussion:last-child { border-bottom: 0; }
+.ouvrir-discussion { flex: 1; min-width: 0; display: grid; justify-content: stretch; justify-items: start; gap: 2px; text-align: left; border: 0; background: transparent; box-shadow: none; padding: 7px 10px; border-radius: var(--rayon-petit); }
+.ouvrir-discussion:hover:not(:disabled) { background: var(--surface-2); }
+.ouvrir-discussion .titre { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.ouvrir-discussion .sous { font-size: 12px; color: var(--texte-doux); }
+.choix-projets { display: flex; flex-wrap: wrap; gap: 6px; }
+textarea.retenu { width: 100%; min-height: 200px; resize: vertical; }
+.retour-liste { justify-self: start; }
+
+/* Arborescence : un projet est un dossier, ses discussions s'affichent en retrait juste en dessous. */
+.ligne.dossier { grid-template-columns: 14px 1fr auto; }
+.ligne.dossier > .main-levee, .ligne.dossier > .pastille { grid-column: 3; grid-row: auto; margin-right: 4px; }
+.ligne.dossier .chevron { grid-column: 1; font-size: 13px; color: var(--texte-doux); text-align: center; }
+.ligne.dossier.actif .chevron { color: var(--accent); }
+.sous-liste { display: grid; gap: 1px; margin: 2px 0 6px 15px; padding-left: 7px; border-left: 1px solid var(--trait-fort); }
+.sous-liste .ligne { min-height: 32px; font-size: 13px; }
+.sous-liste .ligne .sous { font-size: 11.5px; }
+.sous-liste .nouvelle-discussion { color: var(--accent); font-weight: 600; }
+.sous-liste .vide { padding: 4px 10px; }
+
+/* Ranger : ⇄ toujours visible (discret) ; glisser une discussion sur un autre projet. */
+.sous-liste .ranger { opacity: 0.45; }
+.sous-liste .avec-poubelle[draggable="true"] { cursor: grab; }
+.sous-liste .en-glisse { opacity: 0.5; }
+.ligne.dossier.cible { background: var(--accent-doux); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+
+/* Ordre choisi à la main : ▲ ▼ au survol (à gauche, sur la pastille ou le chevron), trait d'insertion en glissant. */
+.projet-ligne { position: relative; }
+.projet-ligne > .ligne.dossier { cursor: grab; }
+.fleches { position: absolute; left: -3px; top: 50%; transform: translateY(-50%); display: grid; gap: 1px; opacity: 0; transition: opacity 0.15s; z-index: 1; }
+.fleches button { width: 15px; height: 13px; min-height: 0; padding: 0; border: 0; border-radius: 3px; background: var(--surface); box-shadow: 0 0 0 1px var(--trait); color: var(--texte-doux); font-size: 8px; line-height: 1; }
+.fleches button:hover:not(:disabled) { color: var(--accent); background: var(--accent-doux); }
+.fleches button:disabled { opacity: 0.35; }
+.projet-ligne:hover .fleches, .avec-poubelle:hover .fleches, .fleches:focus-within { opacity: 1; }
+/* Renommer : ✎ au survol, à gauche des autres boutons ; le titre devient un champ. */
+.renommer-bouton {
+  position: absolute; right: 34px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; padding: 0;
+  border: 0; border-radius: 7px; background: transparent; box-shadow: none; font-size: 13px; color: var(--accent); opacity: 0; transition: opacity 0.15s, background 0.15s;
+}
+.avec-ranger .renommer-bouton { right: 64px; }
+.avec-poubelle:hover .renommer-bouton, .renommer-bouton:focus-visible { opacity: 0.8; }
+.renommer-bouton:hover:not(:disabled) { opacity: 1; background: var(--accent-doux); }
+.avec-renommer:hover .ligne { padding-right: 66px; }
+.avec-renommer.avec-ranger:hover .ligne { padding-right: 96px; }
+input.renommer { position: absolute; left: 22px; right: 4px; top: 50%; transform: translateY(-50%); z-index: 2; min-width: 0; padding: 3px 6px; font: inherit; font-size: 13px; }
+.inserer-avant { box-shadow: inset 0 2px 0 var(--accent) !important; }
+.inserer-apres { box-shadow: inset 0 -2px 0 var(--accent) !important; }

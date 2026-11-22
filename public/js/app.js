@@ -1,6 +1,6 @@
 // Point d'entrée : état de l'écran et aiguillage des événements du serveur.
 import { h, notifier } from './dom.js';
-import { t, traduirePage, langue, changerLangue, LANGUES, aTexte } from './i18n.js';
+import { t, traduirePage, langue, changerLangue, LANGUES, aTexte, ajouterTextes } from './i18n.js';
 import { jetonInitial, definirJeton, oublierJeton, connecter, ecouter, dire } from './canal.js';
 import { initFil, viderFil, afficher, noteFil, definirSignature } from './fil.js';
 import { afficherPermission, retirerPermission, viderPermissions } from './permissions.js';
@@ -11,10 +11,30 @@ import { definirCommandes } from './commandes.js';
 import { majComptes, surEtatCompte, surConnexion, ouvrirComptes, libelleCompte } from './comptes.js';
 import { initSalon, majComptesSalon, ouvrirSalon } from './salon.js';
 import { prendrePieces } from './pieces.js';
-import { ouvrirProjet, majCorbeille } from './projet.js';
-import { nouvelAppel, surEvenementDirect } from './direct.js';
+import { ouvrirProjet, majCorbeille, ouvrirRetenir } from './projet.js';
+import { initDiscussions, ouvrirDiscussions, ouvrirRanger, majProjetsDiscussions } from './discussions.js';
+import { initEquipe, nouvelleEquipe, surEvenementEquipe, definirSkins } from './equipe.js';
+import { definirEtatVoix } from './voix-equipe.js';
 import { pastilleLogo } from './logos.js';
 import { brancherAjouts } from './ajouts.js';
+import { initAlertes } from './alertes.js';
+import { initAnnonces } from './annonces.js';
+import { initMemoire } from './memoire-discussion.js';
+
+ajouterTextes({
+  fr: {
+    retenir_bouton: 'Retenir pour le projet',
+    retenir_consigne: 'Pour la fiche du projet : résume en quelques puces courtes ce qu’il faut retenir de cette discussion pour les prochaines (décisions prises, informations durables, pièges à éviter). Ne répète pas ce que la fiche du projet contient déjà. Réponds uniquement par ces puces, sans introduction ni conclusion, et sans utiliser d’outil.',
+    retenir_occupe: 'L’IA travaille encore : attends la fin de sa réponse pour « Retenir pour le projet ».',
+    retenir_echec: 'L’IA n’a pas pu proposer de texte à retenir : réessaie, ou écris-le toi-même dans la fiche (réglages du projet).',
+  },
+  en: {
+    retenir_bouton: 'Remember for the project',
+    retenir_consigne: 'For the project notes: summarise in a few short bullet points what is worth keeping from this conversation for the next ones (decisions made, lasting facts, pitfalls to avoid). Do not repeat what the project notes already say. Reply with the bullet points only, no introduction or conclusion, and without using any tool.',
+    retenir_occupe: 'The AI is still working: wait for its answer to finish before “Remember for the project”.',
+    retenir_echec: 'The AI could not suggest anything to remember: try again, or write it yourself in the notes (project settings).',
+  },
+});
 
 const $ = (id) => document.getElementById(id);
 // `journal` : les événements de la session affichée, gardés pour l'export.
@@ -36,8 +56,11 @@ function options(select, liste, choisi) {
 function majEntete() {
   $('titre-session').textContent = ecran.projet || t('titre');
   $('fermer-session').hidden = !ecran.session;
-  // À plusieurs, compte et modèle sont fixés par participant.
-  for (const id of ['compte', 'modele']) $(id).disabled = ecran.salon; // en session, changer de compte passe la main
+  $('retenir').hidden = !ecran.session || ecran.salon || Boolean(ecran.etat.ferme);
+  $('memoire').hidden = !ecran.session || Boolean(ecran.etat.ferme);
+  // À plusieurs, le modèle est fixé par participant. Choisir une IA dans la liste, en discussion, change son équipe
+  // en gardant l'historique (travail.js).
+  $('modele').disabled = ecran.salon;
   etatSaisie({ active: Boolean(ecran.projet) && !ecran.etat.ferme, occupe: Boolean(ecran.etat.occupe) });
   $('joindre').disabled = !ecran.projet || Boolean(ecran.etat.ferme);
   if (ecran.etat.mode) $('mode').value = ecran.etat.mode;
@@ -46,9 +69,10 @@ function majEntete() {
 
 function quitterSession() {
   if (ecran.session) dire({ t: 'detacher', session: ecran.session });
-  Object.assign(ecran, { session: null, salon: false, etat: {}, journal: [], titre: '' });
+  Object.assign(ecran, { session: null, salon: false, etat: {}, journal: [], titre: '', retenir: null, resume: null });
+  if ($('compte').value === 'salon') $('compte').value = 'defaut'; // « Plusieurs IA » ne s'ouvre que par 👥
   definirSignature(null);
-  nouvelAppel(null);
+  nouvelleEquipe(null);
   viderPermissions();
   razJauge();
   viderFil(ecran.projet ? t('accueil', { projet: ecran.projet }) : t('choisir_projet'));
@@ -66,9 +90,44 @@ function choisirProjet(projet) {
   majEntete();
 }
 
+/** Rouvre une discussion enregistrée (compte Claude du serveur) ; si elle est déjà ouverte, on la rejoint. */
+function reprendreDiscussion(d, projet = ecran.projet) {
+  const issue = (v) => (v.sessionId && v.sessionId === d.id) || v.origine === d.id;
+  const ouverte = ecran.general?.vivantes.find(issue);
+  if (ouverte) return ouverte.id !== ecran.session && dire({ t: 'attacher', session: ouverte.id });
+  // Une copie interrompue (redémarrage) en est partie : on la reprend, avec tout ce qui s'y est fait depuis,
+  // au lieu d'en créer une nouvelle à partir de la seule version de Claude Code (liste triée, la plus récente d'abord).
+  // Une longue discussion met quelques secondes à s'ouvrir : un clic de plus entre-temps ne renvoie rien (le serveur,
+  // de son côté, ne la reprend qu'une fois).
+  if (ecran.enOuverture === d.id && Date.now() - ecran.enOuvertureDepuis < 30_000) return null;
+  ecran.enOuverture = d.id;
+  ecran.enOuvertureDepuis = Date.now();
+  const copie = (ecran.general?.interrompues || []).find(issue);
+  if (copie) return dire({ t: 'reprendre_interrompue', id: copie.id });
+  if (projet !== ecran.projet) choisirProjet(projet);
+  else quitterSession();
+  ouvrir({ reprise: d.id, titre: d.titre, compte: 'defaut' });
+  return null;
+}
+
+/** « Retenir pour le projet » : la réponse de l'IA à la consigne, proposée à la relecture avant la fiche. */
+function finirRetenir(tour) {
+  const depuis = ecran.retenir;
+  ecran.retenir = null;
+  if (!tour.ok) return notifier(t('retenir_echec'), { echec: true });
+  const texte = ecran.journal.slice(depuis)
+    .filter((e) => e.t === 'assistant' && !e.sousAgent)
+    .flatMap((e) => (e.blocs || []).filter((b) => b.type === 'texte').map((b) => b.texte))
+    .join('\n\n').trim();
+  if (!texte) return notifier(t('retenir_echec'), { echec: true });
+  ouvrirRetenir({ projet: ecran.projet, titre: ecran.titre, texte });
+}
+
 function ouvrir(extra = {}) {
   const orchestre = $('compte').value === 'orchestre'; // Claude (compte du serveur) en cheffe d'orchestre
-  dire({ t: 'ouvrir', compte: orchestre ? 'defaut' : $('compte').value, orchestre, projet: ecran.projet, modele: $('modele').value, mode: $('mode').value, effort: $('effort').value, ...extra });
+  // « Plusieurs IA » (discussion à plusieurs refermée) n'est pas un compte : on repart du Claude du serveur.
+  const choisi = orchestre || $('compte').value === 'salon' ? 'defaut' : $('compte').value;
+  dire({ t: 'ouvrir', compte: choisi, orchestre, projet: ecran.projet, modele: $('modele').value, mode: $('mode').value, effort: $('effort').value, ...extra });
 }
 
 /** Rend faux si le message ne part pas encore (fichiers joints en cours d'envoi) : la saisie le garde. */
@@ -81,19 +140,27 @@ function envoyer(texte) {
 }
 
 function surRejouer(m) {
+  ecran.enOuverture = null; // une discussion s'est ouverte : un nouveau clic compte de nouveau
   if (ecran.session && ecran.session !== m.session) dire({ t: 'detacher', session: ecran.session });
+  // Rejoindre une discussion d'un autre projet : la liste de la barre suit ce projet.
+  if (m.resume.projet !== ecran.projet) {
+    memoire('devworkshop.projet', m.resume.projet);
+    majBarre({ historique: [] });
+    dire({ t: 'historique', projet: m.resume.projet });
+  }
   ecran.session = m.session;
   ecran.projet = m.resume.projet;
   ecran.salon = Boolean(m.resume.participants);
-  if (m.resume.compte) $('compte').value = m.resume.compte;
+  $('compte').value = m.resume.participants ? 'salon' : m.resume.orchestre ? 'orchestre' : m.resume.compte || 'defaut';
   ecran.etat = { ...m.etat };
   ecran.titre = m.resume.titre || '';
+  ecran.resume = m.resume; // l'équipe de la discussion affichée, à jour dès le rejeu (la barre suit 0,2 s après)
   ecran.journal = [...m.evenements];
   // Session à une seule IA : son logo et son nom signent ses réponses, dans le fil comme en direct.
   const c = ecran.general?.comptes.find((x) => x.id === m.resume.compte);
   const signature = !ecran.salon && c ? { compte: c, nom: libelleCompte(c) } : null;
   definirSignature(signature);
-  nouvelAppel(signature);
+  nouvelleEquipe(signature, m.session);
   viderPermissions();
   razJauge();
   viderFil();
@@ -110,14 +177,13 @@ function surRejouer(m) {
 }
 
 function surEvenement(m) {
-  surEvenementDirect(m, ecran.rejeu);
-  if (m.t === 'utilisateur' && !ecran.titre) ecran.titre = m.texte.slice(0, 80);
+  surEvenementEquipe(m, ecran.rejeu);
+  if (m.t === 'utilisateur' && !ecran.titre && !m.de) ecran.titre = m.texte.slice(0, 80);
   if (m.t === 'etat') {
     Object.assign(ecran.etat, m);
     if (m.modele) $('modele').value = m.modele;
     if (m.ferme) noteFil(t('session_fermee'));
     majEntete();
-    if ('occupe' in m && !ecran.rejeu) dire({ t: 'general' });
   } else if (m.t === 'capacites') {
     definirCommandes(m.commandes);
     const modeles = m.modeles.length ? m.modeles : [{ id: 'default', nom: '' }];
@@ -127,8 +193,7 @@ function surEvenement(m) {
     majEntete();
   } else if (m.t === 'permission' || m.t === 'permission_fin') {
     if (m.t === 'permission') afficherPermission(m);
-    else retirerPermission(m.id);
-    if (!ecran.rejeu) dire({ t: 'general' }); // la pastille de la barre suit l'attente d'accord
+    else retirerPermission(m.id); // la pastille de la barre suit l'attente d'accord par la veille (« vivantes »)
   } else if (m.t === 'contexte' || m.t === 'tour' || m.t === 'limite') {
     majJauge(m);
     if (m.t === 'tour') afficher(m);
@@ -139,12 +204,16 @@ function surEvenement(m) {
 
 function surGeneral(m) {
   ecran.general = m;
+  definirSkins(m.skins);
+  definirEtatVoix(m.voix);
   $('version').textContent = m.version || '';
-  const choisi = m.comptes.some((c) => c.id === $('compte').value) || $('compte').value === 'orchestre' ? $('compte').value : 'defaut';
-  options($('compte'), [...m.comptes.map((c) => [c.id, libelleCompte(c)]), ['orchestre', t('compte_orchestre')]], choisi);
+  const choisi = m.comptes.some((c) => c.id === $('compte').value) || ['orchestre', 'salon'].includes($('compte').value) ? $('compte').value : 'defaut';
+  // « Plusieurs IA » ouvre le panneau 👥 (choix des participants) ; une fois appliqué, il dit ce qu'est la discussion.
+  options($('compte'), [...m.comptes.map((c) => [c.id, libelleCompte(c)]), ['orchestre', t('compte_orchestre')], ['salon', t('compte_salon')]], choisi);
   majComptes(m.comptes);
   majComptesSalon(m.comptes);
   majCorbeille(m.corbeille);
+  majProjetsDiscussions(m.projets);
   majBarre({ general: m });
   majEntete();
   if (!ecran.projet) {
@@ -169,12 +238,16 @@ ecouter((m) => {
       demanderJeton(true);
     }
   } else if (m.t === 'general') surGeneral(m);
-  else if (m.t === 'historique') m.projet === ecran.projet && majBarre({ historique: m.sessions });
+  else if (m.t === 'vivantes' && ecran.general) {
+    ecran.general.vivantes = m.vivantes; // veille du serveur : toutes les discussions ouvertes, en direct
+    majBarre({ general: ecran.general });
+  } else if (m.t === 'historique') m.projet === ecran.projet && majBarre({ historique: m.sessions });
   else if (m.t === 'rejouer') surRejouer(m);
   else if (m.t === 'etat_compte') surEtatCompte(m);
   else if (m.t === 'connexion') surConnexion(m);
   else if (m.t === 'refus') {
     ecran.enAttente = null;
+    ecran.enOuverture = null;
     const texte = aTexte('refus_' + m.code) ? t('refus_' + m.code) : t('refus', { code: m.code });
     // Un panneau ouvert cache le fil : la notification, elle, se voit toujours.
     if (m.session) noteFil(texte, true);
@@ -182,6 +255,7 @@ ecouter((m) => {
   } else if (m.session && m.session === ecran.session) {
     ecran.journal.push(m);
     surEvenement(m);
+    if (m.t === 'tour' && ecran.retenir != null) finirRetenir(m);
   }
 });
 
@@ -204,10 +278,26 @@ function demarrer() {
     dire({ t: 'fermer', session: ecran.session });
     choisirProjet(ecran.projet);
   });
+  $('retenir').addEventListener('click', () => {
+    if (!ecran.session || ecran.salon || ecran.retenir != null) return;
+    if (ecran.etat.occupe) return notifier(t('retenir_occupe'));
+    ecran.retenir = ecran.journal.length;
+    dire({ t: 'envoyer', session: ecran.session, texte: t('retenir_consigne') });
+  });
   $('jauge').addEventListener('click', () => $('conso').toggleAttribute('hidden')); $('ouvrir-comptes').addEventListener('click', ouvrirComptes);
-  $('ouvrir-salon').addEventListener('click', () => ecran.projet && ouvrirSalon());
-  // Changer de compte hors session remet le choix du modèle à zéro (chaque compte a les siens).
+  // Depuis une discussion ouverte, le panneau part de son équipe et peut l'appliquer à cette discussion.
+  const discussionOuverte = () => (ecran.session && !ecran.etat.ferme ? ecran.resume || null : null);
+  $('ouvrir-salon').addEventListener('click', () => ecran.projet && ouvrirSalon(discussionOuverte()));
   $('compte').addEventListener('change', () => {
+    // « Plusieurs IA » dans la liste : le panneau 👥 s'ouvre ; la liste garde ce qu'est la discussion tant que rien
+    // n'est appliqué.
+    if ($('compte').value === 'salon') {
+      const d = discussionOuverte();
+      $('compte').value = !d ? 'defaut' : d.participants ? 'salon' : d.orchestre ? 'orchestre' : d.compte;
+      if (ecran.projet) ouvrirSalon(d);
+      return;
+    }
+    // Changer de compte hors session remet le choix du modèle à zéro (chaque compte a les siens).
     options($('modele'), [['default', t('modele_defaut')]], 'default');
     majEntete();
   });
@@ -217,9 +307,12 @@ function demarrer() {
     majBarre({ projet: null, historique: [] });
     quitterSession();
   } });
-  initSalon((reglages) => {
-    quitterSession();
-    dire({ t: 'ouvrir', projet: ecran.projet, mode: $('mode').value, ...reglages });
+  initSalon({
+    demarrer: (reglages) => {
+      quitterSession();
+      dire({ t: 'ouvrir', projet: ecran.projet, mode: $('mode').value, ...reglages });
+    },
+    appliquer: (reglages) => dire({ t: 'changer_equipe', session: ecran.session, ...reglages }),
   });
   $('form-porte').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -235,12 +328,17 @@ function demarrer() {
     ouvrirProjet,
     sessionCorbeille: (quoi) => dire({ t: 'session_corbeille', ...quoi }),
     rejoindre: (s) => s.id !== ecran.session && dire({ t: 'attacher', session: s.id }),
-    reprendre: (s) => {
-      quitterSession();
-      // Les sessions passées appartiennent au compte du serveur : la reprise se fait toujours sur lui.
-      ouvrir({ reprise: s.id, titre: s.titre, compte: 'defaut' });
-    },
+    // Les discussions enregistrées appartiennent au compte du serveur : la reprise se fait toujours sur lui.
+    reprendre: (s) => reprendreDiscussion(s),
+    ranger: ouvrirRanger,
+    voirToutes: ouvrirDiscussions,
+    nouvelle: () => ecran.projet && choisirProjet(ecran.projet),
   });
+  initDiscussions({ reprendre: (d) => reprendreDiscussion(d, d.projet) });
+  initEquipe();
+  initAlertes({ ecran, libelle: libelleCompte, rejoindre: (id) => id !== ecran.session && dire({ t: 'attacher', session: id }) });
+  initAnnonces({ session: () => ecran.session });
+  initMemoire({ session: () => ecran.session });
   razJauge();
   majEntete();
   if (jetonInitial()) connecter();

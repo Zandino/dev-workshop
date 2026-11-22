@@ -8,12 +8,13 @@ import { homedir } from 'node:os';
 import { ticketApercu } from './apercu.mjs';
 import { deconnecterCompte } from './connexion.mjs';
 import { etatDuCompte } from './fournisseurs/index.mjs';
-import { lireContexte, ecrireContexte, mettreALaCorbeille, listerCorbeille, restaurer, effacerDefinitivement, DUREE_CORBEILLE } from './projets.mjs';
+import { lireContexte, ecrireContexte, ajouterAuContexte, mettreALaCorbeille, listerCorbeille, restaurer, effacerDefinitivement, DUREE_CORBEILLE } from './projets.mjs';
 import { receptions } from './fichiers.mjs';
 import { vueConnecteurs, definirConnecteur, supprimerConnecteur, reglerAcces, importerConnecteurs } from './connecteurs.mjs';
 import { listerSessionsCorbeille } from './corbeille-sessions.mjs';
 import { ordresSessions } from './ordres-sessions.mjs';
 import { reglesDu, enregistrerRegles } from './regles-accord.mjs';
+import { definirOrdreProjets, definirOrdreDiscussions } from './ordre.mjs';
 
 const dansProjet = (s, nom) => s.projet === nom || s.projet.startsWith(nom + '/');
 
@@ -24,6 +25,17 @@ export function ordresProjets(envoyer, general, attacher) {
   const connecteurs = () => envoyer({ t: 'connecteurs', ...vueConnecteurs(listerComptes()) });
 
   const ordres = {
+    // Ordre choisi dans la barre (glisser-déposer, flèches) : voir ordre.mjs.
+    ordre_projets(m) {
+      definirOrdreProjets(m.liste);
+      general();
+    },
+
+    ordre_discussions(m) {
+      definirOrdreDiscussions(String(m.projet || ''), m.liste);
+      general();
+    },
+
     projet_lire(m) {
       const nom = String(m.nom || '');
       resoudreProjet(nom);
@@ -39,6 +51,12 @@ export function ordresProjets(envoyer, general, attacher) {
     projet_contexte(m) {
       ecrireContexte(String(m.nom || ''), m.contexte);
       envoyer({ t: 'projet_enregistre', nom: m.nom });
+    },
+
+    // « Retenir pour le projet » : ce que la personne a relu et validé s'ajoute à la fin de la fiche.
+    projet_retenir(m) {
+      ajouterAuContexte(String(m.nom || ''), typeof m.texte === 'string' ? m.texte.slice(0, 20000) : '');
+      envoyer({ t: 'projet_retenu', nom: m.nom });
     },
 
     // La confirmation (nom retapé) est vérifiée ici aussi : l'écran seul ne suffit pas.

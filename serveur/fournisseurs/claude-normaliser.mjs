@@ -17,6 +17,17 @@ export function texteDeResultat(contenu) {
   );
 }
 
+/** Taille au-delà de laquelle une capture d'écran ne part pas à l'écran (base64). */
+export const MAX_IMAGE = 3 * 1024 * 1024;
+
+/** Première image d'un résultat d'outil (capture du navigateur…), pour le bureau en direct ; null sinon. */
+export function imageDeResultat(contenu) {
+  if (!Array.isArray(contenu)) return null;
+  const b = contenu.find((x) => x?.type === 'image' && x.source?.type === 'base64' && typeof x.source.data === 'string');
+  if (!b || b.source.data.length > MAX_IMAGE || !/^image\/(png|jpeg|gif|webp)$/.test(b.source.media_type || '')) return null;
+  return { type: b.source.media_type, donnees: b.source.data };
+}
+
 /** Jetons d'un appel au modèle. */
 export function usageNormalise(u) {
   if (!u) return null;
@@ -42,6 +53,7 @@ export function assistantVersEvenement(m) {
     usage: usageNormalise(m.message?.usage),
     modele: m.message?.model || null,
     sousAgent: Boolean(m.parent_tool_use_id),
+    parent: m.parent_tool_use_id || null, // l'appel qui a lancé le sous-agent (équipe en direct)
   };
 }
 
@@ -64,6 +76,8 @@ export function utilisateurVersEvenements(m, { avecTexte }) {
         id: b.tool_use_id,
         contenu: texteDeResultat(b.content),
         erreur: Boolean(b.is_error),
+        parent: m.parent_tool_use_id || null,
+        ...(imageDeResultat(b.content) ? { image: imageDeResultat(b.content) } : {}),
       });
     } else if (b.type === 'text' && avecTexte && saisieReelle(b.text) && !m.isSynthetic && !m.isMeta) {
       evenements.push({ t: 'utilisateur', texte: b.text });
@@ -103,6 +117,44 @@ export function resultatVersEvenement(m) {
     coutSession: m.total_cost_usd ?? null,
     modeles,
   };
+}
+
+/**
+ * Sous-agents suivis par les messages « task_* » du SDK. Indispensable pour ceux lancés en arrière-plan : l'appel de
+ * l'outil Agent rend aussitôt « lancé », et la suite n'arrive que par ces messages (vu le 22/11/2026 : un sous-agent
+ * de relecture marqué fini dès son lancement dans l'équipe en direct). `suivies` : Map propre à la session
+ * (task_id -> { id, description, enFond, outil, resume, le }). Rend l'événement « tache » à émettre, ou null.
+ * Seuls les sous-agents comptent (pas les commandes lancées en arrière-plan, ni les tâches « ambiantes »).
+ */
+export function tacheVersEvenement(m, suivies, maintenant = Date.now()) {
+  if (m?.type !== 'system') return null;
+  if (m.subtype === 'task_started') {
+    const sousAgent = m.task_type ? m.task_type === 'local_agent' : Boolean(m.subagent_type);
+    if (!sousAgent || m.ambient || m.skip_transcript || !m.tool_use_id) return null;
+    const x = { id: m.tool_use_id, description: String(m.description || '').slice(0, 300), enFond: Boolean(m.is_backgrounded), outil: null, resume: null, le: 0 };
+    suivies.set(m.task_id, x);
+    return { t: 'tache', etape: 'debut', id: x.id, enFond: x.enFond, description: x.description, type: m.subagent_type || null };
+  }
+  const x = suivies.get(m.task_id);
+  if (!x) return null;
+  if (m.subtype === 'task_updated') {
+    if (!m.patch?.is_backgrounded || x.enFond) return null;
+    x.enFond = true; // passé en arrière-plan en cours de route
+    return { t: 'tache', etape: 'debut', id: x.id, enFond: true, description: x.description };
+  }
+  if (m.subtype === 'task_progress') {
+    const outil = m.last_tool_name || null;
+    const resume = m.summary ? String(m.summary).slice(0, 300) : null;
+    // Le journal de la discussion est borné : un événement quand l'outil ou le résumé change, sinon toutes les 15 s.
+    if (outil === x.outil && resume === x.resume && maintenant - x.le < 15_000) return null;
+    Object.assign(x, { outil, resume, le: maintenant });
+    return { t: 'tache', etape: 'progres', id: x.id, outil, resume, jetons: m.usage?.total_tokens ?? null, outils: m.usage?.tool_uses ?? null };
+  }
+  if (m.subtype === 'task_notification') {
+    suivies.delete(m.task_id);
+    return { t: 'tache', etape: 'fin', id: x.id, enFond: x.enFond, statut: m.status, description: x.description, resume: String(m.summary || '').slice(0, 4000), jetons: m.usage?.total_tokens ?? null };
+  }
+  return null;
 }
 
 /** Limites de l'abonnement, quand le SDK les signale. */

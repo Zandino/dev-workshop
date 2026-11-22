@@ -7,7 +7,7 @@ Interface en français ou en anglais.
 
 Tout tourne sur le serveur : les comptes y sont connectés une fois, l'écran ne fait qu'afficher.
 
-Logiciel libre, développé par l'équipe Deltinfo Studio et publié sous licence Apache 2.0. État : version 0.6, jeune ; lire « Limites
+Logiciel libre, développé par l'équipe Deltinfo Studio et publié sous licence Apache 2.0. État : version 0.7, jeune ; lire « Limites
 connues » avant de s'en servir.
 
 > **In English.** Dev Workshop is a self-hosted web interface for coding with AI agents (Claude Code, OpenAI Codex,
@@ -131,7 +131,49 @@ fois le même compte. Sur chaque demande, les IA parlent à tour de rôle, jamai
   signale avant de démarrer ;
 - chaque message relayé est signé ; la consigne dit à chaque IA qu'un autre participant n'est pas l'utilisateur ;
 - le mode reste « demander avant d'agir » (ou « plan ») : chaque demande d'accord revient à l'écran, signée ;
-- « Arrêter » coupe la discussion ; un tour en échec l'arrête aussi.
+- « Arrêter » coupe la discussion ; une IA qui ne répond pas est mise à l'écart, les autres continuent.
+
+**Limite d'utilisation atteinte** (abonnement, quota) : partout, une autre IA prend le relais avec l'historique.
+Une seule IA : la suivante des IA connectées reprend la dernière demande (d'abord les autres comptes Claude). À
+plusieurs : l'IA arrivée à sa limite n'est plus relancée avant sa remise à zéro (l'heure donnée par Claude, sinon
+30 min ; le fil dit « de retour vers 15:20 ») ; en concertation, les autres se répartissent le travail sans elle ; en
+exécution, une autre (du même genre d'abord) reprend sa part ; si toutes sont à leur limite, une IA connectée hors de
+la discussion vient en renfort jusqu'à leur retour. Orchestre : un sous-agent à sa limite rend la main à la cheffe,
+qui confie la tâche à une autre IA ; la cheffe à sa limite est remplacée par un autre compte Claude. Sans aucune IA
+pour reprendre, le tour s'arrête et une alerte le dit.
+
+L'équipe d'une discussion déjà ouverte se change sans en ouvrir une autre : 👥 part de l'équipe en place et
+« Appliquer à cette discussion » y met d'autres IA (ajouter, retirer, changer) ; la liste des IA, en haut, revient à
+une seule IA ou passe à l'orchestre. La nouvelle équipe reçoit l'historique en consigne (réponses signées), l'ancienne
+est fermée ; refusé pendant qu'une IA travaille. Les IA de la nouvelle équipe démarrent une nouvelle session de leur
+côté (Claude Code compris) : elles connaissent la conversation par cet historique, borné à ses 20 000 derniers
+caractères.
+
+## Entre discussions
+
+Chaque IA qui a des outils (Claude, Codex, Gemini, Copilot) reçoit quatre outils propres à Dev Workshop :
+
+- `discussions` : les autres discussions ouvertes, tous projets confondus (id, projet, titre, IA, état) ;
+- `lire_discussion` : leurs derniers échanges (le texte des demandes et des réponses, pas les résultats d'outils) ;
+- `envoyer_message` : un message à une autre discussion. Libre, elle le traite d'elle-même ; occupée ou en attente de
+  ton accord, dès qu'elle est libre. Sa réponse finale revient ensuite à l'envoyeuse, comme un nouveau message qui la
+  relance. Rien n'attend : deux discussions qui s'écrivent en même temps ne se bloquent pas ;
+- `poser_question` (IA autres que Claude, qui a la sienne) : la fenêtre de questions à onglets, la même que celle de
+  Claude ; la réponse arrive à l'IA comme prochain message.
+
+À l'écran, un message venu d'une autre discussion est à gauche, signé de son origine (« ↪ De « titre » · projet ·
+IA ») ; l'IA qui le reçoit sait qu'il vient d'une IA collègue, pas de toi. Garde-fou : au plus 6 messages entre
+discussions par demande de ta part ; au-delà, l'échange s'arrête, le message ne part pas et une alerte te prévient.
+Une discussion qui agit sans demander (« tout autoriser », automatique, accepter les modifications) ne traite un message venu
+d'ailleurs qu'après ton accord (✋ « Message de … : le traiter ? ») ; refusé, l'envoyeuse en est prévenue. Le texte
+d'un message est cité dans les historiques : il ne peut pas s'y faire passer pour toi. Une discussion fermée prévient
+celles qui attendaient sa réponse. Les messages en attente ne survivent pas à un redémarrage du serveur.
+
+Claude reçoit ces outils dans le serveur même ; les autres IA par l'adresse locale `/mcp` (127.0.0.1 seulement), avec
+un jeton propre à chaque IA lancée, oublié quand elle s'arrête (pour Codex, il passe par l'environnement de son
+processus, sous un nom que Codex retire des commandes qu'il lance, jamais par `config.toml`). Seuls ces outils-là
+passent sans demande d'accord ; le nom de leur serveur est tiré au hasard à chaque démarrage, pour qu'un dépôt ne
+puisse pas s'en faire passer. Qwen Code ne sait pas joindre cette adresse : il s'en passe.
 
 ## Sécurité
 
@@ -175,12 +217,123 @@ tests/parcours.mjs                parcours du canal (sécurité, permission, com
 tests/ecran.mjs                   la vraie page dans un navigateur simulé, sur le vrai serveur
 ```
 
-Une session continue de tourner si l'onglet se ferme ; elle apparaît dans « Sessions en cours » et se rejoue à la
-reconnexion. Elle s'arrête avec le serveur (elle reste reprenable depuis « Sessions passées »).
+Une discussion continue de tourner si l'onglet se ferme ; elle apparaît en tête de la liste « Discussions » de son
+projet (ou dans « Ouvertes dans d'autres projets ») et se rejoue à la reconnexion. Elle s'arrête avec le serveur et
+reste reprenable depuis la liste de son projet.
+
+Dans la barre, les projets et les discussions d'un projet se rangent dans l'ordre voulu : glisser une ligne avant ou
+après une autre, ou ▲ ▼ au survol (Alt+↑ / Alt+↓ au clavier). L'ordre est gardé sur le serveur (`ordre.json` des
+réglages), pour tous les écrans. Un projet replié montre l'état le plus pressant de ses discussions ouvertes : ✋ un
+accord ou une question t'attend, puis un échec pas encore lu, puis une IA au travail, puis une fin pas encore lue.
+
+## Discussions et fiche du projet
+
+- Chaque projet liste ses discussions, les plus récentes en haut. « Toutes les discussions » les montre tous projets
+  confondus, avec une recherche dans les titres.
+- « Ranger » déplace une discussion dans un autre projet, créé au passage si besoin : elle y reprend avec la fiche de
+  ce projet. Le SDK de Claude Code ne sait pas déplacer une session : Dev Workshop recopie lui-même son fichier dans
+  le dossier de Claude du nouveau projet (dossier de travail réécrit, date et sous-agents conservés), puis ne retire
+  l'original, par le SDK, qu'une fois la copie reconnue. C'est le seul endroit où il écrit dans les fichiers de Claude
+  Code. Refusé si elle est interrompue ou à la corbeille.
+- Une discussion **ouverte** se range aussi (⇄ ou glisser sur le projet), sauf pendant qu'elle travaille, attend ton
+  accord ou traite un message d'une autre discussion. Le Claude du serveur s'arrête, sa session est déplacée, et il
+  la reprend dans le nouveau dossier avec tout son contexte (si le déplacement échoue, il la reprend là où elle
+  était). Les autres (plusieurs IA, autre compte, équipe changée en route) repartent dans le nouveau dossier avec
+  l'historique en consigne. Le fil dit où elle a été rangée.
+- Une discussion se renomme depuis la barre (✎ au survol, ou F2) ; celle du Claude du serveur l'est aussi chez
+  Claude Code.
+- La fiche du projet (réglages ⚙) est donnée à toutes les IA au début de chaque discussion du projet. Dans une
+  discussion, « Retenir pour le projet » demande à l'IA ce qu'il faut garder ; tu relis et corriges, et rien n'est
+  ajouté à la fiche sans ton clic.
+- Chaque discussion a aussi sa **mémoire** (🧠 dans l'en-tête), en deux parties. *Tes instructions* : l'IA les suit ;
+  elle peut seulement proposer de les changer, par une demande d'accord à l'écran (raison, avant, après). *Ce que
+  l'IA retient* : elle le tient à jour elle-même avec ses outils (décisions, faits utiles, préférences, reste à faire ;
+  12 000 caractères au plus, réécrit quand il faut raccourcir), le fil dit qui a noté quoi, et tu peux le corriger.
+  Toutes les IA de la discussion la reçoivent en démarrant ; une modification faite par toi leur est transmise avec
+  ton message suivant (le fil ne montre que ton message). Elle suit la discussion : redémarrage du serveur, changement
+  d'équipe, rangement dans un autre projet, réouverture depuis la liste du projet. Rangée sur le serveur, dans
+  `memoires/` des réglages.
+- Toutes les discussions ouvertes se suivent en direct dans la barre, même quand tu en regardes une autre : ✋ elle a
+  besoin de toi (un accord à donner), pastille qui pulse elle travaille, titre en gras elle a fini sans que tu l'aies
+  vue (rouge : en échec), verte elle attend ton message. Un projet replié montre la ✋ de ses discussions. Fenêtre au
+  premier plan, une bulle cliquable ouvre la discussion qui t'appelle ; en arrière-plan, c'est une notification du
+  système. Le logiciel de bureau pose une main levée sur son icône de la barre des tâches (l'icône clignote à chaque
+  nouvelle demande). La page n'ayant aucun accès au poste, elle l'annonce dans son titre (« ✋ 2 · Dev Workshop »),
+  que le logiciel lit.
+
+## Équipe en direct
+
+Bouton « Équipe en direct » de l'en-tête : la discussion comme un appel d'équipe, à droite de la conversation (sa
+largeur se règle en glissant son bord gauche ; double-clic pour la largeur d'origine). Elle partage cette colonne avec
+l'aperçu : ouvrir l'un ferme l'autre. ⤢ l'agrandit par-dessus la conversation (Échap la remet à droite) ; ⧉ la
+détache dans sa propre fenêtre, à poser sur un autre écran : elle suit la discussion affichée dans la fenêtre
+principale, se ferme avec elle, et ⇱ l'y remet. Dans le logiciel de bureau, la fenêtre détachée demande sa version
+0.7 (les versions plus anciennes refusent toute nouvelle fenêtre : un message le dit, ⤢ reste possible).
+
+- **Chacun son personnage** : chaque IA, et chaque sous-agent (ceux que Claude lance lui-même avec son outil Task ou
+  Agent, et ceux de l'orchestre), a son personnage à son bureau, dessiné par Dev Workshop, avec :
+  - un **prénom**, le même tout au long de la discussion ;
+  - un **style** : couleur, coiffure, teint, accessoire ;
+  - une **fonction** : le rôle donné par l'orchestre, sinon le type du sous-agent (Exploratrice, Architecte…), sinon
+    ce qu'il fait le plus (Développeur, Testeuse, Analyste…).
+  Un clic sur le prénom ou la fonction les change, pour cette discussion.
+- **Son état** : réfléchit, écrit, travaille (« Lance npm test »), attend (qui), a besoin de toi ✋, sans nouvelles
+  depuis 3 min, a fini, en échec ; des badges pour une commande de plus d'une minute, les échecs, et une même action
+  répétée trois fois (« tourne en rond ? »). Un sous-agent arrive avec sa mission, en retrait sous celui qui l'a
+  lancé, et repart 2 min après son compte rendu. Lancé en arrière-plan, il reste au travail après la fin du tour de
+  son chef (dernier outil, résumé d'étape, jetons, suivis par le SDK de Claude), et sa fin s'affiche dans le fil.
+- **Au premier plan** : celui qui a besoin de toi, sinon celui qui vient d'agir (un clic sur une tuile la garde au
+  premier plan), avec sa bulle et son écran partagé : le fichier qu'il modifie (lignes changées), son terminal
+  (commande puis sortie), la dernière capture de son navigateur (connecteur « navigateur »).
+- **Leurs voix** : chacun parle avec sa voix, accordée à son genre et à son débit, un seul à la fois ; des ondes sur
+  sa tuile montrent qui parle. Voix naturelles (Piper, libre, sur ce serveur : rien ne part ailleurs), à installer une
+  fois depuis l'en-tête de l'équipe : environ 360 Mo dans le dossier des réglages (environnement Python, Piper sous
+  GPL-3 téléchargé depuis PyPI, trois voix françaises ou quatre anglaises depuis Hugging Face), 0,6 s pour une phrase,
+  ~240 Mo le temps de la dire (rien n'est dit quand la mémoire est juste). Sans elles, les voix du système, réparties
+  de la même façon.
+- **Réglage « Voix »** (en-tête de l'équipe, ou bas de la barre des projets) : *Tout dire* (l'équipe affichée lit ce
+  que disent les IA, et les autres discussions sont annoncées), *L'essentiel* (seulement les annonces, pour toutes
+  les discussions ouvertes, même équipe fermée : « Léa a besoin de toi sur boutique », « Travail terminé sur
+  boutique », « Le travail s'est arrêté sur boutique »), ou *Muet* ; et un curseur de volume.
+
+**Skins** (personnages en images) : un dossier par personnage dans le dossier des réglages du serveur,
+`skins/<nom>/`, avec une image par état : `idle`, `working`, `thinking`, `waiting`, `needs-you`, `blocked`,
+`done`, `error` (JPEG, PNG, WebP ou GIF ; une vidéo en boucle `.mp4` ou `.webm` l'emporte sur l'image du même état), et
+`skin.json` facultatif (`{ "prenom": "Léa", "feminin": true }`). Seule `idle` est obligatoire : un état sans image
+reprend celle-ci. Un skin va au premier membre venu, qui prend son prénom ; les autres gardent les personnages dessinés.
+Les images restent sur le serveur (jamais dans le dépôt) et ne bougent pas : de petits effets s'animent par-dessus selon
+l'état (points de frappe, bulle de pensée, main levée, z de sommeil, confettis, alerte). Ce sont tes créations, faites par
+exemple avec un générateur d'images : décris le même personnage dans les huit états, même cadrage 16:10, sans texte.
+
+Tout vient des événements de la discussion : aucun appel de plus à une IA. Les captures (PNG, JPEG, GIF, WebP, 3 Mo au
+plus) ne vont qu'aux écrans qui regardent : elles ne sont pas gardées dans l'historique, qu'elles alourdiraient.
+
+## Dictée
+
+- 🎤 à côté de « Envoyer » : un clic écoute, un second clic arrête, Échap annule. Le texte s'ajoute dans la zone de
+  saisie, là où est le curseur ; tu le relis, rien ne part sans ton clic. 3 minutes au plus par dictée.
+- Moteur, en bas de la barre latérale : **Whisper sur le serveur** (open source, gratuit, la voix ne quitte pas le
+  serveur), « rapide » (whisper-small) ou « précis » (whisper-large-v3-turbo), ou **un compte API** déjà déclaré
+  (OpenAI, Groq, Mistral… par leur route `/audio/transcriptions` ; la voix part chez eux).
+- Whisper ne fait pas partie de l'installation de base : au premier 🎤, Dev Workshop propose de l'installer dans le
+  dossier des réglages (Transformers.js et ONNX Runtime, ~750 Mo, sans sudo), puis télécharge le modèle à son premier
+  usage (~250 Mo pour « rapide », ~1,1 Go pour « précis »). Relevé sur 4 cœurs de Ryzen 7700X, pour 10 s de voix :
+  « rapide » 2,3 s et ~1,2 Go de mémoire, « précis » 4,5 s et ~2,8 Go. Le modèle est libéré après 10 minutes sans
+  dictée.
+- Il faut une adresse sûre (le logiciel de bureau, ou `localhost` par le tunnel) ; dans un navigateur, il demande
+  l'accès au micro.
 
 ## Essais
 
-Le serveur doit tourner. Chaque essai fait un tour réel sur le petit modèle :
+Tous les essais qui se passent d'IA et de compte (environ 330 vérifications : fausses IA de `tests/faux`, navigateur
+simulé, serveur lancé dans des dossiers jetables) se lancent d'un coup, en un peu plus d'une minute ; GitHub les
+lance aussi à chaque demande de fusion (`.github/workflows/essais.yml`) :
+
+```bash
+bash tests/tout.sh
+```
+
+Les essais suivants demandent un serveur qui tourne. Chacun fait un tour réel sur le petit modèle :
 
 ```bash
 DEVWORKSHOP_PORT=5330 node tests/parcours.mjs <projet>
@@ -188,6 +341,20 @@ DEVWORKSHOP_PORT=5330 node tests/ecran.mjs <projet> fr     # ou en
 DEVWORKSHOP_PORT=5330 node tests/avance.mjs <projet>       # question de Claude, arrêt, cumul, reprise
 DEVWORKSHOP_PORT=5330 node tests/salon.mjs <projet>        # comptes, API (faux serveur local), salon
 DEVWORKSHOP_PORT=5330 node tests/connexion.mjs <projet>    # connexion par compte jusqu'au lien, sans appel au modèle
+```
+
+Les discussions (liste, « Ranger », « Retenir ») s'essaient sans modèle, mais en écrivant dans le dossier de Claude
+Code : sur un serveur lancé avec un `HOME` jetable sous `/tmp` (l'essai refuse sinon), avec les mêmes `HOME`,
+`DEVWORKSHOP_CONFIG`, `DEVWORKSHOP_ROOT` et `DEVWORKSHOP_PORT` des deux côtés :
+
+```bash
+node tests/discussions.mjs prepare        # avant de lancer le serveur : fabrique des discussions factices
+node tests/discussions.mjs                # canal : liste, déplacement et ses refus, fiche
+node tests/ecran-discussions.mjs          # la vraie page (sur des discussions refabriquées)
+node tests/alertes.mjs <projet>           # alertes : règle, canal (fausse API locale), vraie page ; sans modèle
+node tests/dictee.mjs <projet> voix.wav "mots attendus"   # dictée : Whisper (installé si besoin), API factice, page
+node tests/entre-discussions.mjs          # entre discussions : discussions simulées, vraie adresse /mcp ; sans serveur ni modèle
+node tests/questions.mjs                  # fenêtre de questions à onglets (navigateur simulé) ; sans serveur ni modèle
 ```
 
 Les essais créent des comptes : les lancer avec `DEVWORKSHOP_CONFIG` sur un dossier d'essai, côté serveur et côté
@@ -218,9 +385,11 @@ déclarer dans `serveur/fournisseurs/index.mjs` sous un type de compte. Événem
 Codex et Gemini CLI sont installés avec le projet, en versions figées (`package.json`) : leurs adaptateurs lisent
 leurs protocoles, une montée de version se fait donc avec un essai.
 
-## Limites connues (v0.6)
+## Limites connues (v0.7)
 
-- les sessions passées et leur reprise ne concernent que le compte du serveur ;
+- les discussions enregistrées, leur reprise et « Ranger » ne concernent que le compte Claude du serveur ;
+- pas encore essayés de bout en bout avec un vrai modèle : « Retenir pour le projet », et la reprise par Claude
+  d'une discussion rangée (l'essai vérifie que son historique est relu depuis le nouveau projet) ;
 - jamais essayé avec un compte réel : une connexion menée à son terme, un tour de Codex ou de Gemini (adaptateurs
   écrits d'après leurs protocoles), une vraie API ou un vrai LM Studio ; le bac à sable de Codex démarre
   bien dans ce conteneur (essai d'écriture bloquée), mais n'a pas été vu sur un vrai tour ;
@@ -234,7 +403,11 @@ leurs protocoles, une montée de version se fait donc avec un essai.
 - pas d'images ni de pièces jointes dans la saisie ;
 - pas d'explorateur de fichiers ni d'éditeur ; les modifications se lisent dans les cartes d'outils ;
 - quelques commandes « / » propres au terminal (couleur, vue épurée…) n'ont pas d'effet ici ;
-- les commandes des compétences et des plugins gardent leur description d'origine, signalée comme telle.
+- les commandes des compétences et des plugins gardent leur description d'origine, signalée comme telle ;
+- dictée : essayée avec une voix de synthèse (Windows) et le faux micro de Chromium, pas encore avec une vraie voix
+  au micro ; « précis » n'a été mesuré qu'en dehors du serveur ;
+- onnxruntime écrit dans le journal du serveur des lignes « pthread_setaffinity_np failed » au chargement du modèle :
+  sans conséquence (le conteneur limite les cœurs).
 
 ## Licence et dépendances
 
@@ -250,6 +423,7 @@ chez leur éditeur :
 | Gemini CLI (Google) | Apache 2.0 |
 | ws, marked, jsdom | MIT |
 | DOMPurify | MPL 2.0 ou Apache 2.0 |
+| Dictée, installée à la demande : Transformers.js / ONNX Runtime / modèles Whisper | Apache 2.0 / MIT / MIT |
 
 Dev Workshop n'est affilié ni à Anthropic, ni à OpenAI, ni à Google. Les noms de leurs produits leur appartiennent.
 

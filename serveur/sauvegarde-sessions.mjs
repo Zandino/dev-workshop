@@ -17,6 +17,8 @@ export function ecrireSession(s) {
   const donnees = {
     id: s.id, compte: s.compte, participants: s.participantsComplets || null, orchestre: Boolean(s.orchestre),
     dossier: s.dossier, titre: s.titre, creeLe: s.creeLe, etat: { modele, mode, effort, sessionId },
+    echanges: s.echanges || null, equipeChangee: Boolean(s.equipeChangee), origine: s.origine || null,
+    cleMemoire: s.cleMemoire || null,
     journal: s.journal.filter((e) => e.t !== 'delta').slice(-MAX_EVENEMENTS),
   };
   writeFileSync(fichier(s.id), JSON.stringify(donnees), { mode: 0o600 });
@@ -51,7 +53,7 @@ export function listerInterrompues(vivantes) {
       const d = JSON.parse(readFileSync(path.join(DOSSIER, n), 'utf8'));
       liste.push({
         id, titre: d.titre || '', projet: path.relative(RACINE_PROJETS, d.dossier) || '.',
-        compte: d.compte, salon: Boolean(d.participants), orchestre: d.orchestre, le: statSync(path.join(DOSSIER, n)).mtimeMs,
+        compte: d.compte, sessionId: d.etat?.sessionId || null, salon: Boolean(d.participants), orchestre: d.orchestre, origine: d.origine || null, le: statSync(path.join(DOSSIER, n)).mtimeMs,
       });
     } catch { /* sauvegarde abîmée : ignorée */ }
   }

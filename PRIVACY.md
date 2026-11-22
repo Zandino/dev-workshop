@@ -28,6 +28,25 @@ AI services whose accounts or keys you connect (Anthropic, OpenAI, Google, GitHu
 it starts only the connectors (MCP servers) you add. Each of those services has its own privacy policy. Starting a
 connector with `npx` downloads its package from the npm registry.
 
+**Live team voices.** Natural voices run on your server (Piper): the text the AIs say is turned into speech there
+and sent only to your screen. Installing them (your click) downloads Piper from PyPI and the voice models from Hugging
+Face (`huggingface.co`); no text is sent there.
+
+**Conversation memory.** It is stored on your server (`memoires/` in the settings folder) and given to the
+conversation's AIs: it therefore goes to their providers, like your messages.
+
+**Between conversations.** An AI can read the other open conversations (titles, your requests and the AIs' answers,
+all projects) and send them messages. What it reads or receives this way goes to that AI's provider: a Codex or
+Gemini conversation that reads a Claude one sends that text to OpenAI or Google.
+
+**Dictation (🎤).** The microphone is used only while you dictate, after you click 🎤; the desktop app grants the page
+the microphone and nothing else (no camera, no screen). What you say is turned into text in the message box, and
+nothing is sent to an AI before you press Send. With the default engine, Whisper, the voice is transcribed on your
+server and goes nowhere else. Installing it (your click) downloads the transcription library from the npm registry,
+and its first use downloads the Whisper model from Hugging Face (`huggingface.co`); no audio is sent there. If you
+choose an API account as the dictation engine instead, the recording is sent to that provider's transcription
+service, under its own privacy policy.
+
 ---
 
 ## Français
@@ -59,3 +78,22 @@ Le serveur tourne sur ta machine. Il envoie tes messages, et les fichiers joints
 d'IA dont tu branches le compte ou la clé (Anthropic, OpenAI, Google, GitHub, ou l'adresse d'API que tu indiques), et
 ne démarre que les connecteurs (serveurs MCP) que tu ajoutes. Chacun a sa propre politique de confidentialité. Démarrer
 un connecteur avec `npx` télécharge son paquet depuis le registre npm.
+
+**Voix de l'équipe en direct.** Les voix naturelles tournent sur ton serveur (Piper) : le texte que disent les IA y
+devient de la parole et ne part que vers ton écran. Leur installation (sur ton clic) télécharge Piper depuis PyPI et les
+voix depuis Hugging Face (`huggingface.co`) ; aucun texte n'y est envoyé.
+
+**Mémoire des discussions.** Elle est rangée sur ton serveur (dossier `memoires/` des réglages) et donnée aux IA de
+la discussion : elle part donc chez leurs fournisseurs, comme tes messages.
+
+**Entre discussions.** Une IA peut lire les autres discussions ouvertes (titres, tes demandes et les réponses des IA,
+tous projets) et leur écrire. Ce qu'elle lit ou reçoit ainsi part chez son fournisseur : une discussion Codex ou
+Gemini qui en lit une de Claude envoie ce texte à OpenAI ou à Google.
+
+**Dictée (🎤).** Le micro ne sert que pendant une dictée, après ton clic sur 🎤 ; le logiciel de bureau accorde à la
+page le micro et rien d'autre (ni caméra, ni écran). Ce que tu dis devient du texte dans la zone de saisie, et rien ne
+part vers une IA avant que tu cliques « Envoyer ». Avec le moteur par défaut, Whisper, la voix est transcrite sur ton
+serveur et ne va nulle part ailleurs. Son installation (sur ton clic) télécharge la bibliothèque de transcription
+depuis le registre npm, et son premier usage télécharge le modèle Whisper depuis Hugging Face (`huggingface.co`) ;
+aucun son n'y est envoyé. Si tu choisis plutôt un compte API comme moteur de dictée, l'enregistrement part chez ce
+fournisseur, pour sa transcription, sous sa propre politique de confidentialité.

@@ -60,5 +60,35 @@ const FICHE = {
   modes: { default: 'default', auto: 'autoEdit', acceptEdits: 'autoEdit', plan: 'plan', bypassPermissions: 'yolo' },
 };
 
-export const etatCompte = (compte) => etatAcp(FICHE, compte);
+/**
+ * La clé d'API acceptée par Google ? Ouvrir une session Gemini ne le dit pas : l'outil ne la vérifie qu'à la
+ * première demande (relevé le 21/11/2026 : un compte « connecté » dont la clé était refusée, « API key not
+ * valid »). Rend { refusee: true, message } si Google la refuse, { refusee: false } sinon, y compris quand Google
+ * ne répond pas (on ne bloque pas sur un doute ; `injoignable` le signale).
+ */
+export async function verifierCleGemini(cle) {
+  const base = process.env.DEVWORKSHOP_GOOGLE_API || 'https://generativelanguage.googleapis.com';
+  try {
+    const r = await fetch(`${base}/v1beta/models?pageSize=1`, { headers: { 'x-goog-api-key': cle }, signal: AbortSignal.timeout(10_000) });
+    if (r.ok) return { refusee: false };
+    const corps = await r.json().catch(() => ({}));
+    // 400 (clé invalide), 401, 403 (clé restreinte, API non activée) : refus de Google. Le reste (429, 5xx) : doute.
+    if ([400, 401, 403].includes(r.status)) {
+      return { refusee: true, message: `Google refuse cette clé (${String(corps?.error?.message || `HTTP ${r.status}`).slice(0, 160)})` };
+    }
+    return { refusee: false, injoignable: true };
+  } catch {
+    return { refusee: false, injoignable: true };
+  }
+}
+
+/** Connecté ? D'abord la clé auprès de Google (si le compte en a une), puis l'outil lui-même. */
+export async function etatCompte(compte) {
+  const cle = cleDe(compte.id);
+  if (cle) {
+    const v = await verifierCleGemini(cle);
+    if (v.refusee) return { connecte: false, adresse: null, organisation: null, abonnement: null, motif: v.message };
+  }
+  return etatAcp(FICHE, compte);
+}
 export const ouvrir = (options, emettre) => ouvrirAcp(FICHE, options, emettre);

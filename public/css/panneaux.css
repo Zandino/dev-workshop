@@ -49,11 +49,14 @@ button.discret:hover:not(:disabled) { color: var(--rouge); background: var(--rou
 .participant { display: grid; grid-template-columns: 1fr 1.3fr 1fr auto auto; gap: 8px; align-items: center; }
 .echanges { display: flex; align-items: center; gap: 10px; color: var(--texte-doux); }
 .echanges input { width: 70px; }
+/* Bas du panneau : depuis une discussion ouverte, « Démarrer une nouvelle » à côté de « Appliquer ». */
+.boite > .actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+.boite > .ajouts { display: flex; flex-wrap: wrap; gap: 8px; }
 
 /* Signature d'un participant : une teinte par rang. */
 .auteur { justify-self: start; padding: 1px 9px; border-radius: 99px; font-size: 12px; font-weight: 600; color: #fff; }
 .auteur .hors { font-weight: 400; opacity: 0.85; }
-.auteur.rang-0 { background: #6d4aff; }
+.auteur.rang-0 { background: #4169e1; }
 .auteur.rang-1 { background: #db2777; }
 .auteur.rang-2 { background: #0d9488; }
 .auteur.rang-3 { background: #d97706; }
@@ -70,3 +73,8 @@ a.principal:hover { filter: brightness(1.08); text-decoration: none; }
 @media (max-width: 820px) {
   .deux, .participant { grid-template-columns: 1fr; }
 }
+
+/* Mémoire de la discussion (memoire-discussion.js) : deux champs l'un sous l'autre. */
+.champ-memoire { display: grid; gap: 6px; }
+.champ-memoire h3 { font-weight: 600; }
+textarea.memoire-retenu { min-height: 220px; }

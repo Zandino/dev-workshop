@@ -1,0 +1,227 @@
+/* Équipe en direct : un appel vidéo sombre. En panneau à droite du fil (par défaut, largeur à la poignée), en grand
+   par-dessus la conversation (la barre des projets reste), ou seule dans sa fenêtre détachée (equipe.html). */
+body.avec-equipe #ouvrir-direct, body.equipe-detachee #ouvrir-direct { background: var(--accent-doux); color: var(--accent); border-color: transparent; }
+body.avec-equipe:not(.equipe-grande) .atelier { grid-template-columns: 260px minmax(0, 1fr) var(--largeur-equipe, minmax(380px, 38%)); }
+/* Le fil, plus étroit à côté de l'équipe : son en-tête passe à la ligne au lieu de cacher la jauge. */
+body.avec-equipe:not(.equipe-grande) .entete { flex-wrap: wrap; }
+@media (max-width: 1100px) { body.avec-equipe:not(.equipe-grande) .atelier { grid-template-columns: 220px minmax(0, 1fr) var(--largeur-equipe, minmax(340px, 45%)); } }
+
+.equipe {
+  --appel-fond: #15171d; --appel-panneau: #1c1f27; --appel-carte: #232733; --appel-trait: #2e3342; --appel-texte: #e8ebf2; --appel-doux: #9aa3b5;
+  position: relative; min-width: 0; min-height: 0; height: 100vh; display: flex; flex-direction: column; background: var(--appel-fond); color: var(--appel-texte);
+  border-left: 1px solid var(--appel-trait);
+}
+.equipe.grand { position: fixed; inset: 0 0 0 260px; z-index: 40; border-left: 0; }
+.equipe.fenetre { inset: 0; }
+body.page-equipe { margin: 0; height: 100vh; overflow: hidden; background: #15171d; }
+@media (max-width: 1100px) { .equipe.grand:not(.fenetre) { left: 220px; } }
+/* Écran étroit : le fil n'a plus la place à côté, l'équipe passe par-dessus. */
+@media (max-width: 760px) { .equipe, .equipe.grand { position: fixed; inset: 0; z-index: 40; } }
+
+/* Poignée du panneau (bord gauche) : glisser pour changer la largeur. */
+.poignee-equipe { position: absolute; left: -4px; top: 0; bottom: 0; width: 8px; z-index: 3; cursor: col-resize; touch-action: none; }
+.poignee-equipe:hover, .poignee-equipe.tire { background: color-mix(in srgb, var(--accent, #4169e1) 55%, transparent); }
+.equipe:not(.panneau) .poignee-equipe { display: none; }
+
+/* En panneau : une seule colonne (la liste des agents se retrouve dans les tuiles), en-tête resserré : compteurs et
+   boutons sur la première ligne, vues et voix sur la seconde. */
+.equipe.panneau .boutons-appel { order: 1; }
+.equipe.panneau .vues-appel, .equipe.panneau .entete-appel > select, .equipe.panneau .volume-voix { order: 2; }
+.equipe.panneau .titre-appel { display: none; }
+.equipe.panneau .entete-appel { padding: 8px 10px; gap: 6px; }
+.equipe.panneau .compteur { font-size: 12px; padding: 3px 8px; }
+.equipe.panneau .corps-appel { grid-template-columns: 1fr; }
+.equipe.panneau .liste-agents { display: none; }
+.equipe.panneau .centre-appel { padding: 12px; }
+.equipe.panneau .grille-appel { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.equipe.panneau .grille-appel > .vedette { grid-column: 1 / -1; grid-row: auto; }
+.equipe.panneau .rangee-tuiles { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+.equipe.panneau .fenetre-partagee { max-height: 45vh; min-height: 220px; }
+/* Format 16:10 + hauteur minimale = largeur minimale (224 px) : trop pour trois tuiles dans un panneau étroit. */
+.equipe.panneau .tuile-appel { min-height: 96px; }
+.boutons-appel { display: inline-flex; gap: 4px; }
+.volume-voix { width: 96px; accent-color: #6ee7b7; }
+.barre footer .volume-voix { flex: 1; width: auto; min-width: 80px; accent-color: var(--accent, #4169e1); }
+.icone-appel { min-width: 34px; padding: 4px 8px; font-size: 16px; line-height: 1; }
+
+/* En-tête : titre, compteurs, vues, voix, retour. */
+.entete-appel { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 14px; border-bottom: 1px solid var(--appel-trait); background: var(--appel-panneau); }
+.titre-appel strong { font-size: 16px; }
+.compteurs { display: flex; flex-wrap: wrap; gap: 6px; margin-right: auto; }
+.compteur { padding: 4px 10px; border-radius: 99px; background: var(--appel-carte); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.compteur.jetons { color: #f5d76e; }
+.compteur.ctx { color: #6ee7b7; }
+.compteur.travail { color: #f5b35b; }
+.compteur.attente { color: #93b4ff; }
+.compteur.finis { color: #6ee7b7; }
+.compteur.membres { color: var(--appel-doux); font-weight: 500; }
+.vues-appel { display: flex; padding: 3px; border-radius: 10px; background: var(--appel-carte); }
+.vues-appel button { border: 0; background: none; box-shadow: none; color: var(--appel-doux); padding: 4px 12px; min-height: 0; }
+.vues-appel button.actif { background: var(--appel-fond); color: var(--appel-texte); border-radius: 8px; }
+.entete-appel > button, .entete-appel select, .boutons-appel button { background: var(--appel-carte); color: var(--appel-texte); border: 1px solid var(--appel-trait); }
+
+.corps-appel { flex: 1; min-height: 0; display: grid; grid-template-columns: 250px 1fr; }
+@media (max-width: 900px) { .corps-appel { grid-template-columns: 1fr; } .liste-agents { display: none; } }
+
+/* Liste des agents, par urgence. */
+.liste-agents { overflow-y: auto; padding: 12px; border-right: 1px solid var(--appel-trait); background: var(--appel-panneau); display: grid; align-content: start; gap: 8px; }
+.liste-agents h3 { margin: 4px 4px 6px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--appel-doux); }
+.carte-agent { padding: 9px 11px; border-radius: 12px; background: var(--appel-carte); border-left: 3px solid var(--couleur-membre); cursor: pointer; display: grid; gap: 3px; }
+.carte-agent.epinglee { outline: 2px solid var(--couleur-membre); }
+.ligne-carte { display: flex; align-items: center; gap: 7px; min-width: 0; white-space: nowrap; overflow: hidden; }
+.ligne-carte .fonction { color: var(--appel-doux); font-size: 13px; overflow: hidden; text-overflow: ellipsis; }
+.point-membre { width: 9px; height: 9px; flex: none; border-radius: 50%; background: var(--couleur-membre); }
+.etat-carte { font-size: 13px; color: #93b4ff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.carte-agent.etat-travaille .etat-carte, .carte-agent.etat-ecrit .etat-carte { color: #f5b35b; }
+.carte-agent.etat-besoin { background: #3a2a14; }
+.carte-agent.etat-besoin .etat-carte { color: #ffb648; font-weight: 700; }
+.carte-agent.etat-fini .etat-carte { color: #6ee7b7; }
+.carte-agent.etat-erreur .etat-carte, .carte-agent.etat-bloque .etat-carte { color: #ff8a80; }
+.editable { border-bottom: 1px dashed transparent; cursor: text; }
+.editable:hover { border-bottom-color: var(--appel-doux); }
+.saisie-equipe { font: inherit; padding: 1px 4px; width: 8em; }
+
+/* Salle d'appel : grille de tuiles, ou partage d'écran + rangée. */
+.centre-appel { overflow-y: auto; padding: 16px; display: flex; flex-direction: column; }
+.vide-appel { margin: auto; max-width: 440px; text-align: center; color: var(--appel-doux); }
+.grille-appel { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; align-content: start; }
+.grille-appel > .vedette { grid-column: span 2; grid-row: span 2; }
+@media (max-width: 1200px) { .grille-appel > .vedette { grid-column: 1 / -1; grid-row: auto; } }
+.avec-partage { display: flex; flex-direction: column; gap: 14px; }
+.zone-partage { position: relative; }
+.rangee-tuiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+
+/* Une tuile : la scène, les puces d'état en haut, les puces d'identité en bas, la bulle de parole. */
+.tuile-appel { position: relative; overflow: hidden; border-radius: 16px; border: 2px solid transparent; background: var(--appel-carte); cursor: pointer; aspect-ratio: 16 / 10; min-height: 140px; transition: border-color 0.2s, box-shadow 0.2s; }
+.tuile-appel.vedette { border-color: color-mix(in srgb, var(--couleur-membre) 70%, white); box-shadow: 0 0 0 4px color-mix(in srgb, var(--couleur-membre) 30%, transparent); }
+.tuile-appel.epinglee { outline: 2px dashed var(--couleur-membre); outline-offset: 3px; }
+.tuile-appel.parle { border-color: #6ee7b7; box-shadow: 0 0 0 4px rgba(110, 231, 183, 0.35); }
+.tuile-appel.etat-besoin { border-color: #ffb648; box-shadow: 0 0 0 4px rgba(255, 182, 72, 0.35); }
+.tuile-appel.etat-fini { filter: saturate(0.85); }
+.scene-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.scene-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; display: block; transform-origin: 50% 100%; }
+/* Skins : l'image reste immobile ; seuls les effets par-dessus bougent. Fondu d'une image d'état à l'autre. */
+img.scene-img.fondu { animation: fondu-img 0.45s ease-out; }
+.etat-bloque img.scene-img { filter: saturate(0.85) brightness(0.97); }
+.effets { position: absolute; inset: 0; pointer-events: none; }
+.bulle-frappe, .bulle-pensee { position: absolute; display: flex; gap: 5px; padding: 8px 12px; border-radius: 99px; background: rgba(255, 255, 255, 0.92); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18); }
+.bulle-frappe { left: 50%; bottom: 22%; transform: translateX(-50%); }
+.bulle-pensee { left: 58%; top: 16%; border-radius: 18px; }
+.bulle-pensee::after { content: ""; position: absolute; left: 6px; bottom: -9px; width: 9px; height: 9px; border-radius: 50%; background: rgba(255, 255, 255, 0.92); }
+.bulle-frappe i, .bulle-pensee i { width: 7px; height: 7px; border-radius: 50%; background: #6b7390; animation: point 1.1s ease-in-out infinite; }
+.bulle-frappe i:nth-child(2), .bulle-pensee i:nth-child(2) { animation-delay: 0.18s; }
+.bulle-frappe i:nth-child(3), .bulle-pensee i:nth-child(3) { animation-delay: 0.36s; }
+.main-effet { position: absolute; right: 16%; top: 14%; font-size: clamp(28px, 4vw, 52px); transform-origin: 70% 90%; animation: agite 0.9s ease-in-out infinite; filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.25)); }
+.dodo span { position: absolute; left: 60%; top: 30%; font-weight: 800; color: #5a6380; font-size: clamp(16px, 2.2vw, 30px); opacity: 0; animation: monte-z 3s ease-in infinite; }
+.dodo span:nth-child(2) { animation-delay: 1s; }
+.dodo span:nth-child(3) { animation-delay: 2s; }
+.sablier-effet { position: absolute; left: 6%; top: 18%; font-size: clamp(20px, 2.6vw, 34px); animation: retourne 2.4s ease-in-out infinite; }
+.alerte { box-shadow: inset 0 0 0 3px rgba(255, 80, 80, 0.55), inset 0 0 60px rgba(255, 60, 60, 0.35); animation: alerte 1.4s ease-in-out infinite; }
+.confettis i { position: absolute; top: -6%; width: 8px; height: 12px; border-radius: 2px; opacity: 0; animation: tombe 2.6s ease-in forwards; }
+.confettis i:nth-child(1) { left: 5%; background: #f5b35b; animation-delay: 0.00s; }
+.confettis i:nth-child(2) { left: 42%; background: #6ee7b7; animation-delay: 0.13s; }
+.confettis i:nth-child(3) { left: 79%; background: #93b4ff; animation-delay: 0.26s; }
+.confettis i:nth-child(4) { left: 26%; background: #ff8a80; animation-delay: 0.39s; }
+.confettis i:nth-child(5) { left: 63%; background: #d7a6ff; animation-delay: 0.52s; }
+.confettis i:nth-child(6) { left: 10%; background: #f5b35b; animation-delay: 0.65s; }
+.confettis i:nth-child(7) { left: 47%; background: #6ee7b7; animation-delay: 0.78s; }
+.confettis i:nth-child(8) { left: 84%; background: #93b4ff; animation-delay: 0.01s; }
+.confettis i:nth-child(9) { left: 31%; background: #ff8a80; animation-delay: 0.14s; }
+.confettis i:nth-child(10) { left: 68%; background: #d7a6ff; animation-delay: 0.27s; }
+.confettis i:nth-child(11) { left: 15%; background: #f5b35b; animation-delay: 0.40s; }
+.confettis i:nth-child(12) { left: 52%; background: #6ee7b7; animation-delay: 0.53s; }
+.confettis i:nth-child(13) { left: 89%; background: #93b4ff; animation-delay: 0.66s; }
+.confettis i:nth-child(14) { left: 36%; background: #ff8a80; animation-delay: 0.79s; }
+@keyframes fondu-img { from { opacity: 0; } to { opacity: 1; } }
+@keyframes point { 0%, 60%, 100% { transform: translateY(0); opacity: 0.5; } 30% { transform: translateY(-4px); opacity: 1; } }
+@keyframes agite { 0%, 100% { transform: rotate(-12deg); } 50% { transform: rotate(14deg); } }
+@keyframes monte-z { 0% { transform: translate(0, 0) scale(0.7); opacity: 0; } 20% { opacity: 1; } 100% { transform: translate(28px, -46px) scale(1.2); opacity: 0; } }
+@keyframes retourne { 0%, 40% { transform: rotate(0); } 50%, 90% { transform: rotate(180deg); } 100% { transform: rotate(360deg); } }
+@keyframes alerte { 50% { box-shadow: inset 0 0 0 3px rgba(255, 80, 80, 0.85), inset 0 0 90px rgba(255, 60, 60, 0.5); } }
+@keyframes tombe { 0% { opacity: 1; transform: translateY(0) rotate(0); } 100% { opacity: 0; transform: translateY(260px) rotate(540deg); } }
+.puce-etat, .puce-echecs, .puce-alerte { position: absolute; right: 10px; padding: 4px 10px; border-radius: 99px; background: rgba(20, 22, 29, 0.85); font-size: 13px; font-weight: 600; max-width: 75%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.puce-etat { top: 10px; color: #f5b35b; }
+.etat-attend .puce-etat { color: #93b4ff; }
+.etat-besoin .puce-etat { color: #ffb648; }
+.etat-fini .puce-etat { color: #6ee7b7; }
+.etat-erreur .puce-etat, .etat-bloque .puce-etat { color: #ff8a80; }
+.etat-pret .puce-etat, .etat-reflechit .puce-etat { color: var(--appel-doux); }
+.puce-echecs { top: 44px; color: #ff8a80; }
+/* Celui qui parle : des ondes sur sa tuile. */
+.ondes { position: absolute; left: 12px; bottom: 52px; display: flex; align-items: flex-end; gap: 3px; height: 22px; padding: 4px 8px; border-radius: 99px; background: rgba(20, 22, 29, 0.85); }
+.ondes i { width: 4px; border-radius: 2px; background: #6ee7b7; animation: onde 0.9s ease-in-out infinite; }
+.ondes i:nth-child(2) { animation-delay: 0.15s; }
+.ondes i:nth-child(3) { animation-delay: 0.3s; }
+.ondes i:nth-child(4) { animation-delay: 0.45s; }
+@keyframes onde { 0%, 100% { height: 4px; } 50% { height: 14px; } }
+.puce-alerte { top: 78px; color: #ffcf6e; }
+.puces-bas { position: absolute; left: 10px; right: 10px; bottom: 10px; display: flex; gap: 6px; flex-wrap: nowrap; overflow: hidden; }
+.puce-nom, .puces-bas .puce { padding: 4px 11px; border-radius: 99px; background: rgba(20, 22, 29, 0.85); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.puce-nom { font-weight: 700; flex: none; }
+.bulle-parole { position: absolute; top: 12px; left: 12px; max-width: 62%; max-height: 40%; overflow: hidden; margin: 0; padding: 10px 14px; border-radius: 14px; background: #fff; color: #1b1e26; font-size: 15px; line-height: 1.35; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25); }
+.vedette .bulle-parole { font-size: 17px; }
+
+/* Toi : la tuile de la personne, qui s'allume quand quelqu'un t'attend. */
+.tuile-appel.toi { cursor: default; background: linear-gradient(160deg, #39304f, #23202e); }
+.tuile-appel.toi.attendu { cursor: pointer; border-color: #ffb648; box-shadow: 0 0 0 4px rgba(255, 182, 72, 0.35); animation: appelle 1.4s ease-in-out infinite; }
+.scene-toi { position: absolute; inset: 0; display: grid; place-items: center; }
+.icone-toi { font-size: 56px; }
+.repondre-toi { position: absolute; left: 50%; bottom: 52px; transform: translateX(-50%); }
+
+/* Partage d'écran : une fenêtre, la tuile de celui qui partage en incrustation. */
+.fenetre-partagee { border-radius: 14px; border: 2px solid #c99a3a; background: #0f1116; overflow: hidden; display: flex; flex-direction: column; min-height: 320px; max-height: 58vh; }
+.barre-fenetre { display: flex; align-items: center; gap: 12px; padding: 9px 14px; background: #1d2029; border-bottom: 1px solid var(--appel-trait); }
+.feux { display: flex; gap: 7px; }
+.feux i { width: 12px; height: 12px; border-radius: 50%; background: #ff5f57; }
+.feux i:nth-child(2) { background: #febc2e; }
+.feux i:nth-child(3) { background: #28c840; }
+.titre-fenetre { color: var(--appel-doux); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.puce-partage { margin-left: auto; padding: 4px 12px; border-radius: 99px; background: #e0a23a; color: #1b1e26; font-size: 13px; font-weight: 700; white-space: nowrap; }
+.contenu-fenetre { flex: 1; overflow: auto; padding: 14px 18px; }
+.contenu-fenetre .vide { color: var(--appel-doux); }
+.pied-fenetre { padding: 7px 18px; border-top: 1px solid var(--appel-trait); color: var(--appel-doux); font-family: var(--mono); font-size: 13px; }
+.terminal-equipe { margin: 0; color: #d7dde8; font-family: var(--mono); font-size: 14px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+.terminal-equipe .invite { color: #6ee7b7; }
+.code-equipe { margin: 0; color: #d7dde8; font-family: var(--mono); font-size: 13.5px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+.terminal-equipe .en-cours { color: #8fa1c2; font-style: italic; }
+.terminal-equipe.erreur { box-shadow: inset 3px 0 0 #ff5f57; padding-left: 10px; }
+.contenu-fenetre .diff, .contenu-fenetre pre.code { font-size: 13.5px; }
+.capture-equipe { display: block; max-width: 100%; height: auto; border-radius: 8px; }
+.tuile-appel.incrustee { position: absolute; right: 18px; bottom: 18px; width: min(260px, 32%); min-height: 0; z-index: 1; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5); }
+
+/* Arbre : chefs et sous-agents. */
+.arbre-equipe { display: grid; gap: 6px; }
+.ligne-arbre { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 9px 12px; margin-left: calc(var(--niveau, 0) * 28px); border-radius: 12px; background: var(--appel-carte); border-left: 3px solid var(--couleur-membre); }
+.ligne-arbre .fonction, .ia-arbre, .jetons-arbre { color: var(--appel-doux); font-size: 13px; }
+.ia-arbre { display: inline-flex; align-items: center; gap: 5px; }
+.ia-arbre .logo-ia { width: 18px; height: 18px; }
+.etat-arbre { margin-left: auto; font-size: 13px; color: #93b4ff; }
+.mission-arbre { flex-basis: 100%; margin: 0; color: var(--appel-doux); font-size: 13px; }
+
+/* Ce que l'état fait apparaître sur la scène, et les animations. */
+.scene-svg .bulle, .scene-svg .main-haut, .scene-svg .dodo, .scene-svg .sablier { display: none; }
+.etat-reflechit .scene-svg .bulle { display: inline; animation: flotte 1.6s ease-in-out infinite; }
+.etat-besoin .scene-svg .main-haut { display: inline; transform-box: fill-box; transform-origin: 50% 100%; animation: salue 1.2s ease-in-out infinite; }
+.etat-bloque .scene-svg .dodo { display: inline; animation: flotte 2s ease-in-out infinite; }
+.etat-attend .scene-svg .sablier { display: inline; animation: tourne 2.4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+.etat-travaille .scene-svg .main-g, .etat-ecrit .scene-svg .main-g { animation: tape 0.35s ease-in-out infinite; }
+.etat-travaille .scene-svg .main-d, .etat-ecrit .scene-svg .main-d { animation: tape 0.35s ease-in-out infinite 0.17s; }
+.etat-travaille .scene-svg .voyant, .etat-ecrit .scene-svg .voyant { animation: clignote 1s steps(2) infinite; }
+.parle .scene-svg .bouche, .etat-ecrit .scene-svg .bouche { animation: parle 0.3s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: center; }
+.scene-svg .yeux { animation: cligne 4s infinite; transform-box: fill-box; transform-origin: center; }
+.etat-pret .scene-svg .personne, .etat-fini .scene-svg .personne { animation: respire 3.5s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
+.sursaut { animation: secoue 0.5s ease-in-out 2; }
+.fete::after { content: "🎉"; position: absolute; top: 10px; left: 50%; font-size: 30px; animation: fete 1.6s ease-out forwards; }
+
+@keyframes tape { 50% { transform: translateY(-2.5px); } }
+@keyframes clignote { 50% { opacity: 0.4; } }
+@keyframes parle { from { transform: scaleY(1); } to { transform: scaleY(3); } }
+@keyframes cligne { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
+@keyframes respire { 50% { transform: scale(1.015); } }
+@keyframes flotte { 50% { transform: translateY(-3px); } }
+@keyframes salue { 50% { transform: rotate(14deg); } }
+@keyframes tourne { 50% { transform: rotate(180deg); } }
+@keyframes secoue { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+@keyframes fete { from { transform: translate(-50%, 0) scale(0.6); opacity: 1; } to { transform: translate(-50%, -34px) scale(1.3); opacity: 0; } }
+@keyframes appelle { 50% { box-shadow: 0 0 0 8px rgba(255, 182, 72, 0.15); } }
+@media (prefers-reduced-motion: reduce) { .scene-svg *, .tuile-appel, .fete::after, img.scene-img, .effets * , .effets { animation: none !important; } }

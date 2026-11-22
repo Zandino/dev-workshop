@@ -1,8 +1,22 @@
 // Fil de la conversation : messages, réflexion, outils, fins de tour.
 import { h, markdown, duree } from './dom.js';
-import { t } from './i18n.js';
+import { t, ajouterTextes } from './i18n.js';
 import { carteOutil, poserResultat, oublierCartes } from './outils.js';
 import { pastilleLogo } from './logos.js';
+import { texteFilMemoire } from './memoire-discussion.js';
+
+ajouterTextes({
+  fr: {
+    message_de_discussion: '↪ De « {titre} » · {projet} · {qui}', reponse_de_discussion: '↩ Réponse de « {titre} » · {projet} · {qui}',
+    info_echange_limite: 'Échanges avec les autres discussions arrêtés ({n} messages pour cette demande) : le message pour « {vers} » n’est pas parti. Relance toi-même si tu veux continuer.',
+    tache_finie: '🤖 Sous-agent « {description} » : terminé (il travaillait en arrière-plan)', tache_echec: '🤖 Sous-agent « {description} » : en échec', tache_arretee: '🤖 Sous-agent « {description} » : arrêté',
+  },
+  en: {
+    tache_finie: '🤖 Sub-agent “{description}”: done (it was working in the background)', tache_echec: '🤖 Sub-agent “{description}”: failed', tache_arretee: '🤖 Sub-agent “{description}”: stopped',
+    message_de_discussion: '↪ From “{titre}” · {projet} · {qui}', reponse_de_discussion: '↩ Reply from “{titre}” · {projet} · {qui}',
+    info_echange_limite: 'Exchanges with other conversations stopped ({n} messages for this request): the message for “{vers}” was not sent. Start again yourself if you want to go on.',
+  },
+});
 
 const fil = () => document.getElementById('fil');
 let direct = null; // message en cours d'écriture : { boite, texte, reflexion }
@@ -67,7 +81,12 @@ function signer() {
 
 /** Le serveur ajoute la liste des fichiers joints au message : à l'écran, on la montre en puces. */
 const MARQUE_FICHIERS = '\n\n---\nFichiers joints';
-function messageUtilisateur(texte) {
+/** `e.de` : message venu d'une autre discussion (une IA l'a envoyé, ou c'est la réponse au sien), signé d'elle. */
+function messageUtilisateur({ texte, de }) {
+  if (de) {
+    const qui = t(de.genre === 'reponse' ? 'reponse_de_discussion' : 'message_de_discussion', { titre: de.titre, projet: de.projet, qui: de.qui });
+    return h('article.message.utilisateur.autre-discussion', { dataset: { auteur: qui } }, texte);
+  }
   const coupe = texte.indexOf(MARQUE_FICHIERS);
   if (coupe < 0) return h('article.message.utilisateur', { dataset: { auteur: t('toi') } }, texte);
   const fichiers = [...texte.slice(coupe).matchAll(/(?:^- |^### )(\.devworkshop\/fichiers\/\S+)/gm)].map((x) => x[1]);
@@ -121,10 +140,13 @@ function surAssistant(e) {
 
 function surTour(e) {
   finirDirect();
+  // Limite d'utilisation atteinte : pas un échec en soi, la ligne suivante dit qui reprend (relais, salon) ou que
+  // personne ne le peut (en rouge, alors).
+  const limite = !e.ok && e.limite;
   const texte = e.ok
     ? t('tour_fini', { duree: duree(e.dureeMs), appels: e.appels ?? '–' })
-    : t('tour_echec', { motif: e.message || e.motif });
-  ajouter(h('div.fin-tour' + (e.ok ? '' : '.echec'), {}, e.auteur ? `${e.auteur.nom} · ${texte}` : texte));
+    : limite ? t('tour_limite') : t('tour_echec', { motif: e.message || e.motif });
+  ajouter(h('div.fin-tour' + (e.ok || limite ? '' : '.echec'), {}, e.auteur ? `${e.auteur.nom} · ${texte}` : texte));
 }
 
 const TRAITEMENTS = {
@@ -132,8 +154,17 @@ const TRAITEMENTS = {
     document.querySelector('#fil .accueil')?.remove();
     auBas = true;
     signe = false;
-    ajouter(messageUtilisateur(e.texte));
+    ajouter(messageUtilisateur(e));
+    if (e.memoireRedonnee) ajouter(h('div.fin-tour', {}, t('fil_memoire_redonnee')));
   },
+  // Un sous-agent lancé en arrière-plan a fini (son outil n'avait rendu que « lancé »).
+  tache: (e) => {
+    if (e.etape !== 'fin' || !e.enFond) return;
+    const quoi = t(e.statut === 'failed' ? 'tache_echec' : e.statut === 'stopped' ? 'tache_arretee' : 'tache_finie', { description: e.description || '…' });
+    ajouter(h('div.fin-tour' + (e.statut === 'failed' ? '.echec' : ''), {}, quoi + (e.resume ? ` — ${e.resume.slice(0, 300)}` : '')));
+  },
+  // La mémoire de la discussion a changé (memoire-discussion.js).
+  memoire: (e) => ajouter(h('div.fin-tour', {}, texteFilMemoire(e))),
   delta: surDelta,
   assistant: surAssistant,
   resultat_outil: (e) => {
@@ -142,7 +173,7 @@ const TRAITEMENTS = {
   },
   tour: surTour,
   // Les champs de l'événement (de, vers…) complètent le texte : « {de} a atteint sa limite : {vers} prend le relais ».
-  info: (e) => ajouter(h('div.fin-tour', {}, (e.auteur ? e.auteur.nom + ' · ' : '') + t('info_' + e.code, e) + (e.detail ? ` (${e.detail})` : ''))),
+  info: (e) => ajouter(h('div.fin-tour' + (['relais_aucun', 'participant_quota_seul'].includes(e.code) ? '.echec' : ''), {}, (e.auteur ? e.auteur.nom + ' · ' : '') + t('info_' + e.code, e) + (e.detail ? ` (${e.detail})` : ''))),
   salon_pause: (e) => ajouter(h('div.fin-tour', {}, t(e.restant ? 'salon_pause_reste' : 'salon_pause', { n: e.prises }))),
   erreur: (e) => ajouter(h('div.fin-tour.echec', {}, `${t('erreur')} : ${e.message}`)),
   // Mode orchestre : la cheffe confie une tâche à un sous-agent (IA et modèle choisis par elle).

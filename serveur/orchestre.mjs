@@ -7,8 +7,13 @@ import { z } from 'zod';
 import { fournisseurDe } from './fournisseurs/index.mjs';
 import * as claude from './fournisseurs/claude.mjs';
 import { listerComptes, compte as compteDe } from './comptes.mjs';
+import { assezPour, REGLE_MEMOIRE } from './memoire.mjs';
 import { consigneDeProjet } from './projets.mjs';
 import { connecteursPour } from './connecteurs.mjs';
+import { outilsPour } from './outils-discussions.mjs';
+import { estLimite } from './fournisseurs/claude-normaliser.mjs';
+import { choisirRelais, consigneRelais, nomCompte, finDeLimite, heureDe } from './relais.mjs';
+import { consigneMemoire } from './memoire-discussion.mjs';
 
 const MAX_EN_PARALLELE = 3;
 const MAX_RESULTAT = 40_000;
@@ -46,12 +51,20 @@ function consigneCheffe() {
 const consigneSousAgent = (role) => [
   `Tu es un sous-agent, chargé par une IA cheffe d’une tâche précise${role ? ` (rôle : ${role})` : ''}.`,
   'Fais seulement cette tâche, puis termine par un compte rendu clair et court de ce que tu as fait ou trouvé : c’est lui qui sera transmis à la cheffe.',
+  REGLE_MEMOIRE,
 ].join('\n');
 
-/** Ouvre une session orchestrée ; même interface qu'un pilote ordinaire. */
-export function ouvrirOrchestre({ compte, dossier, modele, mode, effort }, emettre) {
+/**
+ * Ouvre une session orchestrée ; même interface qu'un pilote ordinaire. `histoire` : la conversation déjà tenue,
+ * quand une discussion existante passe en orchestre (sessions.mjs) ; `reprise` : la session Claude Code à reprendre.
+ * Limites d'utilisation : un sous-agent qui atteint la sienne rend la main à la cheffe, qui confie la tâche à une autre
+ * IA (et ne le rappelle pas avant sa remise à zéro) ; si c'est la cheffe, un autre compte Claude connecté prend sa
+ * place avec l'historique (`journal()`) et reprend la dernière demande (`surRelais(compte)` : la session le note).
+ */
+export function ouvrirOrchestre({ session, compte, dossier, modele, mode, effort, histoire, reprise, journal = () => [], surRelais = () => {} }, emettre) {
   const proprietaires = new Map(); // demande d'accord -> pilote qui l'a faite
   const sousAgents = new Set();
+  const horsLimite = new Map(); // compte -> fin de sa limite d'utilisation (ms)
   let ferme = false;
   let rang = 0;
 
@@ -62,13 +75,19 @@ export function ouvrirOrchestre({ compte, dossier, modele, mode, effort }, emett
     } catch {
       return Promise.resolve(`IA inconnue : « ${ia} ». IA disponibles :\n${equipe()}`);
     }
+    if (horsLimite.get(c.id) > Date.now()) {
+      return Promise.resolve(`« ${nomCompte(c)} » a atteint sa limite d’utilisation (de retour vers ${heureDe(horsLimite.get(c.id))}) : confie cette tâche à une autre IA de la liste, ou fais-la toi-même.`);
+    }
     if (sousAgents.size >= MAX_EN_PARALLELE) return Promise.resolve('Déjà 3 sous-agents au travail : attends qu’un d’eux ait fini.');
+    // Chaque IA appelée démarre pour sa tâche puis s'arrête ; encore faut-il que le serveur ait la place (memoire.mjs).
+    if (!assezPour(1)) return Promise.resolve('Mémoire du serveur trop juste pour lancer une IA de plus : attends qu’un sous-agent ait fini, ou fais cette tâche toi-même.');
     rang = (rang % 3) + 1; // le rang 0 reste à la cheffe
     const auteur = { nom: String(role || c.nom || c.id).slice(0, 30), rang, externe: c.type !== 'claude', compte: { id: c.id, type: c.type, url: c.url || null } };
     return new Promise((resoudre) => {
       let texte = '';
       let fini = false;
       let pilote = null;
+      let retablieLe = null;
       let dernierSigne = Date.now();
       // Un sous-agent muet (hors demande d'accord) ne doit pas bloquer la cheffe : elle reçoit un échec et continue.
       const veille = setInterval(() => {
@@ -91,8 +110,12 @@ export function ouvrirOrchestre({ compte, dossier, modele, mode, effort }, emett
         if (e.t === 'permission') proprietaires.set(e.id, pilote);
         if (e.t === 'permission_fin') proprietaires.delete(e.id);
         if (e.t === 'assistant' && !e.sousAgent) texte = e.blocs.filter((b) => b.type === 'texte').map((b) => b.texte).join('\n\n') || texte;
+        if (e.t === 'limite' && e.retablieLe) retablieLe = e.retablieLe;
         emettre({ ...e, auteur });
-        if (e.t === 'tour') terminer(e.ok ? texte : `Échec du sous-agent (${e.message || e.motif}).\n${texte}`);
+        if (e.t === 'tour' && !e.ok && (e.limite || estLimite(e.message))) {
+          horsLimite.set(c.id, finDeLimite(retablieLe));
+          terminer(`Limite d’utilisation atteinte pour « ${nomCompte(c)} » (de retour vers ${heureDe(horsLimite.get(c.id))}) : tâche non faite. Confie-la à une autre IA de la liste, ou fais-la toi-même.\n${texte}`);
+        } else if (e.t === 'tour') terminer(e.ok ? texte : `Échec du sous-agent (${e.message || e.motif}).\n${texte}`);
       };
       emettre({ t: 'delegation', auteur, modele: modeleSous || null, tache: String(tache).slice(0, 2000) });
       pilote = fournisseurDe(c).ouvrir({
@@ -102,13 +125,15 @@ export function ouvrirOrchestre({ compte, dossier, modele, mode, effort }, emett
         mode,
         consigne: [consigneDeProjet(dossier), consigneSousAgent(role)].filter(Boolean).join('\n\n'),
         connecteurs: connecteursPour(c),
+        interne: true, // sa session Claude Code n'est pas une discussion à part (sessions-internes.mjs)
       }, recevoir);
       sousAgents.add(pilote);
       pilote.envoyer(String(tache));
     });
   }
 
-  const outils = createSdkMcpServer({
+  // Un serveur d'outils par cheffe : une cheffe relayée en a un neuf (un serveur MCP ne se branche qu'une fois).
+  const creerOutils = () => createSdkMcpServer({
     name: 'orchestre',
     version: '1.0.0',
     tools: [
@@ -126,30 +151,86 @@ export function ouvrirOrchestre({ compte, dossier, modele, mode, effort }, emett
     ],
   });
 
-  const cheffe = claude.ouvrir({
-    compte,
-    dossier,
-    modele,
-    mode,
-    consigne: [consigneDeProjet(dossier), consigneCheffe()].filter(Boolean).join('\n\n'),
-    connecteurs: connecteursPour(compte),
-    serveursMcp: { orchestre: outils },
-    outilsPermis: ['mcp__orchestre__deleguer'],
-    effort,
-  }, (e) => {
-    if (e.t === 'permission') proprietaires.set(e.id, cheffe);
-    if (e.t === 'permission_fin') proprietaires.delete(e.id);
-    emettre(e);
-  });
+  const essayes = new Set([compte.id]); // une cheffe déjà essayée ne revient pas : pas de va-et-vient
+  let compteCheffe = compte;
+  let generation = 0;
+  let dernier = null; // la dernière demande, renvoyée à la cheffe qui prend le relais
+  let masquerUtilisateur = false;
+  let enRelais = false;
+  let effortCourant = effort;
+
+  function ouvrirCheffe(c, consigneEnPlus, premiere) {
+    const g = ++generation;
+    return claude.ouvrir({
+      compte: c,
+      dossier,
+      modele,
+      mode,
+      consigne: [consigneDeProjet(dossier), consigneMemoire(session), consigneCheffe(), consigneEnPlus].filter(Boolean).join('\n\n'),
+      reprise: premiere ? reprise : undefined, // session Claude Code reprise : la cheffe garde tout son contexte
+      connecteurs: connecteursPour(c),
+      outilsDw: outilsPour(c, { session }), // la cheffe seule : ses sous-agents n'écrivent pas aux autres discussions
+      serveursMcp: { orchestre: creerOutils() },
+      outilsPermis: ['mcp__orchestre__deleguer'],
+      effort: effortCourant,
+    }, (e) => {
+      if (g !== generation) return; // la cheffe remplacée ne parle plus dans la session
+      if (e.t === 'utilisateur' && masquerUtilisateur) return void (masquerUtilisateur = false); // demande déjà affichée
+      if (e.t === 'permission') proprietaires.set(e.id, cheffe);
+      if (e.t === 'permission_fin') proprietaires.delete(e.id);
+      if (e.t === 'tour' && !e.ok && !enRelais && (e.limite || estLimite(e.message))) {
+        emettre({ ...e, limite: true, relaye: true }); // une autre cheffe va reprendre la demande
+        relayerCheffe();
+        return;
+      }
+      emettre(e);
+    });
+  }
+
+  /** La cheffe a atteint sa limite : un autre compte Claude (l'outil « deleguer » est propre à Claude Code) la remplace. */
+  async function relayerCheffe() {
+    enRelais = true;
+    try {
+      const suivant = await choisirRelais(essayes, (c) => c.type === 'claude');
+      if (ferme) return;
+      if (!suivant) {
+        emettre({ t: 'info', code: 'relais_aucun' });
+        return;
+      }
+      essayes.add(suivant.id);
+      const ancien = compteCheffe;
+      const remplacee = cheffe;
+      cheffe = ouvrirCheffe(suivant, consigneRelais(nomCompte(ancien), journal()), false);
+      remplacee.fermer();
+      compteCheffe = suivant;
+      surRelais(suivant);
+      emettre({ t: 'relais', de: ancien.id, vers: suivant.id });
+      emettre({ t: 'info', code: 'relais', de: nomCompte(ancien), vers: nomCompte(suivant) });
+      if (dernier) {
+        masquerUtilisateur = true;
+        cheffe.envoyer(dernier);
+      }
+    } finally {
+      enRelais = false;
+    }
+  }
+
+  let cheffe = ouvrirCheffe(compte, histoire, true);
 
   return {
-    envoyer: (texte) => cheffe.envoyer(texte),
+    envoyer(texte) {
+      dernier = texte;
+      cheffe.envoyer(texte);
+    },
     async interrompre() {
       await Promise.all([cheffe.interrompre(), ...[...sousAgents].map((p) => p.interrompre())]);
     },
     reglerModele: (m) => cheffe.reglerModele(m),
     reglerMode: (m) => cheffe.reglerMode(m),
-    reglerEffort: (e) => cheffe.reglerEffort(e),
+    reglerEffort(e) {
+      effortCourant = e;
+      return cheffe.reglerEffort(e);
+    },
     repondrePermission: (id, reponse) => (proprietaires.get(id) || cheffe).repondrePermission(id, reponse),
     fermer() {
       ferme = true;

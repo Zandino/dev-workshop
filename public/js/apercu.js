@@ -90,6 +90,7 @@ async function dessiner() {
 
 function montrer(oui) {
   etat.ouvert = oui;
+  if (oui) document.dispatchEvent(new CustomEvent('colonne-droite', { detail: 'apercu' }));
   zone().hidden = !oui;
   document.body.classList.toggle('avec-apercu', oui);
   try { localStorage.setItem('devworkshop.apercu', oui ? 'oui' : 'non'); } catch { /* stockage indisponible */ }
@@ -109,6 +110,9 @@ function surFichier(chemin, ecrit) {
 export function initApercu(lecteurs) {
   lire = lecteurs;
   document.getElementById('ouvrir-apercu').addEventListener('click', () => montrer(!etat.ouvert));
+  document.addEventListener('colonne-droite', (e) => {
+    if (e.detail !== 'apercu' && etat.ouvert) montrer(false);
+  });
   try { if (localStorage.getItem('devworkshop.apercu') === 'oui') montrer(true); } catch { /* stockage indisponible */ }
   ecouter((m) => {
     if (m.t === 'apercu_ticket') {

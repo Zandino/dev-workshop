@@ -136,3 +136,19 @@ ul.taches li.in_progress { font-weight: 600; color: var(--accent); }
 .option:hover { background: var(--surface-2); }
 .option input { accent-color: var(--accent); }
 .option small { display: block; color: var(--texte-doux); }
+/* Plusieurs questions : un onglet par question, coché une fois répondu. */
+.onglets-questions { display: flex; flex-wrap: wrap; gap: 4px; font-weight: 400; }
+.onglet-question { padding: 3px 10px; border-radius: 99px; border: 1px solid var(--trait); background: none; color: var(--texte-doux); font-size: 12px; cursor: pointer; }
+.onglet-question.actif { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.onglet-question.repondu::before { content: "✓ "; }
+.questions .question[hidden] { display: none; }
+
+/* Message venu d'une autre discussion (ou réponse à l'un des siens) : à gauche, bordé, signé de son origine. */
+.message.utilisateur.autre-discussion {
+  align-self: flex-start;
+  background: var(--surface-2);
+  border: 1px solid var(--trait);
+  border-left: 3px solid var(--accent);
+  border-radius: 16px 16px 16px 4px;
+}
+.message.utilisateur.autre-discussion::before { left: 4px; right: auto; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }

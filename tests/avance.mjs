@@ -72,7 +72,7 @@ const sortie = (t) => t.modeles.reduce((s, m) => s + m.sortie, 0);
 noter('coût cumulé d’un tour à l’autre', tour3.coutSession > tour1.coutSession, `${tour1.coutSession} → ${tour2?.coutSession} → ${tour3.coutSession}`);
 noter('jetons cumulés d’un tour à l’autre', sortie(tour3) > sortie(tour1), `sortie ${sortie(tour1)} → ${sortie(tour3)}`);
 
-// 4. Reprise depuis « Sessions passées ».
+// 4. Reprise depuis la liste « Discussions » du projet.
 dire({ t: 'fermer', session });
 await new Promise((r) => setTimeout(r, 1500));
 vider();

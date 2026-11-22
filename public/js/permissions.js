@@ -22,27 +22,59 @@ function repondre(e, reponse) {
   retirerPermission(e.id);
 }
 
-/** Question posée par Claude : une réponse par question (plusieurs si choix multiple, ou texte libre). */
+/**
+ * Questions posées par une IA (Claude, ou les autres par « poser_question ») : un onglet par question (son
+ * étiquette courte), une question à la fois. Un choix simple passe à la question suivante ; « Autre » permet de
+ * répondre librement. Échap refuse de répondre.
+ */
 function carteQuestions(e) {
+  const liste = e.entree.questions;
   const choix = new Map();
-  const corps = e.entree.questions.map((q) => {
-    const libre = h('input.libre', { type: 'text', placeholder: t('autre'), oninput: () => maj() });
+  let active = 0;
+  const onglets = liste.map((q, i) => h('button.onglet-question', { type: 'button', role: 'tab', onclick: () => montrer(i) }, q.header || `${i + 1}`));
+  const blocs = liste.map((q, i) => {
+    const libre = h('input.libre', { type: 'text', placeholder: t('autre'), oninput: () => maj(false) });
     const options = (q.options || []).map((o) =>
-      h('label.option', {}, h('input', { type: q.multiSelect ? 'checkbox' : 'radio', name: q.question, value: o.label, onchange: () => maj() }), h('span', {}, h('strong', {}, o.label), o.description ? h('small', {}, o.description) : null)),
+      h('label.option', {}, h('input', { type: q.multiSelect ? 'checkbox' : 'radio', name: `${e.id}-${i}`, value: o.label, onchange: () => maj(!q.multiSelect) }), h('span', {}, h('strong', {}, o.label), o.description ? h('small', {}, o.description) : null)),
     );
-    const bloc = h('fieldset.question', {}, h('legend', {}, q.question), options, libre);
-    const maj = () => {
-      const coches = [...bloc.querySelectorAll('input:checked')].map((i) => i.value);
+    const bloc = h('fieldset.question', { role: 'tabpanel' }, h('legend', {}, q.question), options, libre);
+    const maj = (suivante) => {
+      const coches = [...bloc.querySelectorAll('input:checked')].map((x) => x.value);
       const valeur = libre.value.trim() ? [...(q.multiSelect ? coches : []), libre.value.trim()] : coches;
+      // Une réponse libre remplace le choix simple coché.
+      if (libre.value.trim() && !q.multiSelect) bloc.querySelectorAll('input:checked').forEach((x) => (x.checked = false));
       choix.set(q.question, valeur.join(', '));
-      valider.disabled = e.entree.questions.some((x) => !choix.get(x.question));
+      majOnglets();
+      if (suivante) {
+        const reste = liste.findIndex((x, j) => j > i && !choix.get(x.question));
+        if (reste >= 0) montrer(reste);
+        else valider.focus();
+      }
     };
     return bloc;
   });
+  const complet = () => liste.every((x) => choix.get(x.question));
+  function majOnglets() {
+    onglets.forEach((o, i) => {
+      o.classList.toggle('actif', i === active);
+      o.classList.toggle('repondu', Boolean(choix.get(liste[i].question)));
+      o.setAttribute('aria-selected', String(i === active));
+    });
+    valider.disabled = !complet();
+  }
+  function montrer(i) {
+    active = i;
+    blocs.forEach((b, j) => (b.hidden = j !== i));
+    majOnglets();
+  }
   const valider = h('button.principal', { type: 'button', disabled: true, onclick: () => repondre(e, { decision: 'autoriser', reponses: Object.fromEntries(choix) }) }, t('repondre'));
   const refuser = h('button', { type: 'button', onclick: () => repondre(e, { decision: 'refuser' }) }, t('refuser'));
-  const qui = e.auteur ? h('header', {}, h('span.auteur.rang-' + (e.auteur.rang % 4), {}, e.auteur.nom)) : null;
-  return h('section.permission', {}, qui, corps, h('div.actions', {}, refuser, valider));
+  const tete = h('header', {},
+    e.auteur ? h('span.auteur.rang-' + (e.auteur.rang % 4), {}, e.auteur.nom) : null,
+    liste.length > 1 ? h('nav.onglets-questions', { role: 'tablist' }, onglets) : null);
+  const carte = h('section.permission.questions', { onkeydown: (ev) => ev.key === 'Escape' && repondre(e, { decision: 'refuser' }) }, tete, blocs, h('div.actions', {}, refuser, valider));
+  montrer(0);
+  return carte;
 }
 
 function carteAccord(e) {
@@ -66,7 +98,9 @@ function carteAccord(e) {
 
 export function afficherPermission(e) {
   if (ouvertes.has(e.id)) return;
-  const questions = e.outil === 'AskUserQuestion' && Array.isArray(e.entree?.questions);
+  // Le serveur marque les vraies questions (Claude, ou « poser_question ») : un autre outil d'une IA qui porterait ce
+  // nom resterait une demande d'accord, et « Répondre » n'autorise jamais rien par erreur (audit du 22/11/2026).
+  const questions = e.questions === true && Array.isArray(e.entree?.questions);
   const carte = questions ? carteQuestions(e) : carteAccord(e);
   ouvertes.set(e.id, carte);
   quai().append(carte);

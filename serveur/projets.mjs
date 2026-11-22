@@ -37,6 +37,14 @@ export function ecrireContexte(nom, texte) {
   writeFileSync(fichierContexte(nom), valeur, { mode: 0o600 });
 }
 
+/** « Retenir pour le projet » : un bloc (déjà titré par l'écran) ajouté à la fin de la fiche du projet. */
+export function ajouterAuContexte(nom, bloc) {
+  const ajout = String(bloc ?? '').trim();
+  if (!ajout) throw new Error('rien_a_retenir');
+  const actuel = lireContexte(nom).trimEnd();
+  ecrireContexte(nom, `${actuel ? `${actuel}\n\n` : ''}${ajout}\n`);
+}
+
 /** Le contexte du projet qui contient `dossier`, tourné en consigne pour les IA (vide s'il n'y en a pas). */
 export function consigneDeProjet(dossier) {
   const nom = path.relative(RACINE_PROJETS, dossier).split(path.sep)[0];

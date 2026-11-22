@@ -5,6 +5,8 @@ import { randomUUID } from 'node:crypto';
 import { lier } from './jsonrpc.mjs';
 import { versAcp } from '../connecteurs.mjs';
 import { decisionAuto } from '../regles-accord.mjs';
+import { MAX_IMAGE } from './claude-normaliser.mjs';
+import { NOM_SERVEUR, NOMS_OUTILS } from '../outils-discussions.mjs';
 
 /**
  * Fiche d'un outil : { nom, binaire(), args(modele), env(compte), preparer?(compte), modes: {nos modes -> les
@@ -13,10 +15,17 @@ import { decisionAuto } from '../regles-accord.mjs';
  */
 const initialiser = (l) => l.demander('initialize', { protocolVersion: 1, clientCapabilities: {} });
 
+/** Rend ce que l'outil déclare savoir faire (agentCapabilities). */
 async function connecter(fiche, l) {
-  await initialiser(l);
+  const r = await initialiser(l);
   if (fiche.methodeAuth) await l.demander('authenticate', { methodId: fiche.methodeAuth }, 60000).catch(() => {});
+  return r?.agentCapabilities || {};
 }
+
+/** Nos outils « entre discussions », si l'outil sait joindre un serveur MCP par HTTP (sinon il s'en passe). */
+const serveurOutilsDw = (outilsDw, capacites) => (outilsDw && capacites.mcpCapabilities?.http
+  ? [{ type: 'http', name: NOM_SERVEUR, url: outilsDw.url, headers: [{ name: 'Authorization', value: `Bearer ${outilsDw.jeton}` }] }]
+  : []);
 
 /** Connecté ou non : une session ne s'ouvre que si le compte l'est. Le motif de l'outil est transmis. */
 export async function etatAcp(fiche, compte) {
@@ -39,7 +48,7 @@ const texteDe = (contenu) => (Array.isArray(contenu) ? contenu : [contenu]).map(
 /** Types d'action ACP ramenés aux noms d'outils habituels, pour les règles d'accord du projet. */
 const OUTILS = { read: 'Read', search: 'Grep', edit: 'Edit', execute: 'Bash', fetch: 'WebFetch' };
 
-export function ouvrirAcp(fiche, { compte, dossier, modele, mode, consigne, connecteurs }, emettre) {
+export function ouvrirAcp(fiche, { compte, dossier, modele, mode, consigne, connecteurs, outilsDw }, emettre) {
   const accords = new Map();
   let session = null;
   let ecrit = '';
@@ -68,6 +77,13 @@ export function ouvrirAcp(fiche, { compte, dossier, modele, mode, consigne, conn
       const option = (genre) => (p.options || []).find((o) => o.kind === genre)?.optionId;
       const genre = p.toolCall?.kind;
       const brut = p.toolCall?.rawInput || {};
+      // Nos outils (titre de Gemini : « outil (serveur MCP Server) », type « other ») passent sans demande, comme pour
+      // Claude. Titre exact d'un de nos outils ET type « other » : le titre d'une commande shell est une description
+      // écrite par l'IA elle-même, qui pourrait imiter le nôtre (audit du 22/11/2026).
+      const notre = NOMS_OUTILS.some((n) => p.toolCall?.title === `${n} (${NOM_SERVEUR} MCP Server)`);
+      if (outilsDw && notre && genre === 'other' && option('allow_once')) {
+        return Promise.resolve({ outcome: { outcome: 'selected', optionId: option('allow_once') } });
+      }
       const auto = genre === 'delete'
         ? decisionAuto(dossier, 'Bash', { command: 'rm ' + (brut.file_path || brut.path || '') })
         : decisionAuto(dossier, OUTILS[genre] || p.toolCall?.title || '', brut);
@@ -82,7 +98,7 @@ export function ouvrirAcp(fiche, { compte, dossier, modele, mode, consigne, conn
           resoudre(retenu ? { outcome: { outcome: 'selected', optionId: retenu } } : { outcome: { outcome: 'cancelled' } });
         });
         vider();
-        emettre({ t: 'permission', id, outil: p.toolCall?.title || genre || fiche.nom, entree: brut, titre: p.toolCall?.title || null, description: texteDe(p.toolCall?.content || []) || null, toujours: Boolean(option('allow_always')) });
+        emettre({ t: 'permission', id, outil: String(p.toolCall?.title || genre || fiche.nom).replace(/^AskUserQuestion$/, 'AskUserQuestion (outil)'), entree: brut, titre: p.toolCall?.title || null, description: texteDe(p.toolCall?.content || []) || null, toujours: Boolean(option('allow_always')) });
       });
     },
     surNotification(methode, p) {
@@ -100,7 +116,9 @@ export function ouvrirAcp(fiche, { compte, dossier, modele, mode, consigne, conn
         vider();
         emettre({ t: 'assistant', blocs: [{ type: 'outil', id: u.toolCallId, nom: u.title || u.kind || 'outil', entree: u.rawInput || {} }], usage: null, modele: choisi, sousAgent: false });
       } else if (u.sessionUpdate === 'tool_call_update' && ['completed', 'failed'].includes(u.status)) {
-        emettre({ t: 'resultat_outil', id: u.toolCallId, contenu: texteDe(u.content || []).slice(0, 20000), erreur: u.status === 'failed' });
+        const capture = (u.content || []).map((c) => c?.content || c).find((c) => c?.type === 'image' && typeof c.data === 'string');
+        const image = capture && capture.data.length <= MAX_IMAGE && /^image\/(png|jpeg|gif|webp)$/.test(capture.mimeType || '') ? { type: capture.mimeType, donnees: capture.data } : null;
+        emettre({ t: 'resultat_outil', id: u.toolCallId, contenu: texteDe(u.content || []).slice(0, 20000), erreur: u.status === 'failed', ...(image ? { image } : {}) });
       } else if (u.sessionUpdate === 'usage_update' && typeof u.used === 'number' && typeof u.size === 'number' && u.size > 0) {
         emettre({ t: 'contexte', utilises: u.used, max: u.size, pourcent: (u.used / u.size) * 100 });
       }
@@ -114,10 +132,10 @@ export function ouvrirAcp(fiche, { compte, dossier, modele, mode, consigne, conn
   const demarre = (async () => {
     const absente = fiche.sansConnexion?.(compte);
     if (absente) throw new Error(`Compte non connecté (${absente}) : connecte-le depuis le panneau « Comptes ».`);
-    await connecter(fiche, l);
+    const capacites = await connecter(fiche, l);
     let r;
     try {
-      r = await l.demander('session/new', { cwd: dossier, mcpServers: versAcp(connecteurs || []) });
+      r = await l.demander('session/new', { cwd: dossier, mcpServers: [...versAcp(connecteurs || []), ...serveurOutilsDw(outilsDw, capacites)] });
     } catch (e) {
       throw new Error(`Compte non connecté (${String(e?.message || e).slice(0, 160)}) : connecte-le depuis le panneau « Comptes ».`);
     }
@@ -177,6 +195,7 @@ export function ouvrirAcp(fiche, { compte, dossier, modele, mode, consigne, conn
     },
     fermer() {
       ferme = true;
+      outilsDw?.oublier?.(); // son jeton ne vaut plus rien
       l.fermer();
     },
   };

@@ -71,7 +71,7 @@ noter('message affiché', await attendre(() => $('.message.utilisateur')));
 const accord = await attendre(() => $('.permission'), 90000);
 noter('demande d’accord affichée', accord, accord?.querySelector('header')?.textContent.slice(0, 90));
 noter('aperçu du fichier à écrire', accord?.querySelector('.apercu pre')?.textContent.includes('bonjour'));
-noter('pastille « en attente » dans la barre', $('.pastille.attente'));
+noter('main levée ✋ dans la barre', $('.liste .main-levee'));
 cliquer([...accord.querySelectorAll('button')].find((b) => b.classList.contains('principal')));
 noter('fin de tour affichée', await attendre(() => $('.fin-tour'), 90000), $('.fin-tour')?.textContent);
 noter('réponse en Markdown', $('.message.assistant .markdown'));

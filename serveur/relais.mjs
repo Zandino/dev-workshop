@@ -6,13 +6,34 @@ import { etatDuCompte, fournisseurDe } from './fournisseurs/index.mjs';
 import { estLimite } from './fournisseurs/claude-normaliser.mjs';
 import { consigneDeProjet } from './projets.mjs';
 import { connecteursPour } from './connecteurs.mjs';
+import { outilsPour } from './outils-discussions.mjs';
+import { ligneDeMessage } from './entre-discussions.mjs';
+import { consigneMemoire } from './memoire-discussion.mjs';
 
 const ORDRE = { claude: 0, codex: 1, copilot: 1, gemini: 2, qwen: 3, api: 4 };
 const MAX_HISTOIRE = 20_000;
+/**
+ * Limite d'utilisation atteinte sans heure de remise à zéro connue (Claude la donne, pas toujours les autres) : pas
+ * de nouvel essai avant ce délai. Relevé le 22/11/2026 : sans cela, Claude arrivé au bout de ses 5 heures était
+ * relancé (et échouait) à chaque message de la personne.
+ */
+export const QUOTA_SANS_HEURE = 30 * 60 * 1000;
 
-/** Prochaine IA connectée qui n'a pas encore été essayée dans cette session, ou null. */
-export async function choisirRelais(essayes) {
-  const candidats = tousLesComptes().filter((c) => !essayes.has(c.id) && c.type in ORDRE).sort((a, b) => ORDRE[a.type] - ORDRE[b.type]);
+/** Fin d'une limite d'utilisation (ms) : la remise à zéro annoncée (`retablieLe`, en secondes), sinon dans 30 min. */
+export function finDeLimite(retablieLe, maintenant = Date.now()) {
+  return retablieLe && retablieLe * 1000 > maintenant ? retablieLe * 1000 : maintenant + QUOTA_SANS_HEURE;
+}
+
+/** « 15:20 », ou « 25/11 15:20 » si ce n'est pas aujourd'hui (heure du serveur). */
+export function heureDe(ms) {
+  const d = new Date(ms);
+  const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  return d.toDateString() === new Date().toDateString() ? hm : `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')} ${hm}`;
+}
+
+/** Prochaine IA connectée qui n'a pas encore été essayée dans cette session (et que `accepte` veut), ou null. */
+export async function choisirRelais(essayes, accepte = () => true) {
+  const candidats = tousLesComptes().filter((c) => !essayes.has(c.id) && c.type in ORDRE && accepte(c)).sort((a, b) => ORDRE[a.type] - ORDRE[b.type]);
   for (const c of candidats) {
     if (c.type === 'api') return c; // pas d'outil de vérification : l'API répondra, ou échouera à son tour
     try {
@@ -27,12 +48,13 @@ export async function choisirRelais(essayes) {
 function histoire(journal) {
   const lignes = [];
   for (const e of journal) {
-    if (e.t === 'utilisateur') lignes.push(`[Utilisateur]\n${e.texte}`);
+    if (e.t === 'utilisateur') lignes.push(e.de ? ligneDeMessage(e) : `[Utilisateur]\n${e.texte}`);
     else if (e.t === 'assistant' && !e.sousAgent) {
       const texte = (e.blocs || []).filter((b) => b.type === 'texte').map((b) => b.texte).join('\n');
       const outils = (e.blocs || []).filter((b) => b.type === 'outil').map((b) => b.nom);
-      if (texte) lignes.push(`[IA]\n${texte}`);
-      if (outils.length) lignes.push(`[IA : outils utilisés] ${outils.join(', ')}`);
+      const qui = e.auteur?.nom || 'IA'; // à plusieurs (salon, orchestre), chacun signe
+      if (texte) lignes.push(`[${qui}]\n${texte}`);
+      if (outils.length) lignes.push(`[${qui} : outils utilisés] ${outils.join(', ')}`);
     }
   }
   const tout = lignes.join('\n\n');
@@ -41,13 +63,17 @@ function histoire(journal) {
 
 /**
  * `motif` : 'limite' (l'IA précédente a atteint sa limite ; la demande est renvoyée), 'demande' (changement
- * d'IA voulu par l'utilisateur), 'redemarrage' (session reprise après un redémarrage du serveur).
+ * d'IA voulu par l'utilisateur), 'redemarrage' (session reprise après un redémarrage du serveur), 'equipe'
+ * (l'utilisateur change l'équipe de la conversation : une IA, plusieurs, ou l'orchestre ; voir sessions.mjs), 'dossier'
+ * (la conversation est rangée dans un autre projet ; `ancien` dit « projet d'avant → projet d'arrivée »).
  */
 export function consigneRelais(ancien, journal, motif = 'limite') {
   const debut = {
     limite: `Tu prends le relais d'une autre IA (« ${ancien} ») qui a atteint sa limite d'utilisation au milieu de cette conversation.`,
     demande: `Tu prends le relais d'une autre IA (« ${ancien} »), à la demande de l'utilisateur, au milieu de cette conversation.`,
+    equipe: `L'utilisateur vient de changer l'équipe d'IA de cette conversation (jusqu'ici : ${ancien}). Tu la rejoins en cours de route.`,
     redemarrage: "Tu reprends une conversation interrompue par un redémarrage du serveur (ce qui était en cours s'est arrêté).",
+    dossier: `L'utilisateur vient de ranger cette conversation dans un autre projet (${ancien}) : tu travailles maintenant dans le dossier de ce projet, plus dans l'ancien.`,
   }[motif];
   return [
     debut,
@@ -82,7 +108,7 @@ export function piloteAvecRelais({ s, compte, dossier, modele, mode, reprise, ef
       if (g !== generation) return; // l'IA remplacée ne parle plus dans la session
       if (e.t === 'utilisateur' && masquerUtilisateur) return void (masquerUtilisateur = false); // demande déjà affichée
       if (e.t === 'tour' && !e.ok && !enRelais && (e.limite || estLimite(e.message))) {
-        emettre({ ...e, limite: true });
+        emettre({ ...e, limite: true, relaye: true }); // une autre IA va reprendre la demande (entre-discussions.mjs)
         relayer();
         return;
       }
@@ -95,8 +121,9 @@ export function piloteAvecRelais({ s, compte, dossier, modele, mode, reprise, ef
       modele: premier ? modele : undefined,
       reprise: premier ? reprise : undefined,
       effort: premier ? effort : undefined,
-      consigne: [consigneDeProjet(dossier), consigneEnPlus].filter(Boolean).join('\n\n'),
+      consigne: [consigneDeProjet(dossier), consigneMemoire(s.id), consigneEnPlus].filter(Boolean).join('\n\n'),
       connecteurs: connecteursPour(c),
+      outilsDw: outilsPour(c, { session: s.id }),
     }, recevoir);
   }
 

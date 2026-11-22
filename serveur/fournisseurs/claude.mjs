@@ -2,14 +2,19 @@
 import { randomUUID } from 'node:crypto';
 import { optionsDeCompte } from './claude-compte.mjs';
 import { versClaude } from '../connecteurs.mjs';
+import { NOM_SERVEUR, NOMS_OUTILS } from '../outils-discussions.mjs';
+import { marquerInterne, estInterne } from '../sessions-internes.mjs';
 import { decisionAuto, interditsClaude, MOTIF_REFUS } from '../regles-accord.mjs';
 import { query, listSessions, getSessionMessages } from '@anthropic-ai/claude-agent-sdk';
+import { discussionsNonListees } from '../sessions-claude.mjs';
+import { listerSessionsCorbeille } from '../corbeille-sessions.mjs';
 import {
   assistantVersEvenement,
   utilisateurVersEvenements,
   resultatVersEvenement,
   limiteVersEvenement,
   historiqueVersEvenements,
+  tacheVersEvenement,
 } from './claude-normaliser.mjs';
 
 /**
@@ -47,14 +52,18 @@ function fileEntree() {
   };
 }
 
-export function ouvrir({ dossier, modele, mode, reprise, compte, consigne, connecteurs, serveursMcp, outilsPermis, effort }, emettre) {
+/** `interne` : session ouverte pour une discussion à plusieurs ou un sous-agent, à ne pas lister (sessions-internes.mjs). */
+export function ouvrir({ dossier, modele, mode, reprise, compte, consigne, connecteurs, serveursMcp, outilsPermis, effort, outilsDw, interne }, emettre) {
   const entree = fileEntree();
   const permissions = new Map();
   let fenetre = null;
   let ferme = false;
+  let dejaUnResultat = false; // voir « anterieur » à la fin d'un tour
+  const taches = new Map(); // sous-agents en cours (tacheVersEvenement)
 
   const canUseTool = (outil, saisie, o) =>
     new Promise((resoudre) => {
+      if (outilsDw && NOMS_OUTILS.some((n) => outil === `mcp__${NOM_SERVEUR}__${n}`)) return resoudre({ behavior: 'allow', updatedInput: saisie });
       // Règles d'accord du projet : ce qui est permis passe sans demande, ce qui est interdit est refusé.
       const auto = decisionAuto(dossier, outil, saisie);
       if (auto === 'autoriser') return resoudre({ behavior: 'allow', updatedInput: saisie });
@@ -72,6 +81,7 @@ export function ouvrir({ dossier, modele, mode, reprise, compte, consigne, conne
         t: 'permission',
         id,
         outil,
+        ...(outil === 'AskUserQuestion' ? { questions: true } : {}), // fenêtre de questions (permissions.js)
         entree: saisie,
         titre: o.title || null,
         description: o.description || o.decisionReason || null,
@@ -95,8 +105,11 @@ export function ouvrir({ dossier, modele, mode, reprise, compte, consigne, conne
   if (reprise) options.resume = reprise;
   // Connecteurs partagés de Dev Workshop, en plus de ceux que le compte a déjà (claude.ai, réglages), et outils
   // propres à Dev Workshop (mode orchestre), qui tournent dans le serveur même.
-  if (connecteurs?.length || serveursMcp) options.mcpServers = { ...versClaude(connecteurs || []), ...(serveursMcp || {}) };
-  // Seuls nos propres outils passent sans demande d'accord ; tout le reste revient à l'écran.
+  // Outils « entre discussions » (entre-discussions.mjs) : dans le serveur même, l'identité tient à la fermeture.
+  const propres = { ...(serveursMcp || {}), ...(outilsDw ? { [NOM_SERVEUR]: outilsDw.claude() } : {}) };
+  if (connecteurs?.length || Object.keys(propres).length) options.mcpServers = { ...versClaude(connecteurs || []), ...propres };
+  // Seuls nos propres outils passent sans demande d'accord ; tout le reste revient à l'écran. (Ceux « entre
+  // discussions » sont acceptés dans canUseTool : une règle sur tout le serveur ferait râler le SDK.)
   if (outilsPermis?.length) options.allowedTools = outilsPermis;
   // Les refus du projet valent dans tous les modes, « tout autoriser » compris.
   const interdits = interditsClaude(dossier);
@@ -136,12 +149,16 @@ export function ouvrir({ dossier, modele, mode, reprise, compte, consigne, conne
       return;
     }
     if (m.type === 'system' && m.subtype === 'init') {
+      if (interne) marquerInterne(m.session_id);
       emettre({ t: 'pret', sessionId: m.session_id, modele: m.model, mode: m.permissionMode, dossier: m.cwd });
     } else if (m.type === 'system' && m.subtype === 'status') {
       if (m.permissionMode) emettre({ t: 'etat', mode: m.permissionMode });
       if (m.status === 'compacting') emettre({ t: 'info', code: 'compactage' });
     } else if (m.type === 'system' && m.subtype === 'compact_boundary') {
       emettre({ t: 'info', code: 'compacte' });
+    } else if (m.type === 'system' && m.subtype?.startsWith('task_')) {
+      const e = tacheVersEvenement(m, taches);
+      if (e) emettre(e);
     } else if (m.type === 'assistant') {
       const e = assistantVersEvenement(m);
       emettre(e);
@@ -152,7 +169,11 @@ export function ouvrir({ dossier, modele, mode, reprise, compte, consigne, conne
     } else if (m.type === 'user') {
       for (const e of utilisateurVersEvenements(m, { avecTexte: false })) emettre(e);
     } else if (m.type === 'result') {
-      emettre(resultatVersEvenement(m));
+      // Discussion reprise : Claude Code rend, au premier tour, le cumul (jetons et coût) de TOUTE la discussion,
+      // depuis son tout début (relevé le 21/11/2026 : 323,90 $ et 349 millions de jetons lus pour un tour de 68 s).
+      // L'écran s'en sert de point de départ au lieu de l'afficher comme le prix de ce tour (jauge.js).
+      emettre({ ...resultatVersEvenement(m), ...(reprise && !dejaUnResultat ? { anterieur: true } : {}) });
+      dejaUnResultat = true;
       emettre({ t: 'etat', occupe: false });
       contexte();
     } else if (m.type === 'rate_limit_event') {
@@ -220,13 +241,18 @@ export function ouvrir({ dossier, modele, mode, reprise, compte, consigne, conne
 
 /** Sessions enregistrées d'un dossier de projet (les plus récentes d'abord). */
 export async function historique(dossier) {
-  const liste = await listSessions({ dir: dossier, limit: 60, includeWorktrees: false });
-  // Une session archivée est à la corbeille : elle n'apparaît plus parmi les sessions passées.
-  return liste.filter((s) => !s.archived).slice(0, 40).map((s) => ({
+  const liste = await listSessions({ dir: dossier, limit: 1000, includeWorktrees: false });
+  // Une session archivée est à la corbeille : elle n'apparaît plus parmi les discussions.
+  // Une session interne (Claude d'une discussion à plusieurs, sous-agent) n'est pas une discussion à part.
+  const vues = liste.filter((s) => !s.archived && !estInterne(s.sessionId)).map((s) => ({
     id: s.sessionId,
     titre: (s.customTitle || s.summary || s.firstPrompt || '').slice(0, 120),
     modifieLe: s.lastModified,
   }));
+  // Celles que le SDK ne liste pas (reprises après un résumé automatique), trouvées dans son dossier.
+  const ecartees = new Set([...liste.map((s) => s.sessionId), ...listerSessionsCorbeille().map((s) => s.id)]);
+  const oubliees = (await discussionsNonListees(dossier, ecartees).catch(() => [])).filter((s) => !estInterne(s.id));
+  return [...vues, ...oubliees].sort((a, b) => b.modifieLe - a.modifieLe);
 }
 
 export async function lireHistorique(dossier, sessionId) {
