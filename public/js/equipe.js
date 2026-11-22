@@ -12,7 +12,7 @@ import { pastilleLogo } from './logos.js';
 import { detailOutil } from './outils.js';
 import { scene, couleurDe } from './avatars.js';
 import { creerEquipe } from './equipe-etat.js';
-import { parlerMembre, taire, etatVoix, moteurVoix, choisirMoteur, installerVoix, modeVoix, choisirModeVoix, surModeVoix, MODES_VOIX } from './voix-equipe.js';
+import { parlerMembre, taire, etatVoix, moteurVoix, choisirMoteur, installerVoix, modeVoix, choisirModeVoix, surModeVoix, MODES_VOIX, volumeVoix, choisirVolume } from './voix-equipe.js';
 
 ajouterTextes({
   fr: {
@@ -28,7 +28,7 @@ ajouterTextes({
     toi: 'Toi', humain: 'Humain', toi_attendu: '{qui} t’attend', repondre_conversation: 'Répondre',
     rien_fichier: 'Aucun fichier modifié pour l’instant.', rien_terminal: 'Aucune commande pour l’instant.', rien_navigateur: 'Pas de navigateur pour l’instant.',
     capture_non_gardee: 'Capture non gardée (elle ne s’affiche qu’en direct).', en_cours: 'en cours…', dit_accord: '{nom} a besoin de toi.',
-    voix_mode_tout: '🔊 Tout dire', voix_mode_essentiel: '🔔 L’essentiel', voix_mode_non: '🔇 Muet',
+    voix_volume: 'Volume des voix', voix_mode_tout: '🔊 Tout dire', voix_mode_essentiel: '🔔 L’essentiel', voix_mode_non: '🔇 Muet',
     voix_mode_aide: 'L’essentiel : seulement « … a besoin de toi » et « travail terminé », pour toutes les discussions',
     equipe_agrandir: 'Agrandir', equipe_reduire: 'Remettre à droite du fil', equipe_detacher: 'Détacher dans une fenêtre',
     equipe_rattacher: 'Remettre dans la fenêtre principale', equipe_fermer: 'Fermer l’équipe', equipe_largeur: 'Glisser pour changer la largeur (double-clic : largeur d’origine)',
@@ -48,7 +48,7 @@ ajouterTextes({
     toi: 'You', humain: 'Human', toi_attendu: '{qui} is waiting for you', repondre_conversation: 'Answer',
     rien_fichier: 'No file edited yet.', rien_terminal: 'No command yet.', rien_navigateur: 'No browser yet.',
     capture_non_gardee: 'Screenshot not kept (it only shows live).', en_cours: 'running…', dit_accord: '{nom} needs you.',
-    voix_mode_tout: '🔊 Say everything', voix_mode_essentiel: '🔔 Essentials', voix_mode_non: '🔇 Muted',
+    voix_volume: 'Voice volume', voix_mode_tout: '🔊 Say everything', voix_mode_essentiel: '🔔 Essentials', voix_mode_non: '🔇 Muted',
     voix_mode_aide: 'Essentials: only “… needs you” and “work finished”, for every conversation',
     equipe_agrandir: 'Enlarge', equipe_reduire: 'Back to the right of the thread', equipe_detacher: 'Detach into a window',
     equipe_rattacher: 'Back into the main window', equipe_fermer: 'Close the team', equipe_largeur: 'Drag to change the width (double-click: original width)',
@@ -357,6 +357,7 @@ function entete() {
       puce('membres', `👥 ${c.membres}  ${duree(c.duree)}`)),
     h('nav.vues-appel', {}, ['appel', 'arbre'].map((nom) => h('button' + (vueCourante === nom ? '.actif' : ''), { type: 'button', onclick: () => { vueCourante = nom; redessiner(); } }, t('vue_' + nom)))),
     choixModeVoix(),
+    modeVoix() === 'non' ? null : curseurVolume(),
     modeVoix() === 'non' ? null : choixMoteur(),
     boutonsAffichage());
 }
@@ -370,6 +371,9 @@ function choixModeVoix() {
     redessiner();
   } }, MODES_VOIX.map((m) => h('option', { value: m, selected: mode === m }, t('voix_mode_' + m))));
 }
+
+/** Le volume des voix (la phrase en cours suit le curseur). */
+const curseurVolume = () => h('input.volume-voix', { type: 'range', min: '0', max: '1', step: '0.05', value: String(volumeVoix()), title: t('voix_volume'), 'aria-label': t('voix_volume'), oninput: (ev) => choisirVolume(ev.target.value) });
 
 /** Agrandir / remettre à droite, détacher (ou rattacher, dans la fenêtre détachée), fermer. */
 function boutonsAffichage() {

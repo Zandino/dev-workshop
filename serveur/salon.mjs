@@ -8,6 +8,8 @@ import { connecteursPour } from './connecteurs.mjs';
 import { outilsPour } from './outils-discussions.mjs';
 import { compte, listerComptes } from './comptes.mjs';
 import { assezPour, REGLE_MEMOIRE } from './memoire.mjs';
+import { estLimite } from './fournisseurs/claude-normaliser.mjs';
+import { choisirRelais, nomCompte, finDeLimite, heureDe } from './relais.mjs';
 
 export const MAX_PARTICIPANTS = 4;
 export const MAX_ECHANGES = 10;
@@ -95,8 +97,10 @@ export function ouvrirSalon({ session, participants, dossier, mode, echanges, hi
   let modeCourant = mode;
   let effortCourant;
 
+  let phase = 'concertation';
+
   // L'auteur porte le type et l'adresse du compte (jamais une clé) : l'écran y reconnaît le logo de l'IA.
-  const membres = participants.map((p, i) => ({
+  const membreDe = (p, i, renfort = false) => ({
     p,
     nom: p.nom,
     auteur: { nom: p.nom, rang: i, externe: p.externe, compte: { id: p.compte.id, type: p.compte.type, url: p.compte.url || null } },
@@ -106,13 +110,19 @@ export function ouvrirSalon({ session, participants, dossier, mode, echanges, hi
     pilote: null, // l'IA en cours d'exécution, ou null tant qu'on n'a pas besoin d'elle
     generation: 0, // une IA arrêtée exprès ne parle plus dans le salon
     session: null, // session Claude Code, pour la reprendre à la relance
-  }));
+    horsQuota: 0, // limite d'utilisation atteinte : pas relancé avant ce moment (ms)
+    retablieLe: null, // remise à zéro annoncée par l'IA (Claude : événement « limite », en secondes)
+    reprend: false, // reprend la part d'un participant arrivé à sa limite : il aura son tour
+    renfort, // IA venue de l'extérieur le temps que les participants retrouvent leur quota
+  });
+  const membres = participants.map((p, i) => membreDe(p, i));
 
   function recevoirPour(m, g) {
     return (e) => {
       if (ferme || m.generation !== g) return;
       m.dernierSigne = Date.now();
       if (e.t === 'pret') m.session = e.sessionId || m.session;
+      if (e.t === 'limite' && e.retablieLe) m.retablieLe = e.retablieLe;
       if (e.t === 'utilisateur' || e.t === 'pret' || e.t === 'capacites') return;
       if (e.t === 'etat') {
         if (e.ferme) {
@@ -217,7 +227,8 @@ export function ouvrirSalon({ session, participants, dossier, mode, echanges, hi
   function dire(de, texte, sauf = null) {
     const x = { numero: ++numero, de, texte };
     fil.push(x);
-    for (const autre of membres) if (autre !== sauf && !autre.ecarte) autre.nonVus.push(x);
+    // Qui attend la remise à zéro de sa limite garde ce qui se dit : il le lira à son retour.
+    for (const autre of membres) if (autre !== sauf && (!autre.ecarte || autre.horsQuota > Date.now())) autre.nonVus.push(x);
   }
   const consigneAnimateur = (texte) => ({ numero: ++numero, de: 'Animateur', texte });
 
@@ -236,15 +247,77 @@ export function ouvrirSalon({ session, participants, dossier, mode, echanges, hi
       // la discussion continue avec les autres. (Un participant parti a déjà sa note.)
       m.ecarte = true;
       m.nonVus = [];
-      if (tour.motif !== 'parti') emettre({ t: 'info', code: tour.motif === 'silence' ? 'participant_muet' : 'participant_ecarte', auteur: m.auteur, detail: tour.motif === 'silence' ? null : String(tour.message || tour.motif || '').slice(0, 200) });
+      if (tour.limite || estLimite(tour.message)) await passerLaMain(m);
+      else if (tour.motif !== 'parti') emettre({ t: 'info', code: tour.motif === 'silence' ? 'participant_muet' : 'participant_ecarte', auteur: m.auteur, detail: tour.motif === 'silence' ? null : String(tour.message || tour.motif || '').slice(0, 200) });
       return null;
     }
+    m.reprend = false;
     const dit = m.texte.trim();
     if (dit && !dit.includes(RIEN)) {
       const propre = lisible(dit);
       dire(m.nom, propre.length > MAX_RELAIS ? propre.slice(0, MAX_RELAIS) + '\n… (message raccourci)' : propre, m);
     }
     return dit;
+  }
+
+  /**
+   * Limite d'utilisation atteinte (abonnement, quota) : le participant attend sa remise à zéro sans être relancé, et
+   * son travail ne se perd pas. En concertation, les autres se répartissent le travail sans lui ; en exécution, un
+   * autre (du même genre d'IA d'abord, jamais une IA par API qui ne touche pas aux fichiers) reprend sa part. S'il ne
+   * reste personne, une IA connectée hors du salon vient en renfort (relais.mjs).
+   */
+  async function passerLaMain(m) {
+    m.horsQuota = finDeLimite(m.retablieLe);
+    m.reprend = false;
+    liberer(m); // son IA ne sert plus d'ici là
+    const jusqua = heureDe(m.horsQuota);
+    const ou = (x) => x.p.compte.type === m.p.compte.type;
+    const capables = actifs().filter((x) => x.p.compte.type !== 'api');
+    let repreneur = phase === 'execution' ? capables.find(ou) || capables[0] || null : null;
+    const seul = phase === 'execution' ? !repreneur : !actifs().length;
+    if (seul) repreneur = await renfort();
+    if (ferme || arret) return;
+    const note = (texte) => consigneAnimateur(texte);
+    if (phase === 'concertation' && !seul) {
+      emettre({ t: 'info', code: 'participant_quota_sans_lui', auteur: m.auteur, jusqua });
+      const texte = `« ${m.nom} » a atteint sa limite d'utilisation (de retour vers ${jusqua}) et ne participe plus à cette demande : répartissez le travail entre vous, sans lui.`;
+      for (const x of actifs()) x.nonVus.push(note(texte));
+      return;
+    }
+    if (!repreneur) {
+      emettre({ t: 'info', code: 'participant_quota_seul', auteur: m.auteur, jusqua });
+      emettre({ t: 'info', code: 'relais_aucun' }); // personne pour continuer : la personne est prévenue (veille.mjs)
+      return;
+    }
+    emettre({ t: 'info', code: 'participant_quota', auteur: m.auteur, jusqua, vers: repreneur.nom });
+    const ouIlEnEtait = m.texte.trim() ? ` Voici où il en était : « ${lisible(m.texte.trim()).slice(0, 3000)} ».` : '';
+    repreneur.nonVus.push(note(phase === 'execution'
+      ? `« ${m.nom} » a atteint sa limite d'utilisation (de retour vers ${jusqua}) avant d'avoir fini sa part. Reprends-la, en plus de la tienne : la part qui lui revenait dans la répartition convenue ci-dessus.${ouIlEnEtait} Vérifie l'état réel des fichiers avant d'agir et ne refais pas ce qui est déjà fait ; termine par un compte rendu court.`
+      : `« ${m.nom} » a atteint sa limite d'utilisation (de retour vers ${jusqua}) : tu le remplaces pour cette demande. Prends part à la concertation à sa place.`));
+    repreneur.reprend = true;
+  }
+
+  /**
+   * Une IA connectée qui n'est pas dans le salon le rejoint, le temps que les participants retrouvent leur quota :
+   * elle reçoit tout ce qui s'est dit (dejaDit) et la consigne de la phase en cours. Null s'il n'y en a pas.
+   */
+  async function renfort() {
+    let c = null;
+    try {
+      c = await choisirRelais(new Set(membres.map((x) => x.p.compte.id)));
+    } catch {
+      c = null;
+    }
+    if (!c || ferme || arret) return null;
+    let nom = nomCompte(c).slice(0, 30);
+    if (membres.some((x) => x.nom === nom)) nom = `${nom.slice(0, 20)} (relais)`;
+    const externe = Boolean(listerComptes().find((v) => v.id === c.id)?.externe);
+    const r = membreDe({ compte: c, modele: undefined, nom, externe }, membres.length, true);
+    membres.push(r);
+    // En exécution, la note de passerLaMain lui dit quoi faire ; en concertation, il entre dans la discussion.
+    if (phase === 'concertation') r.nonVus.push(consigneAnimateur(CONCERTATION));
+    emettre({ t: 'info', code: 'participant_renfort', auteur: r.auteur });
+    return r;
   }
 
   const fini = () => arret || ferme || !actifs().length;
@@ -272,7 +345,13 @@ export function ouvrirSalon({ session, participants, dossier, mode, echanges, hi
         }
       }
       prises += dits.length;
-      if (!dits.some((d) => d && !d.includes(RIEN))) break;
+      if (!dits.some((d) => d && !d.includes(RIEN)) && !membres.some((m) => !m.ecarte && m.reprend)) break;
+    }
+    // Une part reprise après une limite atteinte a son tour, même quand les échanges prévus sont épuisés.
+    for (const m of membres.filter((x) => !x.ecarte && x.reprend)) {
+      if (fini()) break;
+      await tourDe(m);
+      prises += 1;
     }
     return prises;
   }
@@ -280,15 +359,29 @@ export function ouvrirSalon({ session, participants, dossier, mode, echanges, hi
   async function derouler(texte) {
     arret = false;
     emettre({ t: 'etat', occupe: true });
-    // Chaque nouveau message de la personne redonne sa chance à chacun (une limite d'abonnement a pu être remise
-    // à zéro, un outil arrêté est relancé).
+    phase = 'concertation';
+    // Chaque nouveau message de la personne redonne sa chance à chacun (un outil arrêté est relancé), sauf à qui
+    // attend la remise à zéro de sa limite d'utilisation.
+    const maintenant = Date.now();
     for (const m of membres) {
-      m.ecarte = false;
+      m.ecarte = m.horsQuota > maintenant;
       m.accord = false;
       m.sansTravail = false;
+      m.reprend = false;
     }
+    // Les renforts repartent dès qu'un participant du salon est de nouveau là.
+    if (membres.some((m) => !m.renfort && !m.ecarte)) {
+      for (let i = membres.length - 1; i >= 0; i -= 1) {
+        if (!membres[i].renfort) continue;
+        liberer(membres[i]);
+        membres.splice(i, 1);
+      }
+    }
+    for (const m of membres.filter((x) => x.ecarte)) emettre({ t: 'info', code: 'participant_quota_attente', auteur: m.auteur, jusqua: heureDe(m.horsQuota) });
     dire('Utilisateur', texte);
-    for (const m of membres) m.nonVus.push(consigneAnimateur(CONCERTATION));
+    for (const m of membres) if (!m.ecarte) m.nonVus.push(consigneAnimateur(CONCERTATION));
+    // Tous à leur limite : une IA connectée hors du salon les remplace (s'il y en a une).
+    if (!actifs().length && !(await renfort())) emettre({ t: 'info', code: 'relais_aucun' });
     let prises = 0;
 
     // 1. Concertation, chacun son tour : jusqu'à ce que tous soient d'accord sur la même répartition (3 tours au plus).
@@ -312,12 +405,13 @@ export function ouvrirSalon({ session, participants, dossier, mode, echanges, hi
       const accord = actifs().every((m) => m.accord);
       emettre({ t: 'info', code: accord ? 'salon_accord' : 'salon_sans_accord' });
       const ensemble = ensembleSiPossible(actifs());
-      const phase = (accord ? EXECUTION : EXECUTION_SANS_ACCORD) + (ensemble ? `\n${EN_MEME_TEMPS}` : '');
-      for (const m of actifs()) m.nonVus.push(consigneAnimateur(phase));
+      const consignePhase = (accord ? EXECUTION : EXECUTION_SANS_ACCORD) + (ensemble ? `\n${EN_MEME_TEMPS}` : '');
+      phase = 'execution';
+      for (const m of actifs()) m.nonVus.push(consigneAnimateur(consignePhase));
       prises += await executer(ensemble);
     }
     // Ce qui reste non lu sera joint au prochain message de l'utilisateur.
-    if (!ferme) emettre({ t: 'salon_pause', prises, restant: membres.some((m) => m.nonVus.length) });
+    if (!ferme) emettre({ t: 'salon_pause', prises, restant: membres.some((m) => !m.ecarte && m.nonVus.length) });
     emettre({ t: 'etat', occupe: false });
   }
 

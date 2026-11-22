@@ -47,11 +47,24 @@ export function choisirModeVoix(mode) {
   ecouteursMode.forEach((f) => f(mode));
 }
 export const surModeVoix = (f) => ecouteursMode.add(f);
+
+/** Volume des voix, de 0 à 1 (curseur de l'équipe et du bas de la barre), appliqué aussi à la phrase en cours. */
+export function volumeVoix() {
+  const v = Number.parseFloat(lire('devworkshop.voix.volume'));
+  return Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 1;
+}
+export function choisirVolume(v) {
+  const n = Math.min(1, Math.max(0, Number(v) || 0));
+  ecrire('devworkshop.voix.volume', String(n));
+  if (enCours?.gain) enCours.gain.gain.value = n;
+  ecouteursMode.forEach((f) => f(modeVoix()));
+}
 // Changé dans l'autre fenêtre (principale ou détachée) : celle-ci suit.
 if (typeof window !== 'undefined') {
   window.addEventListener?.('storage', (e) => {
-    if (e.key !== 'devworkshop.voix') return;
+    if (e.key !== 'devworkshop.voix' && e.key !== 'devworkshop.voix.volume') return;
     if (modeVoix() === 'non') taire();
+    if (enCours?.gain) enCours.gain.gain.value = volumeVoix();
     ecouteursMode.forEach((f) => f(modeVoix()));
   });
 }
@@ -118,7 +131,11 @@ function jouer(x) {
     source.buffer = tampon;
     // Peu de voix d'homme en français : une hauteur à peine différente (±4 %) distingue deux membres sur la même voix.
     source.playbackRate.value = 0.96 + (hachage(`${x.m.cle}|hauteur`) % 9) / 100;
-    source.connect(contexteAudio.destination);
+    const gain = contexteAudio.createGain();
+    gain.gain.value = volumeVoix();
+    source.connect(gain);
+    gain.connect(contexteAudio.destination);
+    x.gain = gain;
     source.onended = fini;
     x.quiParle(x.m.cle);
     source.start();
@@ -136,6 +153,7 @@ function parlerSysteme(x) {
   // Même voix pour deux membres : le timbre et le débit les distinguent.
   u.pitch = 0.85 + (hachage(`${x.m.cle}|timbre`) % 31) / 100;
   u.rate = vitesseDe(x.m);
+  u.volume = volumeVoix();
   u.onstart = () => x.quiParle(x.m.cle);
   u.onend = fini;
   u.onerror = fini;

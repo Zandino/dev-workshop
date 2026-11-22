@@ -137,10 +137,13 @@ function surAssistant(e) {
 
 function surTour(e) {
   finirDirect();
+  // Limite d'utilisation atteinte : pas un échec en soi, la ligne suivante dit qui reprend (relais, salon) ou que
+  // personne ne le peut (en rouge, alors).
+  const limite = !e.ok && e.limite;
   const texte = e.ok
     ? t('tour_fini', { duree: duree(e.dureeMs), appels: e.appels ?? '–' })
-    : t('tour_echec', { motif: e.message || e.motif });
-  ajouter(h('div.fin-tour' + (e.ok ? '' : '.echec'), {}, e.auteur ? `${e.auteur.nom} · ${texte}` : texte));
+    : limite ? t('tour_limite') : t('tour_echec', { motif: e.message || e.motif });
+  ajouter(h('div.fin-tour' + (e.ok || limite ? '' : '.echec'), {}, e.auteur ? `${e.auteur.nom} · ${texte}` : texte));
 }
 
 const TRAITEMENTS = {
@@ -158,7 +161,7 @@ const TRAITEMENTS = {
   },
   tour: surTour,
   // Les champs de l'événement (de, vers…) complètent le texte : « {de} a atteint sa limite : {vers} prend le relais ».
-  info: (e) => ajouter(h('div.fin-tour', {}, (e.auteur ? e.auteur.nom + ' · ' : '') + t('info_' + e.code, e) + (e.detail ? ` (${e.detail})` : ''))),
+  info: (e) => ajouter(h('div.fin-tour' + (['relais_aucun', 'participant_quota_seul'].includes(e.code) ? '.echec' : ''), {}, (e.auteur ? e.auteur.nom + ' · ' : '') + t('info_' + e.code, e) + (e.detail ? ` (${e.detail})` : ''))),
   salon_pause: (e) => ajouter(h('div.fin-tour', {}, t(e.restant ? 'salon_pause_reste' : 'salon_pause', { n: e.prises }))),
   erreur: (e) => ajouter(h('div.fin-tour.echec', {}, `${t('erreur')} : ${e.message}`)),
   // Mode orchestre : la cheffe confie une tâche à un sous-agent (IA et modèle choisis par elle).

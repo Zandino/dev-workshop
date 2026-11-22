@@ -23,6 +23,10 @@ Free software, built by the Deltinfo Studio team and published under the Apache 
 - **Group discussions**: two to four agents answer each other in turn on your request, then stop. An open
   conversation can change its team (add or remove AIs, one AI, or the orchestra) and keep its history. Messages and
   approval requests are signed with the agent's name.
+- **Usage limits**: when an AI hits its subscription or quota limit, another connected AI takes over with the
+  history. In a group, the limited AI is not retried before its reset time and another takes over its part (an AI
+  from outside the group joins as backup if all are limited); in the orchestra, a limited conductor is replaced by
+  another Claude account. With nobody left to take over, an alert tells you.
 - **Token usage**: context gauge and per-model, per-agent counters, exactly as reported by each tool.
 - **Conversations** keep running if the tab closes. Each project lists its conversations; "All conversations"
   searches them across projects, and "Move" puts one in another project, where it resumes with that project's notes;
@@ -51,7 +55,8 @@ Free software, built by the Deltinfo Studio team and published under the Apache 
   commands, failures and going in circles. The one who needs you, else the one who just acted, comes to the front
   with its shared screen (edited file, terminal, browser screenshot). A voice reads what they say, one at a time.
   Voice setting: say everything, essentials only (spoken announcements for every open conversation, even with the
-  team closed: "… needs you on <project>", "work finished on <project>", "work stopped on <project>"), or muted.
+  team closed: "… needs you on <project>", "work finished on <project>", "work stopped on <project>"), or muted;
+  plus a volume slider.
   Built from the conversation's own events: no extra model call. Screenshots only show live.
 - **Dictation** (🎤): click to talk, click to stop; the text lands in the message box for you to review. Engine:
   Whisper on your server (open source, free, the voice stays on the server; installed on demand, ~750 MB plus the

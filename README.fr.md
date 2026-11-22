@@ -131,7 +131,16 @@ fois le même compte. Sur chaque demande, les IA parlent à tour de rôle, jamai
   signale avant de démarrer ;
 - chaque message relayé est signé ; la consigne dit à chaque IA qu'un autre participant n'est pas l'utilisateur ;
 - le mode reste « demander avant d'agir » (ou « plan ») : chaque demande d'accord revient à l'écran, signée ;
-- « Arrêter » coupe la discussion ; un tour en échec l'arrête aussi.
+- « Arrêter » coupe la discussion ; une IA qui ne répond pas est mise à l'écart, les autres continuent.
+
+**Limite d'utilisation atteinte** (abonnement, quota) : partout, une autre IA prend le relais avec l'historique.
+Une seule IA : la suivante des IA connectées reprend la dernière demande (d'abord les autres comptes Claude). À
+plusieurs : l'IA arrivée à sa limite n'est plus relancée avant sa remise à zéro (l'heure donnée par Claude, sinon
+30 min ; le fil dit « de retour vers 15:20 ») ; en concertation, les autres se répartissent le travail sans elle ; en
+exécution, une autre (du même genre d'abord) reprend sa part ; si toutes sont à leur limite, une IA connectée hors de
+la discussion vient en renfort jusqu'à leur retour. Orchestre : un sous-agent à sa limite rend la main à la cheffe,
+qui confie la tâche à une autre IA ; la cheffe à sa limite est remplacée par un autre compte Claude. Sans aucune IA
+pour reprendre, le tour s'arrête et une alerte le dit.
 
 L'équipe d'une discussion déjà ouverte se change sans en ouvrir une autre : 👥 part de l'équipe en place et
 « Appliquer à cette discussion » y met d'autres IA (ajouter, retirer, changer) ; la liste des IA, en haut, revient à
@@ -276,7 +285,7 @@ principale, se ferme avec elle, et ⇱ l'y remet. Dans le logiciel de bureau, la
 - **Réglage « Voix »** (en-tête de l'équipe, ou bas de la barre des projets) : *Tout dire* (l'équipe affichée lit ce
   que disent les IA, et les autres discussions sont annoncées), *L'essentiel* (seulement les annonces, pour toutes
   les discussions ouvertes, même équipe fermée : « Léa a besoin de toi sur intervizio », « Travail terminé sur
-  intervizio », « Le travail s'est arrêté sur intervizio »), ou *Muet*.
+  intervizio », « Le travail s'est arrêté sur intervizio »), ou *Muet* ; et un curseur de volume.
 
 **Skins** (personnages en images) : un dossier par personnage dans le dossier des réglages du serveur,
 `skins/<nom>/`, avec une image par état : `idle`, `working`, `thinking`, `waiting`, `needs-you`, `blocked`,

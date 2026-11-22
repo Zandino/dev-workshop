@@ -41,10 +41,11 @@ export function alerteDe(s, e, projet) {
 
 /** La fin du travail demandé ({ ok, message }), ou null si l'événement n'en est pas une. */
 function finDe(s, e) {
+  // Limite atteinte : une autre IA prend le relais (relais.mjs, salon.mjs, orchestre.mjs), le travail continue ;
+  // sinon, c'est un échec, à toutes les sortes de discussions.
+  if (e.t === 'info' && e.code === 'relais_aucun') return { ok: false, message: 'limite atteinte, aucune autre IA pour prendre le relais' };
   // Salon : chaque participant finit son tour (il a un « auteur ») ; la discussion rend la main en se libérant.
   if (s.participants) return e.t === 'etat' && e.occupe === false && !e.auteur ? { ok: true } : null;
-  // Limite atteinte : une autre IA prend le relais (relais.mjs), le travail continue ; sinon, c'est un échec.
-  if (e.t === 'info' && e.code === 'relais_aucun') return { ok: false, message: 'limite atteinte, aucune autre IA pour prendre le relais' };
   if (e.t !== 'tour' || e.auteur || e.sousAgent || e.limite) return null; // sous-agents de l'orchestre : auteur
   return { ok: Boolean(e.ok), message: e.message || e.motif };
 }

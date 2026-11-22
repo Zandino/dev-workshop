@@ -11,10 +11,28 @@ import { ligneDeMessage } from './entre-discussions.mjs';
 
 const ORDRE = { claude: 0, codex: 1, copilot: 1, gemini: 2, qwen: 3, api: 4 };
 const MAX_HISTOIRE = 20_000;
+/**
+ * Limite d'utilisation atteinte sans heure de remise à zéro connue (Claude la donne, pas toujours les autres) : pas
+ * de nouvel essai avant ce délai. Relevé le 22/11/2026 : sans cela, Claude arrivé au bout de ses 5 heures était
+ * relancé (et échouait) à chaque message de la personne.
+ */
+export const QUOTA_SANS_HEURE = 30 * 60 * 1000;
 
-/** Prochaine IA connectée qui n'a pas encore été essayée dans cette session, ou null. */
-export async function choisirRelais(essayes) {
-  const candidats = tousLesComptes().filter((c) => !essayes.has(c.id) && c.type in ORDRE).sort((a, b) => ORDRE[a.type] - ORDRE[b.type]);
+/** Fin d'une limite d'utilisation (ms) : la remise à zéro annoncée (`retablieLe`, en secondes), sinon dans 30 min. */
+export function finDeLimite(retablieLe, maintenant = Date.now()) {
+  return retablieLe && retablieLe * 1000 > maintenant ? retablieLe * 1000 : maintenant + QUOTA_SANS_HEURE;
+}
+
+/** « 15:20 », ou « 25/11 15:20 » si ce n'est pas aujourd'hui (heure du serveur). */
+export function heureDe(ms) {
+  const d = new Date(ms);
+  const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  return d.toDateString() === new Date().toDateString() ? hm : `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')} ${hm}`;
+}
+
+/** Prochaine IA connectée qui n'a pas encore été essayée dans cette session (et que `accepte` veut), ou null. */
+export async function choisirRelais(essayes, accepte = () => true) {
+  const candidats = tousLesComptes().filter((c) => !essayes.has(c.id) && c.type in ORDRE && accepte(c)).sort((a, b) => ORDRE[a.type] - ORDRE[b.type]);
   for (const c of candidats) {
     if (c.type === 'api') return c; // pas d'outil de vérification : l'API répondra, ou échouera à son tour
     try {

@@ -22,9 +22,11 @@ globalThis.WebSocket = class {
 };
 // Audio factice : on déclenche la fin de lecture à la main.
 const lectures = [];
+const gains = [];
 globalThis.AudioContext = class {
   get destination() { return {}; }
   createBuffer(_, n, taux) { return { n, taux, getChannelData: () => new Float32Array(n) }; }
+  createGain() { const g = { gain: { value: 1 }, connect() {} }; gains.push(g); return g; }
   createBufferSource() { const s = { playbackRate: { value: 1 }, connect() {}, start() { lectures.push(s); }, stop() {} }; return s; }
 };
 const phrasesSysteme = [];
@@ -78,7 +80,7 @@ parlerMembre(hugo, 'Voix du système choisie.', quiParle);
 noter('moteur « système » choisi : rien ne part au serveur, voix d’homme', envois.length === avant && phrasesSysteme.at(-1)?.voice?.name === 'Microsoft Paul');
 
 // Réglage « Voix » : tout dire / l'essentiel / muet, et les annonces (annonces.js).
-const { modeVoix, choisirModeVoix } = await import('../public/js/voix-equipe.js');
+const { modeVoix, choisirModeVoix, choisirVolume, volumeVoix } = await import('../public/js/voix-equipe.js');
 const { phraseAnnonce, aAnnoncer, initAnnonces } = await import('../public/js/annonces.js');
 window.localStorage.setItem('devworkshop.voix', 'oui');
 noter('ancien réglage « oui » : tout dire', modeVoix() === 'tout');
@@ -95,6 +97,7 @@ noter('tout dire : l’équipe visible le dit déjà, pas de doublon ; les autre
 noter('muet : rien', !aAnnoncer(accord, { mode: 'non', ici: false }));
 choisirModeVoix('naturelle'); // valeur inconnue : ignorée
 noter('valeur inconnue ignorée', modeVoix() === 'tout');
+taire(); // la phrase de Hugo (voix du système factice) ne finit jamais d'elle-même
 choisirMoteur('naturelle');
 initAnnonces({ session: () => 'affichee' });
 choisirModeVoix('essentiel');
@@ -102,7 +105,13 @@ const avantAnnonce = envois.length;
 recevoir({ t: 'alerte', id: 'autre', genre: 'fini', projet: 'intervizio' });
 const annonce = envois.slice(avantAnnonce).find((e) => e.t === 'voix_dire');
 noter('l’essentiel : « Travail terminé sur intervizio » part à la voix', annonce?.texte === 'Travail terminé sur intervizio.', annonce?.texte);
+choisirVolume(0.3);
 recevoir({ t: 'voix_audio', id: annonce?.id, taux: 22050, pcm });
+noter('volume : la voix part au volume choisi', gains.at(-1)?.gain.value === 0.3 && volumeVoix() === 0.3);
+choisirVolume(0.6);
+noter('… et la phrase en cours suit le curseur', gains.at(-1)?.gain.value === 0.6);
+choisirVolume(7);
+noter('volume borné entre 0 et 1', volumeVoix() === 1);
 lectures.at(-1)?.onended?.();
 choisirModeVoix('non');
 const avantMuet = envois.length;

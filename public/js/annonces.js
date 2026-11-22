@@ -7,7 +7,7 @@
 // Seule la fenêtre principale annonce : la fenêtre détachée de l'équipe ne charge pas ce module (pas de doublon).
 import { t, ajouterTextes } from './i18n.js';
 import { ecouter } from './canal.js';
-import { parlerMembre, modeVoix, choisirModeVoix, surModeVoix, MODES_VOIX } from './voix-equipe.js';
+import { parlerMembre, modeVoix, choisirModeVoix, surModeVoix, MODES_VOIX, volumeVoix, choisirVolume } from './voix-equipe.js';
 import { equipeAffichee, prenomMembre } from './equipe.js';
 
 ajouterTextes({
@@ -53,6 +53,13 @@ export function initAnnonces(lecteurs) {
     if (!aAnnoncer(m, { mode: modeVoix(), ici, equipeVisible: equipeAffichee() })) return;
     parlerMembre(NARRATRICE, phraseAnnonce(m, { ici, prenom: prenomMembre(m.auteur) }));
   });
+  const volume = document.getElementById('voix-volume');
+  if (volume) {
+    volume.value = String(volumeVoix());
+    volume.title = t('voix_volume');
+    volume.addEventListener('input', () => choisirVolume(volume.value));
+    surModeVoix(() => { if (document.activeElement !== volume) volume.value = String(volumeVoix()); });
+  }
   const choix = document.getElementById('voix-mode');
   if (!choix) return;
   const remplir = () => {

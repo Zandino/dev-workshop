@@ -174,7 +174,7 @@ async function ouvrirNouvelle({ compte, participants, dossier, modele, mode, rep
     if (compte.type !== 'claude') throw new Error('orchestre_claude');
     s.orchestre = true;
     // Reprise : la cheffe reprend sa session Claude Code ; sinon l'historique éventuel lui est donné en consigne.
-    s.pilote = ouvrirOrchestre({ session: s.id, compte, dossier, modele, mode, effort, reprise, histoire: reprise ? null : consigneReprise }, emettre);
+    s.pilote = ouvrirOrchestre({ session: s.id, compte, dossier, modele, mode, effort, reprise, histoire: reprise ? null : consigneReprise, journal: () => s.journal, surRelais: (c) => { s.compte = c.id; } }, emettre);
   } else {
     if (reprise && f.lireHistorique) {
       try {
@@ -265,7 +265,7 @@ export function changerEquipe(id, equipe, { ailleurs = null, note = null } = {})
   const ancien = s.pilote;
   const ouvrir = () => {
     if (salon) return ouvrirSalon({ session: s.id, participants: equipe.participants, dossier, mode, echanges: equipe.echanges, histoire }, emettre);
-    if (equipe.orchestre) return ouvrirOrchestre({ session: s.id, compte: c, dossier, modele: equipe.modele, mode, effort, histoire, reprise: memeClaude ? sessionId : undefined }, emettre);
+    if (equipe.orchestre) return ouvrirOrchestre({ session: s.id, compte: c, dossier, modele: equipe.modele, mode, effort, histoire, reprise: memeClaude ? sessionId : undefined, journal: () => s.journal, surRelais: (x) => { s.compte = x.id; } }, emettre);
     return piloteAvecRelais({ s, compte: c, dossier, modele: equipe.modele, mode, effort, consigneReprise: histoire }, emettre);
   };
   let pilote;
