@@ -12,6 +12,8 @@
   <link rel="stylesheet" href="/css/panneaux.css">
   <link rel="stylesheet" href="/css/direct.css">
   <link rel="stylesheet" href="/css/equipe.css">
+  <link rel="stylesheet" href="/tiers/xterm.css">
+  <link rel="stylesheet" href="/css/terminal.css">
 </head>
 <body>
   <div id="bandeau" class="bandeau" hidden data-i18n="connexion_perdue"></div>
@@ -85,10 +87,12 @@
         <label class="pastille-reglage"><span data-i18n="mode"></span><select id="mode"></select></label>
         <label class="pastille-reglage"><span data-i18n="puissance"></span><select id="effort"></select></label>
         <span class="ressort"></span>
+        <button id="ouvrir-terminal" class="ouvrir-terminal" type="button" aria-pressed="false" data-i18n-attr="title:terminal_bouton"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M12 15h5"/></svg><span class="lu" data-i18n="terminal_bouton"></span></button>
         <button id="dicter" class="dicter" type="button" disabled data-i18n-attr="title:dicter"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></svg><span id="dicter-temps" class="temps"></span></button>
         <button id="arreter" class="danger" type="button" hidden data-i18n="arreter"></button>
         <button id="envoyer" class="principal" type="button" disabled data-i18n="envoyer"></button>
       </footer>
+      <section id="terminal" class="panneau-terminal" hidden></section>
 
       <footer class="pied">
         <span>dev-workshop <span id="version"></span></span>

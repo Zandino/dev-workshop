@@ -66,6 +66,11 @@ Free software, built by the Deltinfo Studio team and published under the Apache 
   Whisper on your server (open source, free, the voice stays on the server; installed on demand, ~750 MB plus the
   model) or an API account you added (OpenAI, Groq, Mistral… via `/audio/transcriptions`). See README.fr.md,
   "Dictée".
+- **Server terminals** (button in the message bar, or Ctrl+`): a panel under the message box, as in a code editor,
+  with real shells of the server opened in the project folder, as many tabs as needed (8 at most), resizable. They
+  live on the server: reloading the page or losing the connection finds them again with what they showed; restarting
+  Dev Workshop closes them. An "AI" tab shows, read-only, the commands the AIs of the conversation run and their
+  output (output arrives when the command ends: Claude does not stream it).
 - **French and English** interface, including the searchable `/` command palette.
 
 ## Run it
@@ -145,7 +150,9 @@ This page gives control over the machine it runs on. The safeguards are enforced
 - projects confined to the projects root, symbolic links included;
 - text coming from a model or a tool is shown as plain text or sanitised Markdown, under a strict content policy;
 - in a group discussion only the final text of an answer is relayed, never tool results or file contents. An agent
-  hosted outside the server is flagged before the discussion starts.
+  hosted outside the server is flagged before the discussion starts;
+- the server terminals are a shell for whoever holds the token, outside the project's approval rules. They are
+  driven from the screen's channel only, never from the agents' tools.
 
 An agent sends to its vendor whatever it reads in the project. Which projects you hand to which agent is your call.
 
@@ -225,6 +232,7 @@ It drives tools that keep their own licence and terms, and each needs an account
 | Codex (OpenAI) | Apache 2.0 |
 | Gemini CLI (Google) | Apache 2.0 |
 | ws, marked, jsdom | MIT |
+| xterm.js, @lydell/node-pty (server terminals) | MIT |
 | DOMPurify | MPL 2.0 or Apache 2.0 |
 | Dictation, installed on demand: Transformers.js / ONNX Runtime / Whisper models | Apache 2.0 / MIT / MIT |
 
