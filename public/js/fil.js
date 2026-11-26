@@ -4,6 +4,7 @@ import { t, ajouterTextes } from './i18n.js';
 import { carteOutil, poserResultat, oublierCartes } from './outils.js';
 import { pastilleLogo } from './logos.js';
 import { texteFilMemoire } from './memoire-discussion.js';
+import { lierChemins } from './chemins.js';
 
 ajouterTextes({
   fr: {
@@ -17,6 +18,13 @@ ajouterTextes({
     info_echange_limite: 'Exchanges with other conversations stopped ({n} messages for this request): the message for “{vers}” was not sent. Start again yourself if you want to go on.',
   },
 });
+
+/** Le texte d'une IA en Markdown, ses chemins de fichiers devenus des liens vers l'aperçu (chemins.js, apercu.js). */
+function texteAvecChemins(texte) {
+  const boite = markdown(texte);
+  lierChemins(boite, t('chemin_ouvrir'));
+  return boite;
+}
 
 const fil = () => document.getElementById('fil');
 let direct = null; // message en cours d'écriture : { boite, texte, reflexion }
@@ -117,7 +125,7 @@ function surDelta(e) {
     const maintenant = performance.now();
     if (maintenant - direct.dernier > 100) {
       direct.dernier = maintenant;
-      direct.texte.replaceChildren(markdown(direct.brut));
+      direct.texte.replaceChildren(texteAvecChemins(direct.brut));
     }
   }
   suivre();
@@ -130,7 +138,7 @@ function surAssistant(e) {
   if (etiquette) message.append(etiquette);
   if (e.sousAgent) message.append(h('div.etiquette', {}, t('sous_agent')));
   for (const b of e.blocs) {
-    if (b.type === 'texte') message.append(markdown(b.texte), boutonCopier(b.texte));
+    if (b.type === 'texte') message.append(texteAvecChemins(b.texte), boutonCopier(b.texte));
     // Les blocs de réflexion restent en arrière-plan : ils ne s'affichent pas dans le fil.
     else if (b.type === 'outil') message.append(carteOutil(b));
   }

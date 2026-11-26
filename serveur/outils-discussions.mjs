@@ -1,5 +1,6 @@
 // Outils « entre discussions » donnés aux IA (la remise des messages est dans entre-discussions.mjs) :
-// discussions, lire_discussion, envoyer_message, et poser_question pour les IA autres que Claude (qui a la sienne).
+// discussions, lire_discussion, envoyer_message, et poser_question pour les IA autres que Claude (qui a la sienne) ;
+// aussi montrer_fichier (un fichier du serveur ouvert dans l'aperçu de l'écran) et la mémoire de la discussion.
 // Claude les reçoit dans le serveur même (createSdkMcpServer) ; les autres par l'adresse locale /mcp (mcp-http.mjs),
 // avec un jeton propre à chaque IA lancée, oublié quand elle s'arrête.
 import { randomBytes } from 'node:crypto';
@@ -7,6 +8,7 @@ import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
 import { listerDiscussions, lireDiscussion, envoyerMessage, poserQuestion } from './entre-discussions.mjs';
 import { outilLire, outilRetenir, outilProposerInstructions, MAX_INSTRUCTIONS } from './memoire-discussion.mjs';
+import { montrerFichier } from './ouvrir-fichier.mjs';
 
 /**
  * Nom du serveur d'outils, tiré au hasard à chaque démarrage : un dépôt piégé qui déclarerait son propre serveur
@@ -83,6 +85,13 @@ const OUTILS = [
     },
     seulementSi: (ctx) => ctx.questions,
     faire: poserQuestion,
+  },
+  // Montrer un fichier à l'utilisateur, dans l'aperçu de son écran (ouvrir-fichier.mjs).
+  {
+    nom: 'montrer_fichier',
+    description: 'Ouvre un fichier ou un dossier du serveur dans l’aperçu de l’écran de l’utilisateur (panneau de droite de Dev Workshop) : page web avec ses images, image, PDF, Markdown, code, ou la liste d’un dossier. Utilise-le quand l’utilisateur te demande d’ouvrir, de montrer ou d’afficher un fichier (il ne peut pas l’ouvrir lui-même : le fichier est sur le serveur), ou pour lui montrer ce que tu viens de produire (maquette, capture, rapport). Chemin « ~/… », absolu, ou relatif au projet. Les fichiers cachés (.ssh, .config, .env…) sont refusés.',
+    schema: { chemin: z.string().max(4096).describe('chemin du fichier ou du dossier : « ~/… », absolu, ou relatif au dossier du projet') },
+    faire: montrerFichier,
   },
   // Mémoire de la discussion (memoire-discussion.mjs).
   {

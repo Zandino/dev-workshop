@@ -29,7 +29,7 @@ for f in serveur/*.mjs serveur/fournisseurs/*.mjs public/js/*.js; do
 done
 
 # Sans serveur (navigateur simulé, fausses IA).
-for e in entre-discussions questions jauge barre-ordre equipe-direct skins voix-equipe relais-limite memoire-discussion taches; do
+for e in entre-discussions questions jauge barre-ordre equipe-direct skins voix-equipe relais-limite memoire-discussion taches reprise-historique terminaux terminal-ia chemins ouvrir-fichier montrer-fichier; do
   lancer "$e" node "tests/$e.mjs"
 done
 
@@ -39,6 +39,7 @@ P=$!
 sleep 3
 lancer alertes env DEVWORKSHOP_PORT=5351 node tests/alertes.mjs essai
 lancer equipe env DEVWORKSHOP_PORT=5351 node tests/equipe.mjs essai
+lancer terminal-canal env DEVWORKSHOP_PORT=5351 node tests/terminal-canal.mjs essai
 kill "$P"
 sleep 1
 lancer reprise-comptes env DEVWORKSHOP_PORT=5352 node tests/reprise-comptes.mjs

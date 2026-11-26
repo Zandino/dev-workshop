@@ -191,7 +191,9 @@ Cette page donne la main sur le serveur (commandes, fichiers). Les garde-fous so
 - les règles de `~/.claude/CLAUDE.md` et des `CLAUDE.md` de projet s'appliquent aux sessions ouvertes ici
   (`settingSources` : utilisateur, projet, local) ;
 - tout texte venu du modèle ou d'un outil est affiché en texte brut ou en Markdown assaini (DOMPurify), sous une
-  politique de contenu stricte (aucun script ni style en ligne).
+  politique de contenu stricte (aucun script ni style en ligne) ;
+- les terminaux du serveur (voir « Terminaux ») sont un shell pour qui a le jeton, hors des règles d'accord du
+  projet. Ils ne se pilotent que depuis le canal de l'écran, jamais par les outils des IA.
 
 ## Jetons et coût
 
@@ -323,6 +325,38 @@ plus) ne vont qu'aux écrans qui regardent : elles ne sont pas gardées dans l'h
 - Il faut une adresse sûre (le logiciel de bureau, ou `localhost` par le tunnel) ; dans un navigateur, il demande
   l'accès au micro.
 
+## Fichiers cités par les IA
+
+- Un chemin de fichier écrit par une IA dans la conversation (`~/maquettes/page.html`, `/home/…/rapport.pdf`,
+  `.devworkshop/fichiers/…`, `src/app.js`) devient un lien. Un clic l'ouvre dans l'aperçu : page web avec ses images
+  et ses styles (isolée), image, PDF, Markdown, code, ou la liste d'un dossier, dont chaque fichier s'ouvre à son tour.
+  On peut aussi taper un chemin en « ~/… » dans la barre de l'aperçu.
+- « ⤓ » télécharge le fichier affiché sur l'appareil.
+- Les IA avec outils (Claude, Codex, Gemini, Copilot) ont l'outil `montrer_fichier` : quand tu leur demandes
+  d'ouvrir ou de montrer un fichier, ou pour te montrer ce qu'elles viennent de produire, il s'ouvre dans l'aperçu de
+  l'écran qui affiche leur discussion (pas ailleurs). Mêmes bornes que les liens ; si personne ne regarde la
+  discussion, l'IA le sait et donne le chemin.
+- Bornes, vérifiées par le serveur (`serveur/ouvrir-fichier.mjs`) : le dossier personnel du serveur et la racine des
+  projets, liens symboliques résolus, et jamais rien de caché (`.ssh`, `.config`, `.env`…) sauf `.devworkshop`. Un
+  lien vers un fichier interdit ou absent répond par un message, sans rien montrer.
+
+## Terminaux
+
+- Bouton terminal dans la barre de saisie, ou Ctrl+ù (Ctrl+` sur un clavier anglais) : un panneau sous la saisie,
+  comme dans un éditeur de code. Sa hauteur se règle en tirant son bord du haut ; « ⌄ » le masque sans fermer les
+  terminaux.
+- « + » ouvre un vrai shell du serveur dans le dossier du projet affiché (« Terminal 1 », « Terminal 2 »…, 8 au plus
+  pour tout le serveur) ; × le ferme, `exit` aussi.
+- Les terminaux vivent sur le serveur : recharger la page ou perdre la connexion les retrouve, avec ce qu'ils ont
+  affiché (256 Ko par terminal) ; un redémarrage de Dev Workshop les ferme. Leurs commandes comptent dans la mémoire
+  du serveur comme celles des IA : la veille de `serveur/memoire.mjs` peut les arrêter quand elle manque.
+- L'onglet « IA » montre, en lecture seule, les commandes que lancent les IA de la discussion affichée, puis leur
+  sortie. La sortie arrive quand la commande se termine (Claude ne la transmet pas en cours de route), coupée
+  au-delà de 20 000 caractères comme dans le fil.
+- Le pseudo-terminal vient de `@lydell/node-pty`, précompilé (rien à compiler) ; absent, le bouton « + » le dit et le
+  reste marche. xterm.js (le terminal de VS Code) est servi par le serveur lui-même, sans réseau extérieur ; ses
+  styles passent par des feuilles construites, sans assouplir la politique de contenu.
+
 ## Essais
 
 Tous les essais qui se passent d'IA et de compte (environ 330 vérifications : fausses IA de `tests/faux`, navigateur
@@ -422,6 +456,7 @@ chez leur éditeur :
 | Codex (OpenAI) | Apache 2.0 |
 | Gemini CLI (Google) | Apache 2.0 |
 | ws, marked, jsdom | MIT |
+| xterm.js, @lydell/node-pty (terminaux du serveur) | MIT |
 | DOMPurify | MPL 2.0 ou Apache 2.0 |
 | Dictée, installée à la demande : Transformers.js / ONNX Runtime / modèles Whisper | Apache 2.0 / MIT / MIT |
 

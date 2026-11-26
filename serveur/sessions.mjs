@@ -199,6 +199,15 @@ async function ouvrirNouvelle({ compte, participants, dossier, modele, mode, rep
 }
 
 async function demarrerPilote(s, { salon, participants, dossier, mode, echanges, consigneReprise, orchestre, compte, modele, effort, reprise, f }, emettre) {
+  // Discussion enregistrée rouverte (seule ou en équipe) : ses messages passés s'affichent, en tête du fil. Pas quand
+  // le journal sauvegardé (redémarrage) a déjà des messages : ils seraient doublés. Avant le 22/11, une discussion
+  // rouverte en équipe s'affichait vide, et son journal sauvegardé aussi (rien que « capacites » et « contexte »).
+  const sansMessages = !s.journal.some((e) => e.t === 'utilisateur' || e.t === 'assistant');
+  if (reprise && !salon && f?.lireHistorique && sansMessages) {
+    try {
+      s.journal.unshift(...(await f.lireHistorique(dossier, reprise)));
+    } catch { /* historique illisible : la reprise reste possible */ }
+  }
   if (salon) {
     s.pilote = ouvrirSalon({ session: s.id, participants, dossier, mode, echanges, histoire: consigneReprise }, emettre);
   } else if (orchestre) {
@@ -208,11 +217,6 @@ async function demarrerPilote(s, { salon, participants, dossier, mode, echanges,
     // Reprise : la cheffe reprend sa session Claude Code ; sinon l'historique éventuel lui est donné en consigne.
     s.pilote = ouvrirOrchestre({ session: s.id, compte, dossier, modele, mode, effort, reprise, histoire: reprise ? null : consigneReprise, journal: () => s.journal, surRelais: (c) => { s.compte = c.id; } }, emettre);
   } else {
-    if (reprise && f.lireHistorique) {
-      try {
-        for (const e of await f.lireHistorique(dossier, reprise)) s.journal.push(e);
-      } catch { /* historique illisible : la reprise reste possible */ }
-    }
     // Si l'IA atteint sa limite en cours de route, une autre IA connectée prend le relais (voir relais.mjs).
     s.pilote = piloteAvecRelais({ s, compte, dossier, modele, mode, reprise, effort, consigneReprise }, emettre);
   }

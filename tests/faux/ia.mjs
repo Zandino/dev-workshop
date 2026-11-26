@@ -58,7 +58,10 @@ function piloteFaux(opts, recevoir) {
   };
 }
 export const ouvrir = piloteFaux; // fournisseurs/claude.mjs (la cheffe de l'orchestre)
-export const fournisseurDe = () => ({ ouvrir: piloteFaux });
+// Messages passés d'une session enregistrée, par id de session (vide si inconnue) : voir lireHistorique.
+export const historiques = {};
+export const lireHistorique = async (_dossier, id) => historiques[id] || [];
+export const fournisseurDe = () => ({ ouvrir: piloteFaux, lireHistorique });
 
 // Réponses toutes faites.
 export const repondre = (texte) => (_t, recevoir) => {

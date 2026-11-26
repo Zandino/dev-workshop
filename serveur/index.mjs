@@ -13,6 +13,7 @@ import { servirApercu } from './apercu.mjs';
 import { servirMcp } from './mcp-http.mjs';
 import { servirSkin } from './skins.mjs';
 import { purgerSessions } from './corbeille-sessions.mjs';
+import { fermerTerminaux } from './terminaux.mjs';
 
 // La corbeille garde un projet 30 jours : on la passe en revue au démarrage, puis toutes les 6 heures.
 function revoirCorbeille() {
@@ -42,6 +43,9 @@ const TYPES = {
 const TIERS = {
   '/tiers/marked.js': 'node_modules/marked/lib/marked.esm.js',
   '/tiers/purify.js': 'node_modules/dompurify/dist/purify.es.mjs',
+  '/tiers/xterm.mjs': 'node_modules/@xterm/xterm/lib/xterm.mjs',
+  '/tiers/xterm.css': 'node_modules/@xterm/xterm/css/xterm.css',
+  '/tiers/xterm-fit.mjs': 'node_modules/@xterm/addon-fit/lib/addon-fit.mjs',
 };
 
 function fichierDemande(chemin) {
@@ -101,6 +105,7 @@ serveur.listen(PORT, HOTE, () => {
 
 function arreter() {
   fermerTout();
+  fermerTerminaux();
   annulerToutes();
   serveur.close(() => process.exit(0));
   setTimeout(() => process.exit(0), 1500).unref();
