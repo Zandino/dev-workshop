@@ -75,7 +75,8 @@ Free software, built by the Deltinfo Studio team and published under the Apache 
   `/home/…/report.pdf`, `.devworkshop/fichiers/…`, `src/app.js`) becomes a link that opens it in the preview: a web
   page with its images and styles (isolated), an image, a PDF, Markdown, code, or the list of a folder. A "Download"
   button saves it to your device. Allowed: the server's home folder and the projects root, never anything hidden
-  (`.ssh`, `.config`, `.env`…) except `.devworkshop`.
+  (`.ssh`, `.config`, `.env`…) except `.devworkshop`. The AIs with tools also get `montrer_fichier`: asked to open or
+  show a file, they open it in the preview of the screen showing their conversation.
 - **French and English** interface, including the searchable `/` command palette.
 
 ## Run it

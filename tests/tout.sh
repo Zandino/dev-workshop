@@ -29,7 +29,7 @@ for f in serveur/*.mjs serveur/fournisseurs/*.mjs public/js/*.js; do
 done
 
 # Sans serveur (navigateur simulé, fausses IA).
-for e in entre-discussions questions jauge barre-ordre equipe-direct skins voix-equipe relais-limite memoire-discussion taches reprise-historique terminaux terminal-ia chemins ouvrir-fichier; do
+for e in entre-discussions questions jauge barre-ordre equipe-direct skins voix-equipe relais-limite memoire-discussion taches reprise-historique terminaux terminal-ia chemins ouvrir-fichier montrer-fichier; do
   lancer "$e" node "tests/$e.mjs"
 done
 

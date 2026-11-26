@@ -70,6 +70,32 @@ export function ouvrirFichier(demande, projet) {
   return { chemin: reel, dossier: false, ticket, nom: path.basename(reel), taille: infos.size, dureeMs };
 }
 
+const MOTIFS = {
+  fichier_introuvable: 'fichier introuvable sur le serveur',
+  fichier_interdit: 'refusé : fichier caché (.ssh, .config, .env…) ou hors du dossier personnel et des projets',
+  fichier_invalide: 'chemin invalide',
+};
+
+/**
+ * Outil « montrer_fichier » des IA (outils-discussions.mjs) : ouvre le fichier dans l'aperçu des écrans qui affichent
+ * leur discussion, mêmes bornes que les liens. Rend le compte rendu lu par l'IA.
+ */
+export async function montrerFichier(ctx, { chemin }) {
+  // Chargé à l'appel seulement : sessions.mjs passe par les outils des IA pour arriver ici (import circulaire), et les
+  // essais de ce module se passent du serveur des discussions.
+  const { session } = await import('./sessions.mjs');
+  const s = session(ctx.session);
+  let infos;
+  try {
+    infos = ouvrirFichier(chemin, s.dossier);
+  } catch (e) {
+    return `Pas ouvert : ${MOTIFS[e.message] || e.message}.`;
+  }
+  if (!s.abonnes.size) return `Personne n'affiche cette discussion en ce moment : rien ne s'est ouvert. Donne le chemin ${infos.chemin} dans ta réponse : il y deviendra un lien.`;
+  for (const envoyer of s.abonnes) envoyer({ t: 'fichier_ouvert', demande: String(chemin).slice(0, 4096), parIa: true, session: s.id, ...infos });
+  return `Ouvert dans l'aperçu de l'écran : ${infos.chemin}${infos.dossier ? ' (liste du dossier)' : ''}.`;
+}
+
 /** Ordre de l'écran (canal authentifié) : { t: 'fichier_ouvrir', chemin, projet }. */
 export function ordresFichier(envoyer) {
   return {

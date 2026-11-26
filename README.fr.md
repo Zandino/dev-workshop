@@ -332,6 +332,10 @@ plus) ne vont qu'aux écrans qui regardent : elles ne sont pas gardées dans l'h
   et ses styles (isolée), image, PDF, Markdown, code, ou la liste d'un dossier, dont chaque fichier s'ouvre à son tour.
   On peut aussi taper un chemin en « ~/… » dans la barre de l'aperçu.
 - « ⤓ » télécharge le fichier affiché sur l'appareil.
+- Les IA avec outils (Claude, Codex, Gemini, Copilot) ont l'outil `montrer_fichier` : quand tu leur demandes
+  d'ouvrir ou de montrer un fichier, ou pour te montrer ce qu'elles viennent de produire, il s'ouvre dans l'aperçu de
+  l'écran qui affiche leur discussion (pas ailleurs). Mêmes bornes que les liens ; si personne ne regarde la
+  discussion, l'IA le sait et donne le chemin.
 - Bornes, vérifiées par le serveur (`serveur/ouvrir-fichier.mjs`) : le dossier personnel du serveur et la racine des
   projets, liens symboliques résolus, et jamais rien de caché (`.ssh`, `.config`, `.env`…) sauf `.devworkshop`. Un
   lien vers un fichier interdit ou absent répond par un message, sans rien montrer.

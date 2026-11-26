@@ -178,6 +178,11 @@ export function initApercu(lecteurs) {
     if (m.t === 'fichier_ouvert') {
       etat.fichier = m;
       etat.version++;
+      // Ouvert par l'IA de la discussion (outil montrer_fichier) : l'aperçu s'ouvre et reste sur ce fichier.
+      if (m.parIa) {
+        etat.suivre = false;
+        if (!etat.ouvert) return montrer(true);
+      }
       return dessiner();
     }
     if (m.t === 'apercu_ticket') {
