@@ -23,6 +23,7 @@ import { envoyerAvecMemoire, repondreDemandeMemoire, lireMemoire, ecrireDepuisEc
 import { lireOrdre, trier } from './ordre.mjs';
 import { listerSkins } from './skins.mjs';
 import { ordresTerminaux } from './terminaux.mjs';
+import { ordresFichier } from './ouvrir-fichier.mjs';
 
 const NOM_PROJET = /^[A-Za-z0-9][A-Za-z0-9._-]{0,60}$/;
 const MAX_TEXTE = 200_000;
@@ -239,7 +240,8 @@ export function brancher(ws, jeton) {
   const dictee = ordresDictee(envoyer);
   const voix = { ordres: ordresVoix(envoyer) }; // voix naturelles de l'équipe en direct (voix.mjs)
   const terminaux = ordresTerminaux(envoyer); // terminaux du serveur, panneau sous la saisie (terminaux.mjs)
-  for (const lot of [projetsEtFichiers, dictee, voix, terminaux]) {
+  const fichiersCites = ordresFichier(envoyer); // fichiers cités par les IA, ouverts dans l'aperçu (ouvrir-fichier.mjs)
+  for (const lot of [projetsEtFichiers, dictee, voix, terminaux, fichiersCites]) {
     for (const [nom, f] of Object.entries(lot.ordres)) if (!Object.hasOwn(ordres, nom)) ordres[nom] = f;
   }
 

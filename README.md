@@ -71,6 +71,11 @@ Free software, built by the Deltinfo Studio team and published under the Apache 
   live on the server: reloading the page or losing the connection finds them again with what they showed; restarting
   Dev Workshop closes them. An "AI" tab shows, read-only, the commands the AIs of the conversation run and their
   output (output arrives when the command ends: Claude does not stream it).
+- **Files the AIs mention**: a file path written by an AI in the conversation (`~/mockups/page.html`,
+  `/home/…/report.pdf`, `.devworkshop/fichiers/…`, `src/app.js`) becomes a link that opens it in the preview: a web
+  page with its images and styles (isolated), an image, a PDF, Markdown, code, or the list of a folder. A "Download"
+  button saves it to your device. Allowed: the server's home folder and the projects root, never anything hidden
+  (`.ssh`, `.config`, `.env`…) except `.devworkshop`.
 - **French and English** interface, including the searchable `/` command palette.
 
 ## Run it
